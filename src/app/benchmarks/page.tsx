@@ -581,12 +581,14 @@ export default function BenchmarksPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {isLoading && sortedAreas.length === 0 ? (
-                      Array.from({ length: 10 }).map((_, i) => (
+                    {isLoading ? (
+                      Array.from({ length: Math.min(sortedAreas.length || 10, 15) }).map((_, i) => (
                         <TableRow key={i}>
-                          <TableCell className="sticky left-0 z-10 bg-white"><Skeleton className="h-4 w-32" /></TableCell>
+                          <TableCell className="sticky left-0 z-10 bg-white">
+                            {sortedAreas[i] ? <span className="text-sm text-gray-400">{cleanAreaName(sortedAreas[i].AreaName)}</span> : <Skeleton className="h-4 w-32" />}
+                          </TableCell>
                           <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
-                          {availableIndicators.map((_, j) => (
+                          {(availableIndicators.length > 0 ? availableIndicators : selectedIndicators).map((_, j) => (
                             <TableCell key={j}><Skeleton className="h-4 w-10 mx-auto" /></TableCell>
                           ))}
                         </TableRow>
