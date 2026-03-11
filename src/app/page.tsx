@@ -191,7 +191,7 @@ export default function LandingPage() {
             </div>
             <div>
               <p className="font-semibold text-[#003087]">Benchmark Areas</p>
-              <p className="mt-0.5 text-sm text-gray-500">Compare and rank ICBs, Sub-ICBs, and PCNs</p>
+              <p className="mt-0.5 text-sm text-gray-500">Compare and rank Regions, ICBs, Sub-ICBs, and PCNs</p>
             </div>
           </button>
         </div>
