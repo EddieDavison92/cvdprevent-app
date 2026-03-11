@@ -10,7 +10,7 @@ export function buildUrl(
   const params = new URLSearchParams();
 
   // Preserve these params from current URL
-  for (const key of ['area', 'condition']) {
+  for (const key of ['area', 'condition', 'level', 'parent']) {
     const val = searchParams.get(key);
     if (val) params.set(key, val);
   }

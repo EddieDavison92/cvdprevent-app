@@ -20,9 +20,10 @@ interface IndicatorNavProps {
   indicators: Indicator[];
   currentId: number;
   dataByIndicator: Map<number, IndicatorRawData>;
+  basePath?: string;
 }
 
-export function IndicatorNav({ indicators, currentId, dataByIndicator }: IndicatorNavProps) {
+export function IndicatorNav({ indicators, currentId, dataByIndicator, basePath = '/dashboard' }: IndicatorNavProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
   const [canScroll, setCanScroll] = useState(false);
@@ -76,7 +77,7 @@ export function IndicatorNav({ indicators, currentId, dataByIndicator }: Indicat
   };
 
   const buildIndicatorLink = (indicatorId: number) =>
-    buildUrl(`/dashboard/${indicatorId}`, searchParams);
+    buildUrl(`${basePath}/${indicatorId}`, searchParams);
 
   if (filteredIndicators.length <= 1) return null;
 
