@@ -133,6 +133,9 @@ export default function BenchmarksPage() {
       direction: dir === 'asc' ? 'asc' : 'desc',
     };
   });
+  const [selectedAreaCode, setSelectedAreaCode] = useState<string | null>(
+    () => searchParams.get('area') ?? null
+  );
 
   // Sync state back to URL (skip initial mount)
   const updateUrl = useCallback(() => {
@@ -143,9 +146,10 @@ export default function BenchmarksPage() {
     if (!compareToParent && parentAreaId) params.set('compare', 'england');
     if (sort.column !== 'score') params.set('sort', sort.column);
     if (sort.direction !== 'desc') params.set('dir', sort.direction);
+    if (selectedAreaCode) params.set('area', selectedAreaCode);
     const qs = params.toString();
     router.replace(qs ? `/benchmarks?${qs}` : '/benchmarks', { scroll: false });
-  }, [levelId, parentAreaId, sectionFilter, compareToParent, sort, router]);
+  }, [levelId, parentAreaId, sectionFilter, compareToParent, sort, selectedAreaCode, router]);
 
   useEffect(() => {
     if (isInitialMount.current) {
@@ -472,7 +476,7 @@ export default function BenchmarksPage() {
 
           {/* Filters */}
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            <Select value={levelId.toString()} onValueChange={(v) => { setLevelId(parseInt(v, 10)); setParentAreaId(undefined); }}>
+            <Select value={levelId.toString()} onValueChange={(v) => { setLevelId(parseInt(v, 10)); setParentAreaId(undefined); setSelectedAreaCode(null); }}>
               <SelectTrigger className="w-[160px] h-9 text-sm bg-white">
                 <SelectValue />
               </SelectTrigger>
@@ -486,7 +490,7 @@ export default function BenchmarksPage() {
             {parentOptions.length > 0 && (
               <Select
                 value={parentAreaId?.toString() ?? 'all'}
-                onValueChange={(v) => setParentAreaId(v === 'all' ? undefined : parseInt(v, 10))}
+                onValueChange={(v) => { setParentAreaId(v === 'all' ? undefined : parseInt(v, 10)); setSelectedAreaCode(null); }}
               >
                 <SelectTrigger className="w-[260px] h-9 text-sm bg-white">
                   <SelectValue placeholder={isPcn ? `Select ${parentLabel}...` : `All ${parentLabel}s`} />
@@ -688,10 +692,18 @@ export default function BenchmarksPage() {
                       sortedAreas.map((area) => {
                         const score = areaScores.get(area.AreaCode) ?? 0;
                         const scoreColor = score >= 66 ? 'text-green-700 bg-green-50' : score >= 33 ? 'text-amber-700 bg-amber-50' : 'text-red-700 bg-red-50';
+                        const isSelected = area.AreaCode === selectedAreaCode;
 
                         return (
-                          <TableRow key={area.AreaCode} className="hover:bg-gray-50/50">
-                            <TableCell className="sticky left-0 z-10 bg-white text-sm font-medium text-gray-900 max-w-[220px] truncate">
+                          <TableRow
+                            key={area.AreaCode}
+                            className={cn('hover:bg-gray-50/50 cursor-pointer', isSelected && 'bg-nhs-blue/5')}
+                            onClick={() => setSelectedAreaCode(isSelected ? null : area.AreaCode)}
+                          >
+                            <TableCell className={cn(
+                              'sticky left-0 z-10 text-sm font-medium max-w-[220px] truncate',
+                              isSelected ? 'bg-nhs-blue/5 text-nhs-blue border-l-2 border-l-nhs-blue' : 'bg-white text-gray-900'
+                            )}>
                               {cleanAreaName(area.AreaName)}
                             </TableCell>
                             <TableCell className="text-center">

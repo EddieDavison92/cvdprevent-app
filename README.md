@@ -4,6 +4,14 @@ Unofficial data explorer for the [CVDPREVENT](https://www.cvdprevent.nhs.uk) car
 
 **Live at [cvdprevent.vercel.app](https://cvdprevent.vercel.app)**
 
+## Why This Exists
+
+CVDPREVENT publishes valuable data through a public API, but exploring it in day-to-day work can be slow and fragmented. This project provides a faster way to review CVD prevention performance across NHS geographies.
+
+It is built around the workflows analysts, commissioners, and improvement teams actually use: start with an organisation, compare it to England or its parent geography, identify underperformance, then drill into trends, peers, pathways, and demographic breakdowns — all without jumping between pages.
+
+The focus is on fast organisation-level dashboards, clear baseline comparisons, polarity-aware benchmarking, and dense views that make variation easy to spot. It is not a replacement for the official CVDPREVENT platform — it is a quicker, more practical tool for repeated analytical use.
+
 ## Features
 
 - Search and explore data for ICBs, Sub-ICBs, PCNs, and Regions
@@ -42,7 +50,7 @@ src/
 │   ├── hooks/        # React Query hooks (areas, indicators, time periods)
 │   ├── constants/    # Indicator sections, colours, geography hierarchy
 │   └── utils/        # Formatting, CSV export, URL helpers
-└── providers/        # Organisation context (persisted in URL params)
+└── providers/        # Organisation context (URL params + localStorage)
 ```
 
 ### Data flow
@@ -60,11 +68,28 @@ src/
 - **React Query** caches all API responses for 10 minutes — navigating between pages reuses cached data
 - **Single-call API** — `useAreaIndicators(periodId, areaId)` fetches all indicators for one area in one request, so switching between indicators is instant with no additional fetches
 - **URL-driven state** — benchmarks and indicator explorer persist filter/scope settings in URL params for shareable links and browser history navigation
-- **System level hierarchy**: England → Region → ICB → Sub-ICB → PCN, with parent scoping at each level
+
+## Geography Hierarchy
+
+The NHS geography model used throughout the app:
+
+```
+England → Region → ICB → Sub-ICB → PCN
+```
+
+Each level can be scoped by its parent (e.g. ICBs within a Region, PCNs within an ICB). Benchmarks and the indicator explorer support parent scoping at every level.
 
 ## Data Source
 
 All data is fetched from the public CVDPREVENT API (`api.cvdprevent.nhs.uk`). This project is not affiliated with or endorsed by NHS England, OHID, or the NHS Benchmarking Network.
+
+## Known Limitations
+
+- Depends on the public CVDPREVENT API — if the API is down or changes, the app will break
+- Deprivation breakdowns are not available at PCN level (API limitation)
+- Peer comparison (sibling data) returns empty for PCNs
+- Some views are optimised for desktop/analyst workflows and may feel dense on mobile
+- No authentication or saved views — state is shared via URL params only
 
 ## Development
 
@@ -101,6 +126,12 @@ Tests are in `src/__tests__/api-contracts.test.ts` and validate that TypeScript 
 npm test              # run all tests
 npx vitest run --reporter=verbose  # verbose output
 ```
+
+## Deployment
+
+The app deploys to Vercel with zero configuration — just connect the repo. No environment variables are needed.
+
+To self-host elsewhere, any platform that supports Next.js 16 will work. The app is fully client-side rendered (`'use client'` throughout), so static export (`next export`) is also an option if you don't need SSR.
 
 ## License
 
