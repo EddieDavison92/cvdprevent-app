@@ -8,7 +8,7 @@ Unofficial data explorer for the [CVDPREVENT](https://www.cvdprevent.nhs.uk) car
 
 CVDPREVENT publishes valuable data through a public API, but exploring it in day-to-day work can be slow and fragmented. This project provides a faster way to review CVD prevention performance across NHS geographies.
 
-It is built around the workflows analysts, commissioners, and improvement teams actually use: start with an organisation, compare it to England or its parent geography, identify underperformance, then drill into trends, peers, pathways, and demographic breakdowns — all without jumping between pages.
+It is built around the workflows analysts, commissioners, and improvement teams actually use: start with an organisation, compare it to England or its parent geography, see where performance is lagging, then drill into trends, peers, pathways, and demographic breakdowns — all without jumping between pages.
 
 The focus is on fast organisation-level dashboards, clear baseline comparisons, polarity-aware benchmarking, and dense views that make variation easy to spot. It is not a replacement for the official CVDPREVENT platform — it is a quicker, more practical tool for repeated analytical use.
 
@@ -90,7 +90,7 @@ All data is fetched from the public CVDPREVENT API (`api.cvdprevent.nhs.uk`). Th
 - Deprivation breakdowns are not available at PCN level (API limitation)
 - Peer comparison (sibling data) returns empty for PCNs
 - Some views are optimised for desktop/analyst workflows and may feel dense on mobile
-- No authentication or saved views — state is shared via URL params only
+- No authentication or user accounts — most state is shared via URL params; selected organisation and baseline are also persisted locally in the browser
 
 ## Development
 
@@ -130,9 +130,7 @@ npx vitest run --reporter=verbose  # verbose output
 
 ## Deployment
 
-The app deploys to Vercel with zero configuration — just connect the repo. No environment variables are needed.
-
-To self-host elsewhere, any platform that supports Next.js 16 will work. The app is fully client-side rendered (`'use client'` throughout), so static export (`next export`) is also an option if you don't need SSR.
+The app runs comfortably on Vercel with no environment variables. Other Next.js-compatible hosts should also work.
 
 ## License
 
