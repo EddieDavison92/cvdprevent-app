@@ -79,33 +79,33 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
   const { data: latestPeriod } = useLatestTimePeriod('standard');
   const latestTimePeriodId = latestPeriod?.TimePeriodID;
 
-  // Check URL for area parameter
+  // Parse URL area param synchronously on first render
+  const areaParam = searchParams.get('area');
+  const parsedUrlAreaId = areaParam ? parseInt(areaParam, 10) : null;
+  const hasUrlArea = parsedUrlAreaId !== null && !isNaN(parsedUrlAreaId);
+
+  // Keep urlAreaId in sync with URL param
   useEffect(() => {
-    const areaParam = searchParams.get('area');
-    if (areaParam) {
-      const areaId = parseInt(areaParam, 10);
-      if (!isNaN(areaId)) {
-        setUrlAreaId(areaId);
-      }
+    if (hasUrlArea) {
+      setUrlAreaId(parsedUrlAreaId);
     }
-  }, [searchParams]);
+  }, [hasUrlArea, parsedUrlAreaId]);
 
   // Fetch area from URL param if present
   const { data: urlArea, isLoading: isLoadingUrlArea } = useQuery({
-    queryKey: ['areaDetails', urlAreaId, latestTimePeriodId],
-    queryFn: () => fetchAreaById(urlAreaId!, latestTimePeriodId!),
-    enabled: !!urlAreaId && !!latestTimePeriodId && !organisation,
+    queryKey: ['areaDetails', parsedUrlAreaId, latestTimePeriodId],
+    queryFn: () => fetchAreaById(parsedUrlAreaId!, latestTimePeriodId!),
+    enabled: hasUrlArea && !!latestTimePeriodId && !organisation,
     staleTime: Infinity,
   });
 
   // Initialize from URL param or localStorage
   useEffect(() => {
     if (urlArea) {
-      // URL param takes precedence
       setOrganisationState(urlArea);
       setLevelId(urlArea.SystemLevelID);
       setIsLoading(false);
-    } else if (!urlAreaId) {
+    } else if (!hasUrlArea) {
       // No URL param, try localStorage
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
@@ -118,8 +118,11 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
         // Invalid stored data, ignore
       }
       setIsLoading(false);
+    } else if (hasUrlArea && !isLoadingUrlArea && !urlArea) {
+      // URL area fetch completed but returned null (invalid area ID)
+      setIsLoading(false);
     }
-  }, [urlArea, urlAreaId]);
+  }, [urlArea, hasUrlArea, isLoadingUrlArea]);
 
   // Initialize baseline from localStorage
   useEffect(() => {
@@ -133,13 +136,6 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
       // Invalid stored data, use default England
     }
   }, []);
-
-  // Update loading state when URL area is being fetched
-  useEffect(() => {
-    if (urlAreaId && isLoadingUrlArea) {
-      setIsLoading(true);
-    }
-  }, [urlAreaId, isLoadingUrlArea]);
 
   // Helper to update URL with area param
   const updateUrlWithArea = useCallback((areaId: number) => {

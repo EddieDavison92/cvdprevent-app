@@ -18,6 +18,7 @@ interface ChoroplethMapProps {
   selectedAreaCode?: string;
   baselineValue?: number | null;
   baselineName?: string;
+  lowerIsBetter?: boolean;
   formatValue?: (v: number) => string;
   height?: number;
 }
@@ -35,30 +36,32 @@ const ENGLAND_BOUNDS = L.latLngBounds(
   L.latLng(55.8, 1.8)    // Northeast
 );
 
-// Diverging colour scale: red (below) → white (at baseline) → green (above)
-function getColor(value: number | null, min: number, max: number, baselineValue: number | null): string {
+// Diverging colour scale relative to baseline, polarity-aware
+function getColor(value: number | null, min: number, max: number, baselineValue: number | null, lowerIsBetter = false): string {
   if (value === null) return NHS_COLORS.midGrey;
 
   if (baselineValue !== null && baselineValue !== 0) {
     const diff = value - baselineValue;
     const maxAbsDiff = Math.max(Math.abs(min - baselineValue), Math.abs(max - baselineValue)) || 1;
     const ratio = Math.max(-1, Math.min(1, diff / maxAbsDiff));
+    // For lowerIsBetter, above baseline = worse (red), below = better (green)
+    const isGood = lowerIsBetter ? ratio < 0 : ratio > 0;
+    const t = Math.abs(ratio);
 
-    if (ratio >= 0) {
-      // Above: white → green
-      const t = ratio;
+    if (isGood) {
+      // Better: white → green
       const r = Math.round(255 - t * (255 - 0));
       const g = Math.round(255 - t * (255 - 127));
       const b = Math.round(255 - t * (255 - 59));
       return `rgb(${r},${g},${b})`;
-    } else {
-      // Below: white → red
-      const t = -ratio;
+    } else if (t > 0) {
+      // Worse: white → red
       const r = Math.round(255 - t * (255 - 218));
       const g = Math.round(255 - t * (255 - 41));
       const b = Math.round(255 - t * (255 - 28));
       return `rgb(${r},${g},${b})`;
     }
+    return 'rgb(255,255,255)';
   }
 
   // Fallback: sequential blue scale
@@ -76,6 +79,7 @@ export function ChoroplethMap({
   selectedAreaCode,
   baselineValue,
   baselineName = 'England',
+  lowerIsBetter = false,
   formatValue = (v) => v.toFixed(1),
   height = 500,
 }: ChoroplethMapProps) {
@@ -142,14 +146,14 @@ export function ChoroplethMap({
       const isSelected = code === selectedAreaCode;
 
       return {
-        fillColor: getColor(areaData?.value ?? null, min, max, baselineValue ?? null),
+        fillColor: getColor(areaData?.value ?? null, min, max, baselineValue ?? null, lowerIsBetter),
         weight: isSelected ? 3 : 1,
         opacity: 1,
         color: isSelected ? NHS_COLORS.darkBlue : '#fff',
         fillOpacity: 0.8,
       };
     },
-    [valueMap, min, max, baselineValue, selectedAreaCode]
+    [valueMap, min, max, baselineValue, selectedAreaCode, lowerIsBetter]
   );
 
   // Initialize map
@@ -262,13 +266,13 @@ export function ChoroplethMap({
         <div style="background:white;padding:8px 10px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.15);font-size:11px;line-height:1.6">
           <div style="font-weight:600;margin-bottom:4px">vs ${baselineName} (${baseLabel})</div>
           <div style="display:flex;align-items:center;gap:6px">
-            <span style="display:inline-block;width:14px;height:14px;background:${NHS_COLORS.red};border-radius:2px"></span> Below
+            <span style="display:inline-block;width:14px;height:14px;background:${NHS_COLORS.green};border-radius:2px"></span> Better
           </div>
           <div style="display:flex;align-items:center;gap:6px">
             <span style="display:inline-block;width:14px;height:14px;background:#fff;border:1px solid #ccc;border-radius:2px"></span> At average
           </div>
           <div style="display:flex;align-items:center;gap:6px">
-            <span style="display:inline-block;width:14px;height:14px;background:${NHS_COLORS.green};border-radius:2px"></span> Above
+            <span style="display:inline-block;width:14px;height:14px;background:${NHS_COLORS.red};border-radius:2px"></span> Worse
           </div>
           ${noDataRow}
         </div>

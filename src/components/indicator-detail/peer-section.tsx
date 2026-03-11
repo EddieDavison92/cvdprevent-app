@@ -29,6 +29,7 @@ interface PeerSectionProps {
   regionValue?: number | null;
   regionName?: string;
   levelId: number;
+  lowerIsBetter?: boolean;
   isLoadingPeers?: boolean;
   isLoadingChildren?: boolean;
   isLoadingNational?: boolean;
@@ -61,6 +62,7 @@ export function PeerSection({
   regionValue,
   regionName,
   levelId,
+  lowerIsBetter = false,
   isLoadingPeers,
   isLoadingChildren,
   isLoadingNational,
@@ -100,8 +102,8 @@ export function PeerSection({
       };
     })
     .filter((d) => d.value !== null)
-    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0)),
-  [peers, peerData, selectedAreaCode]);
+    .sort((a, b) => lowerIsBetter ? (a.value ?? 0) - (b.value ?? 0) : (b.value ?? 0) - (a.value ?? 0)),
+  [peers, peerData, selectedAreaCode, lowerIsBetter]);
 
   // Children chart data
   const childrenChartData = useMemo(() => children
@@ -120,8 +122,8 @@ export function PeerSection({
       };
     })
     .filter((d) => d.value !== null)
-    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0)),
-  [children, childrenData]);
+    .sort((a, b) => lowerIsBetter ? (a.value ?? 0) - (b.value ?? 0) : (b.value ?? 0) - (a.value ?? 0)),
+  [children, childrenData, lowerIsBetter]);
 
   // National chart data
   const nationalChartData = useMemo(() => nationalAreas
@@ -138,8 +140,8 @@ export function PeerSection({
       };
     })
     .filter((d) => d.value !== null)
-    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0)),
-  [nationalAreas, nationalData, selectedAreaCode]);
+    .sort((a, b) => lowerIsBetter ? (a.value ?? 0) - (b.value ?? 0) : (b.value ?? 0) - (a.value ?? 0)),
+  [nationalAreas, nationalData, selectedAreaCode, lowerIsBetter]);
 
   const childLevelId = children[0]?.SystemLevelID;
   const childLevelName = childLevelId ? SYSTEM_LEVEL_NAMES[childLevelId] : 'Children';

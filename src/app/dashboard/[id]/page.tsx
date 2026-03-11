@@ -35,6 +35,7 @@ import { useAllAreas } from '@/lib/hooks/use-areas';
 import { isOutcomeIndicator } from '@/lib/api';
 import { SYSTEM_LEVELS, type Area, type IndicatorRawData, type IndicatorWithData } from '@/lib/api/types';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
+import { findSectionForIndicator } from '@/lib/constants/indicator-sections';
 import { formatTimePeriod, formatValue } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 
@@ -602,6 +603,7 @@ export default function IndicatorDetailPage() {
                 regionValue={regionValue}
                 regionName={regionName}
                 levelId={effectiveLevelId ?? SYSTEM_LEVELS.ICB}
+                lowerIsBetter={indicator ? findSectionForIndicator(indicator.IndicatorCode)?.lowerIsBetter ?? false : false}
                 isLoadingPeers={isLoadingSiblings}
                 isLoadingChildren={isLoadingChildren}
                 isLoadingNational={isLoadingNational}
@@ -645,6 +647,7 @@ export default function IndicatorDetailPage() {
                     selectedAreaCode={organisation?.AreaCode}
                     baselineValue={baselineData?.Value ?? null}
                     baselineName={baselineName}
+                    lowerIsBetter={indicator ? findSectionForIndicator(indicator.IndicatorCode)?.lowerIsBetter ?? false : false}
                     formatValue={formatFn}
                     height={450}
                   />

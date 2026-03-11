@@ -267,6 +267,7 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search organisations, indicators, pages..."
+            aria-label="Search organisations, indicators, and pages"
             className="flex-1 bg-transparent px-3 py-3 text-sm outline-none placeholder:text-gray-400"
           />
           <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-gray-100 px-1.5 font-mono text-[10px] font-medium text-gray-500">
