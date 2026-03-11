@@ -212,7 +212,7 @@ export function ChoroplethMap({
       const layerBounds = layer.getBounds();
       if (layerBounds.isValid()) {
         map.fitBounds(layerBounds, { padding: [10, 10] });
-        const fitZoom = map.getBoundsZoom(layerBounds, false, [10, 10]);
+        const fitZoom = map.getBoundsZoom(layerBounds, false, L.point(10, 10));
         map.setZoom(fitZoom + 1, { animate: false });
       } else {
         map.fitBounds(ENGLAND_BOUNDS);
