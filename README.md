@@ -85,6 +85,7 @@ All data is fetched from the public CVDPREVENT API (`api.cvdprevent.nhs.uk`). Th
 
 ## Known Limitations
 
+- Practice-level data is not available via the public API — PCN is the lowest granularity, with no grouping by borough, local authority, or neighbourhood
 - Depends on the public CVDPREVENT API — if the API is down or changes, the app will break
 - Deprivation breakdowns are not available at PCN level (API limitation)
 - Peer comparison (sibling data) returns empty for PCNs
