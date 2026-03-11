@@ -34,10 +34,13 @@ export function TrendSection({
   isLoading,
   isEngland,
 }: TrendSectionProps) {
-  const formatFn = (v: number) => formatValue(v, indicator.FormatDisplayName);
+  const formatFn = useMemo(() => (v: number) => formatValue(v, indicator.FormatDisplayName), [indicator.FormatDisplayName]);
+
+  const isPercentage = indicator.FormatDisplayName?.includes('%');
+  const diffSuffix = isPercentage ? 'pp' : '';
 
   // When viewing England, areaTrendData contains England's data (no separate fetch)
-  const series = isEngland
+  const series = useMemo(() => isEngland
     ? [
         {
           name: 'England',
@@ -56,12 +59,9 @@ export function TrendSection({
           data: baselineTrendData.map((d) => ({ x: d.period, y: d.value, numerator: d.numerator, denominator: d.denominator })),
           color: NHS_COLORS.darkGrey,
         },
-      ];
+      ], [isEngland, areaName, baselineName, areaTrendData, baselineTrendData]);
 
   const hasData = series.some((s) => s.data.some((d) => d.y !== null));
-
-  const isPercentage = indicator.FormatDisplayName?.includes('%');
-  const diffSuffix = isPercentage ? 'pp' : '';
 
   // Build table data - merge area and baseline data by period, compute gap and change
   const tableData = useMemo(() => {

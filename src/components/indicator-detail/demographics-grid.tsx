@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DemographicChart } from '@/components/charts/demographic-chart';
 import { BarChart } from '@/components/charts/bar-chart';
@@ -55,7 +55,7 @@ function findBiggestGap(
 }
 
 export function DemographicsGrid({ indicator, areaData, baselineData, baselineName = 'England', areaName, isEngland, isLoading }: DemographicsGridProps) {
-  const formatFn = (v: number) => formatValue(v, indicator.FormatDisplayName);
+  const formatFn = useCallback((v: number) => formatValue(v, indicator.FormatDisplayName), [indicator.FormatDisplayName]);
   const categories = getIndicatorCategories();
   const displayAreaName = areaName || 'Selected Area';
 

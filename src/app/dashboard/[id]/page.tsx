@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -502,14 +502,16 @@ export default function IndicatorDetailPage() {
     );
   }
 
+  const formatFn = useCallback((v: number) => formatValue(v, indicator.FormatDisplayName), [indicator.FormatDisplayName]);
+
   // Convert indicator to the format expected by components
-  const indicatorForComponents = {
+  const indicatorForComponents = useMemo(() => ({
     ...indicator,
-    DataUpdateInterval: null,
-    IndicatorStatus: null,
-    HighestPriorityNotificationType: null,
-    NotificationCount: 0,
-  };
+    DataUpdateInterval: indicator.DataUpdateInterval ?? null,
+    IndicatorStatus: indicator.IndicatorStatus ?? null,
+    HighestPriorityNotificationType: indicator.HighestPriorityNotificationType ?? null,
+    NotificationCount: indicator.NotificationCount ?? 0,
+  }), [indicator]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -643,7 +645,7 @@ export default function IndicatorDetailPage() {
                     selectedAreaCode={organisation?.AreaCode}
                     baselineValue={baselineData?.Value ?? null}
                     baselineName={baselineName}
-                    formatValue={(v: number) => formatValue(v, indicator.FormatDisplayName)}
+                    formatValue={formatFn}
                     height={450}
                   />
                 </CardContent>

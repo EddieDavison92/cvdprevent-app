@@ -84,7 +84,7 @@ export function PeerSection({
   const formatFn = useCallback((v: number) => formatValue(v, indicator.FormatDisplayName), [indicator.FormatDisplayName]);
 
   // Peer chart data
-  const peerChartData = peers
+  const peerChartData = useMemo(() => peers
     .map((area) => {
       const data = peerData.find(
         (d) => d.AreaCode === area.AreaCode && d.MetricCategoryTypeName === 'Sex' && d.MetricCategoryName === 'Persons'
@@ -100,10 +100,11 @@ export function PeerSection({
       };
     })
     .filter((d) => d.value !== null)
-    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0)),
+  [peers, peerData, selectedAreaCode]);
 
   // Children chart data
-  const childrenChartData = children
+  const childrenChartData = useMemo(() => children
     .map((area) => {
       const data = childrenData.find(
         (d) => d.AreaCode === area.AreaCode && d.MetricCategoryTypeName === 'Sex' && d.MetricCategoryName === 'Persons'
@@ -119,10 +120,11 @@ export function PeerSection({
       };
     })
     .filter((d) => d.value !== null)
-    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0)),
+  [children, childrenData]);
 
   // National chart data
-  const nationalChartData = nationalAreas
+  const nationalChartData = useMemo(() => nationalAreas
     .map((area) => {
       const data = nationalData.find((d) => d.AreaCode === area.AreaCode);
       return {
@@ -136,7 +138,8 @@ export function PeerSection({
       };
     })
     .filter((d) => d.value !== null)
-    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0)),
+  [nationalAreas, nationalData, selectedAreaCode]);
 
   const childLevelId = children[0]?.SystemLevelID;
   const childLevelName = childLevelId ? SYSTEM_LEVEL_NAMES[childLevelId] : 'Children';
