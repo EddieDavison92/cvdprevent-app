@@ -694,19 +694,25 @@ export default function BenchmarksPage() {
                         const scoreColor = score >= 66 ? 'text-green-700 bg-green-50' : score >= 33 ? 'text-amber-700 bg-amber-50' : 'text-red-700 bg-red-50';
                         const isSelected = area.AreaCode === selectedAreaCode;
 
+                        const rowHighlight = isSelected
+                          ? 'shadow-[inset_0_1px_0_0_var(--color-nhs-blue),inset_0_-1px_0_0_var(--color-nhs-blue)]'
+                          : '';
+
                         return (
                           <TableRow
                             key={area.AreaCode}
-                            className={cn('hover:bg-gray-50/50 cursor-pointer', isSelected && 'bg-nhs-blue/5')}
+                            className={cn('hover:bg-gray-50/50 cursor-pointer')}
                             onClick={() => setSelectedAreaCode(isSelected ? null : area.AreaCode)}
                           >
                             <TableCell className={cn(
                               'sticky left-0 z-10 text-sm font-medium max-w-[220px] truncate',
-                              isSelected ? 'bg-nhs-blue/5 text-nhs-blue border-l-2 border-l-nhs-blue' : 'bg-white text-gray-900'
+                              isSelected
+                                ? 'bg-white text-nhs-blue font-semibold shadow-[inset_2px_0_0_0_var(--color-nhs-blue),inset_0_1px_0_0_var(--color-nhs-blue),inset_0_-1px_0_0_var(--color-nhs-blue)]'
+                                : 'bg-white text-gray-900'
                             )}>
                               {cleanAreaName(area.AreaName)}
                             </TableCell>
-                            <TableCell className="text-center">
+                            <TableCell className={cn('text-center', rowHighlight)}>
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Badge variant="outline" className={cn('text-[10px] tabular-nums cursor-help', scoreColor)}>
@@ -725,16 +731,21 @@ export default function BenchmarksPage() {
                                 </TooltipContent>
                               </Tooltip>
                             </TableCell>
-                            {availableIndicators.map(ind => {
+                            {availableIndicators.map((ind, indIdx) => {
                               const val = matrix.get(area.AreaCode)?.get(ind.IndicatorID) ?? null;
                               const engVal = baselineValues.get(ind.IndicatorID) ?? null;
                               const lowerIsBetter = ind.section?.lowerIsBetter ?? false;
                               const style = getCellStyle(val, engVal, lowerIsBetter);
+                              const isLast = indIdx === availableIndicators.length - 1;
 
                               return (
                                 <TableCell
                                   key={ind.IndicatorID}
-                                  className={cn('text-center text-xs tabular-nums px-1', style.bg, style.text)}
+                                  className={cn(
+                                    'text-center text-xs tabular-nums px-1',
+                                    style.bg, style.text, rowHighlight,
+                                    isSelected && isLast && 'shadow-[inset_0_1px_0_0_var(--color-nhs-blue),inset_0_-1px_0_0_var(--color-nhs-blue),inset_-2px_0_0_0_var(--color-nhs-blue)]'
+                                  )}
                                 >
                                   {val !== null ? formatValue(val, ind.FormatDisplayName) : '—'}
                                 </TableCell>
