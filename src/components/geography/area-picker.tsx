@@ -36,7 +36,7 @@ export function AreaPicker({ areas, selectedArea, onSelectArea, levelId, placeho
           if (area) onSelectArea(area);
         }}
       >
-        <SelectTrigger className="w-full">
+        <SelectTrigger className="w-full bg-white">
           <SelectValue placeholder={isLoading ? 'Loading...' : (placeholder || `Select ${levelName}`)} />
         </SelectTrigger>
         <SelectContent>

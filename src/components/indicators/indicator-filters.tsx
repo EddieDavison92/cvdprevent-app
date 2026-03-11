@@ -32,7 +32,7 @@ export function IndicatorFilters({
           value={selectedPeriodId?.toString()}
           onValueChange={(value) => onPeriodChange(parseInt(value, 10))}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[200px] bg-white">
             <SelectValue placeholder="Select period" />
           </SelectTrigger>
           <SelectContent>

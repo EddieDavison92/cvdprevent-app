@@ -116,7 +116,7 @@ export function BaselineSelector() {
       <Target className="h-4 w-4 text-gray-500" />
       <span className="text-sm text-gray-600">Compare to:</span>
       <Select value={baseline.AreaID.toString()} onValueChange={handleChange}>
-        <SelectTrigger className="w-[220px] h-8 text-sm">
+        <SelectTrigger className="w-[220px] h-8 text-sm bg-white">
           <SelectValue>{getDisplayName(baseline)}</SelectValue>
         </SelectTrigger>
         <SelectContent>
