@@ -97,11 +97,12 @@ export function ChoroplethMap({
   }, [data]);
 
   // Compute min/max for colour scale
-  const { min, max } = useMemo(() => {
+  const { min, max, hasNoData } = useMemo(() => {
     const values = data.map((d) => d.value).filter((v): v is number => v !== null);
     return {
       min: values.length ? Math.min(...values) : 0,
       max: values.length ? Math.max(...values) : 100,
+      hasNoData: data.some((d) => d.value === null),
     };
   }, [data]);
 
@@ -245,7 +246,6 @@ export function ChoroplethMap({
       legendRef.current.remove();
     }
 
-    const hasNoData = data.some((d) => d.value === null);
     const legend = new L.Control({ position: 'bottomright' });
     legend.onAdd = () => {
       const div = L.DomUtil.create('div', 'choropleth-legend');
@@ -274,7 +274,7 @@ export function ChoroplethMap({
     };
     legend.addTo(map);
     legendRef.current = legend;
-  }, [baselineValue, baselineName, formatValue, data]);
+  }, [baselineValue, baselineName, formatValue, hasNoData]);
 
   if (!boundaryFile) {
     return (
