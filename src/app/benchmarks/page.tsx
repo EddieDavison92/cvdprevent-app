@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
+import Link from 'next/link';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -380,6 +381,14 @@ export default function BenchmarksPage() {
     downloadCSV(rows, `benchmarks-${levelName}`);
   };
 
+  // Build indicator link preserving current level/parent context
+  const indicatorHref = (indicatorId: number) => {
+    const params = new URLSearchParams();
+    params.set('level', levelId.toString());
+    if (parentAreaId) params.set('parent', parentAreaId.toString());
+    return `/indicators/${indicatorId}?${params.toString()}`;
+  };
+
   const SortIcon = ({ column }: { column: string }) => {
     if (sort.column !== column) return <ArrowUpDown className="h-3 w-3 opacity-40" />;
     return sort.direction === 'asc'
@@ -502,14 +511,14 @@ export default function BenchmarksPage() {
                 {availableIndicators.map((ind) => {
                   const Icon = ind.section ? SECTION_ICONS[ind.section.id] : BarChart3;
                   return (
-                    <div key={ind.IndicatorID} className="flex items-center gap-1.5 min-w-0">
+                    <Link key={ind.IndicatorID} href={indicatorHref(ind.IndicatorID)} className="flex items-center gap-1.5 min-w-0 hover:text-nhs-blue transition-colors">
                       <Icon className="h-3 w-3 shrink-0 text-gray-400" />
                       <code className="shrink-0 text-gray-400 font-mono">{ind.IndicatorCode}</code>
                       <span className="text-gray-600 truncate" title={ind.IndicatorShortName}>
                         {cleanIndicatorName(ind.IndicatorShortName)}
                         {ind.section?.lowerIsBetter ? ' ↓' : ''}
                       </span>
-                    </div>
+                    </Link>
                   );
                 })}
               </div>
@@ -585,6 +594,9 @@ export default function BenchmarksPage() {
                             <TooltipContent>
                               <p className="text-xs font-medium">{cleanIndicatorName(ind.IndicatorShortName)}</p>
                               <p className="text-xs text-gray-400">{ind.section?.lowerIsBetter ? 'Lower is better' : 'Higher is better'}</p>
+                              <Link href={indicatorHref(ind.IndicatorID)} className="text-xs text-nhs-blue hover:underline mt-1 block">
+                                View indicator details →
+                              </Link>
                             </TooltipContent>
                           </Tooltip>
                         </TableHead>
