@@ -23,7 +23,7 @@ export function ConditionFilter({
         className={cn(
           'rounded-full px-3 py-1 text-sm font-medium transition-colors',
           selectedCondition === null
-            ? 'bg-[#005EB8] text-white'
+            ? 'bg-nhs-blue text-white'
             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
         )}
       >
@@ -36,7 +36,7 @@ export function ConditionFilter({
           className={cn(
             'rounded-full px-3 py-1 text-sm font-medium transition-colors',
             selectedCondition === condition
-              ? 'bg-[#005EB8] text-white'
+              ? 'bg-nhs-blue text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           )}
           title={getConditionDisplayName(condition)}

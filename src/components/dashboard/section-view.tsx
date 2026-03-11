@@ -233,7 +233,7 @@ export function SectionView({
                 <div
                   className={cn(
                     'flex items-center gap-3 p-3 rounded-lg border transition-all',
-                    'hover:shadow-sm hover:border-[#005EB8]/30',
+                    'hover:shadow-sm hover:border-nhs-blue/30',
                     !isEngland && gapDirection === 'below' && 'border-l-red-400 border-l-[3px]',
                     !isEngland && gapDirection === 'above' && 'border-l-green-400 border-l-[3px]',
                     !isEngland && gapDirection === 'at' && 'border-l-gray-300 border-l-[3px]',
@@ -244,7 +244,7 @@ export function SectionView({
                 >
                   {/* Indicator name */}
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900 truncate group-hover:text-[#005EB8]">
+                    <div className="text-sm font-medium text-gray-900 truncate group-hover:text-nhs-blue">
                       {cleanName(indicator.IndicatorShortName)}
                     </div>
                   </div>
@@ -317,7 +317,7 @@ export function SectionView({
                   </div>
 
                   {/* Navigation arrow */}
-                  <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-[#005EB8] transition-colors flex-shrink-0" />
+                  <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-nhs-blue transition-colors flex-shrink-0" />
                 </div>
               </Link>
             );

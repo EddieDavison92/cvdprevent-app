@@ -265,7 +265,7 @@ export default function DashboardPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex-1 bg-[#E8EDEE]/30 p-6">
+      <main className="flex-1 bg-nhs-pale-grey/30 p-6">
         <div className="mx-auto max-w-7xl">
           <OrganisationHeader />
 

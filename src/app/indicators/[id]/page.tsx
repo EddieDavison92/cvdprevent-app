@@ -322,7 +322,7 @@ export default function IndicatorDetailPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex-1 bg-[#E8EDEE]/30 p-6">
+      <main className="flex-1 bg-nhs-pale-grey/30 p-6">
         <div className="mb-6">
           <Link href="/">
             <Button variant="ghost" size="sm" className="mb-4">
@@ -334,7 +334,7 @@ export default function IndicatorDetailPage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <h1 className="text-2xl font-bold text-[#003087]">{indicator.IndicatorShortName}</h1>
+                <h1 className="text-2xl font-bold text-nhs-dark-blue">{indicator.IndicatorShortName}</h1>
                 <Badge variant={isOutcomeIndicator(indicator) ? 'secondary' : 'default'}>
                   {isOutcomeIndicator(indicator) ? 'Outcome' : 'Standard'}
                 </Badge>
@@ -578,7 +578,7 @@ export default function IndicatorDetailPage() {
                                   {selectedArea?.AreaName.replace(/^NHS /, '').replace(/ Integrated Care Board$/, '').replace(/ Primary Care Network$/, '')}
                                 </th>
                                 {scopeToParent && (
-                                  <th className="py-2 text-right font-medium text-[#DA291C]">
+                                  <th className="py-2 text-right font-medium text-nhs-red">
                                     {scopeToParent.AreaName.replace(/^NHS /, '').replace(/ Integrated Care Board$/, '')}
                                   </th>
                                 )}
@@ -594,7 +594,7 @@ export default function IndicatorDetailPage() {
                                     <td className="py-2">{item.name}</td>
                                     <td className="py-2 text-right font-medium">{formatFn(item.value!)}</td>
                                     {scopeToParent && (
-                                      <td className="py-2 text-right text-[#DA291C]">
+                                      <td className="py-2 text-right text-nhs-red">
                                         {parentVal !== undefined ? formatFn(parentVal) : '-'}
                                       </td>
                                     )}
