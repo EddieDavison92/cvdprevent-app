@@ -274,7 +274,7 @@ export function ChoroplethMap({
     };
     legend.addTo(map);
     legendRef.current = legend;
-  }, [baselineValue, baselineName, formatValue, hasNoData]);
+  }, [geojson, baselineValue, baselineName, formatValue, hasNoData]);
 
   if (!boundaryFile) {
     return (
