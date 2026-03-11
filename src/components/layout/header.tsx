@@ -65,6 +65,7 @@ export function Header() {
             </button>
             <Link
               href="/dashboard"
+              aria-label="Dashboard"
               className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               <LayoutDashboard className="h-4 w-4" />
@@ -72,6 +73,7 @@ export function Header() {
             </Link>
             <Link
               href="/indicators"
+              aria-label="Indicators"
               className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               <List className="h-4 w-4" />
@@ -79,6 +81,7 @@ export function Header() {
             </Link>
             <Link
               href="/benchmarks"
+              aria-label="Benchmarks"
               className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               <BarChart3 className="h-4 w-4" />

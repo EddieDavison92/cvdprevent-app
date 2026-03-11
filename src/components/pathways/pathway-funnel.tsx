@@ -185,7 +185,7 @@ export function PathwayFunnel({
                   )}
 
                   {/* Description tooltip trigger */}
-                  <div className="text-xs text-gray-400 mt-2 line-clamp-2">
+                  <div className="text-xs text-gray-500 mt-2 line-clamp-2">
                     {sd.stage.description}
                   </div>
                 </div>

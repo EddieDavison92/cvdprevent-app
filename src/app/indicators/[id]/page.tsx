@@ -464,7 +464,7 @@ export default function IndicatorExplorePage() {
             </div>
             <p className="text-sm text-gray-600 max-w-3xl">{indicator.IndicatorName}</p>
             {(isOutcome ? outPeriod : stdPeriod) && (
-              <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-400">
+              <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
                 <Calendar className="h-3 w-3" />
                 {formatTimePeriod((isOutcome ? outPeriod! : stdPeriod!).TimePeriodName)}
               </div>
@@ -491,7 +491,7 @@ export default function IndicatorExplorePage() {
                 setSelectedAreaCode(undefined);
               }}
             >
-              <SelectTrigger className="w-[140px] h-9 text-sm bg-white">
+              <SelectTrigger className="w-[140px] h-9 text-sm bg-white" aria-label="Geography level">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -509,7 +509,7 @@ export default function IndicatorExplorePage() {
                   setSelectedAreaCode(undefined);
                 }}
               >
-                <SelectTrigger className="w-[240px] h-9 text-sm bg-white">
+                <SelectTrigger className="w-[240px] h-9 text-sm bg-white" aria-label="Parent scope">
                   <SelectValue placeholder={isPcn ? `Select ${scopeLevelName}...` : `All ${scopeLevelName}s`} />
                 </SelectTrigger>
                 <SelectContent>
@@ -529,7 +529,7 @@ export default function IndicatorExplorePage() {
               value={selectedAreaCode ?? 'none'}
               onValueChange={v => setSelectedAreaCode(v === 'none' ? undefined : v)}
             >
-              <SelectTrigger className="w-[260px] h-9 text-sm bg-white">
+              <SelectTrigger className="w-[260px] h-9 text-sm bg-white" aria-label="Highlight area">
                 <SelectValue placeholder="Select area to highlight..." />
               </SelectTrigger>
               <SelectContent>

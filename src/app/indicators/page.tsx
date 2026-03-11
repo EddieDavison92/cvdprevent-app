@@ -164,7 +164,7 @@ export default function IndicatorsIndexPage() {
               ))}
             </div>
           ) : visibleCount === 0 ? (
-            <div className="flex h-40 items-center justify-center text-gray-400">
+            <div className="flex h-40 items-center justify-center text-gray-500">
               No indicators match this filter
             </div>
           ) : (
@@ -174,10 +174,10 @@ export default function IndicatorsIndexPage() {
                 return (
                   <div key={section.id}>
                     <div className="flex items-center gap-1.5 mb-2">
-                      <Icon className="h-3.5 w-3.5 text-gray-400" />
+                      <Icon className="h-3.5 w-3.5 text-gray-500" />
                       <h2 className="text-sm font-semibold text-gray-700">{section.name}</h2>
-                      <span className="text-xs text-gray-400">({section.indicators.length})</span>
-                      <span className="ml-auto text-[10px] font-medium text-gray-400 uppercase tracking-wider">England</span>
+                      <span className="text-xs text-gray-500">({section.indicators.length})</span>
+                      <span className="ml-auto text-[10px] font-medium text-gray-500 uppercase tracking-wider">England</span>
                     </div>
 
                     <div className="rounded-lg border bg-white divide-y">
@@ -187,7 +187,7 @@ export default function IndicatorsIndexPage() {
                           href={buildHref(ind.id)}
                           className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors group"
                         >
-                          <code className="text-[10px] text-gray-400 font-mono w-[90px] shrink-0">{ind.code}</code>
+                          <code className="text-[10px] text-gray-500 font-mono w-[90px] shrink-0">{ind.code}</code>
                           <span className="text-sm text-gray-900 flex-1 min-w-0 truncate">{ind.shortName}</span>
                           <span className="text-sm font-semibold text-nhs-blue tabular-nums shrink-0">
                             {ind.value != null ? formatValue(ind.value, ind.format) : '—'}

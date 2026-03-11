@@ -462,7 +462,7 @@ export default function BenchmarksPage() {
                   Compare areas across indicators. Areas are ranked against each other — the score shows how consistently an area places near the top (100) or bottom (0) of the group, accounting for polarity.
                 </p>
                 {standardPeriod && (
-                  <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-400">
+                  <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
                     <Calendar className="h-3 w-3" />
                     {formatTimePeriod(standardPeriod.TimePeriodName)}
                     {outcomePeriod && outcomePeriod.TimePeriodName !== standardPeriod.TimePeriodName && (
@@ -477,7 +477,7 @@ export default function BenchmarksPage() {
           {/* Filters */}
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <Select value={levelId.toString()} onValueChange={(v) => { setLevelId(parseInt(v, 10)); setParentAreaId(undefined); setSelectedAreaCode(null); }}>
-              <SelectTrigger className="w-[160px] h-9 text-sm bg-white">
+              <SelectTrigger className="w-[160px] h-9 text-sm bg-white" aria-label="Geography level">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -492,7 +492,7 @@ export default function BenchmarksPage() {
                 value={parentAreaId?.toString() ?? 'all'}
                 onValueChange={(v) => { setParentAreaId(v === 'all' ? undefined : parseInt(v, 10)); setSelectedAreaCode(null); }}
               >
-                <SelectTrigger className="w-[260px] h-9 text-sm bg-white">
+                <SelectTrigger className="w-[260px] h-9 text-sm bg-white" aria-label="Parent scope">
                   <SelectValue placeholder={isPcn ? `Select ${parentLabel}...` : `All ${parentLabel}s`} />
                 </SelectTrigger>
                 <SelectContent>
@@ -541,14 +541,14 @@ export default function BenchmarksPage() {
 
           {/* PCN scoping message */}
           {isPcn && !parentAreaId && (
-            <div className="flex h-40 items-center justify-center rounded-lg border border-dashed text-gray-400">
+            <div className="flex h-40 items-center justify-center rounded-lg border border-dashed text-gray-500">
               Select an ICB above to view its PCNs
             </div>
           )}
 
           {/* Empty state when parent filter has no children */}
           {!isPcn && parentAreaId && filteredAreas.length === 0 && !isLoading && (
-            <div className="flex h-40 items-center justify-center rounded-lg border border-dashed text-gray-400">
+            <div className="flex h-40 items-center justify-center rounded-lg border border-dashed text-gray-500">
               No areas found for this selection
             </div>
           )}
@@ -564,13 +564,13 @@ export default function BenchmarksPage() {
           {/* Column key + colour legend */}
           {(!isPcn || parentAreaId) && availableIndicators.length > 0 && (
             <div className="mb-3 rounded-lg border bg-white px-4 py-3 text-[11px]">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-0.5">
                 {availableIndicators.map((ind) => {
                   const Icon = ind.section ? SECTION_ICONS[ind.section.id] : BarChart3;
                   return (
-                    <Link key={ind.IndicatorID} href={indicatorHref(ind.IndicatorID)} className="flex items-center gap-1.5 min-w-0 hover:text-nhs-blue transition-colors">
-                      <Icon className="h-3 w-3 shrink-0 text-gray-400" />
-                      <code className="shrink-0 text-gray-400 font-mono">{ind.IndicatorCode}</code>
+                    <Link key={ind.IndicatorID} href={indicatorHref(ind.IndicatorID)} className="flex items-center gap-1.5 min-w-0 rounded-md px-1.5 py-1.5 hover:text-nhs-blue hover:bg-gray-50 transition-colors">
+                      <Icon className="h-3 w-3 shrink-0 text-gray-500" />
+                      <code className="shrink-0 text-gray-500 font-mono">{ind.IndicatorCode}</code>
                       <span className="text-gray-600 truncate" title={ind.IndicatorShortName}>
                         {cleanIndicatorName(ind.IndicatorShortName)}
                         {ind.section?.lowerIsBetter ? ' ↓' : ''}
@@ -579,7 +579,7 @@ export default function BenchmarksPage() {
                   );
                 })}
               </div>
-              <div className="mt-2 pt-2 border-t flex flex-wrap items-center gap-4 text-gray-400">
+              <div className="mt-2 pt-2 border-t flex flex-wrap items-center gap-4 text-gray-500">
                 <span className="text-gray-500 font-medium">vs {baselineName}:</span>
                 <div className="flex items-center gap-1.5">
                   <span className="inline-block w-2.5 h-2.5 rounded-sm bg-green-100 border border-green-200" /> Better
@@ -605,7 +605,7 @@ export default function BenchmarksPage() {
 
           {/* No data state */}
           {(!isPcn || parentAreaId) && !isLoading && availableIndicators.length === 0 && (
-            <div className="flex h-40 items-center justify-center rounded-lg border border-dashed text-gray-400">
+            <div className="flex h-40 items-center justify-center rounded-lg border border-dashed text-gray-500">
               No indicators available at {SYSTEM_LEVEL_NAMES[levelId]} level for this section
             </div>
           )}
@@ -748,14 +748,14 @@ export default function BenchmarksPage() {
                 </Table>
               </TooltipProvider>
               {isLoading ? (
-                <p className="px-4 py-2 text-[11px] text-gray-400">
+                <p className="px-4 py-2 text-[11px] text-gray-500">
                   Loading data{(levelId === SYSTEM_LEVELS.PCN || levelId === SYSTEM_LEVELS.SUB_ICB) ? ' — larger datasets may take a moment on first load' : ''}...
                 </p>
               ) : sortedAreas.length > 0 && (
                 <div className="flex justify-end px-4 py-2">
                   <button
                     onClick={handleExportCSV}
-                    className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
                   >
                     <Download className="h-3 w-3" />
                     Export CSV

@@ -164,7 +164,7 @@ export function HeroSection({
                 Peer rank
               </div>
               <div className="text-xl font-bold text-gray-700">
-                {getOrdinal(rank!.position)} <span className="text-sm font-normal text-gray-400">/ {rank!.total}</span>
+                {getOrdinal(rank!.position)} <span className="text-sm font-normal text-gray-500">/ {rank!.total}</span>
               </div>
               <div className="text-xs text-gray-500">{rankQuartile}</div>
             </CardContent>

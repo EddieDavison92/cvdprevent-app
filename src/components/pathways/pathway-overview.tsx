@@ -157,7 +157,7 @@ function PathwayCard({
               <>
                 {/* Row 1: Type label + indicator code */}
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
                     {sd.stage.type}
                   </span>
                   {sd.indicatorCode && (
@@ -194,7 +194,7 @@ function PathwayCard({
                 </div>
 
                 {/* Row 5: Description (pushed to bottom) */}
-                <div className="text-[11px] text-gray-400 mt-auto pt-2 line-clamp-2 leading-tight">
+                <div className="text-[11px] text-gray-500 mt-auto pt-2 line-clamp-2 leading-tight">
                   {sd.stage.description}
                 </div>
               </>

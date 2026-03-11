@@ -278,11 +278,11 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
         {/* Results */}
         <div ref={listRef} className="max-h-[60vh] overflow-y-auto">
           {isLoadingAreas && query.length >= 2 ? (
-            <div className="flex items-center justify-center py-8 text-sm text-gray-400">
+            <div className="flex items-center justify-center py-8 text-sm text-gray-500">
               Loading organisations...
             </div>
           ) : results.length === 0 && query.length >= 2 ? (
-            <div className="flex items-center justify-center py-8 text-sm text-gray-400">
+            <div className="flex items-center justify-center py-8 text-sm text-gray-500">
               No results for &ldquo;{query}&rdquo;
             </div>
           ) : (
@@ -290,7 +290,7 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
               {/* Pages */}
               {grouped.pages.length > 0 && (
                 <div>
-                  <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                  <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
                     Pages
                   </div>
                   {grouped.pages.map((r, i) => renderItem(r, getGlobalIndex('page', i)))}
@@ -300,7 +300,7 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
               {/* Organisations */}
               {grouped.orgs.length > 0 && (
                 <div>
-                  <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                  <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
                     Organisations
                   </div>
                   {grouped.orgs.map((r, i) => renderItem(r, getGlobalIndex('org', i)))}
@@ -310,7 +310,7 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
               {/* Indicators */}
               {grouped.indicators.length > 0 && (
                 <div>
-                  <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                  <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
                     Indicators
                   </div>
                   {grouped.indicators.map((r, i) => renderItem(r, getGlobalIndex('indicator', i)))}
@@ -321,14 +321,14 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
 
           {/* Hint when no query */}
           {query.length < 2 && results.length <= PAGES.length && (
-            <div className="px-3 py-4 text-center text-xs text-gray-400">
+            <div className="px-3 py-4 text-center text-xs text-gray-500">
               Type at least 2 characters to search organisations and indicators
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center gap-3 border-t px-3 py-2 text-[10px] text-gray-400">
+        <div className="flex items-center gap-3 border-t px-3 py-2 text-[10px] text-gray-500">
           <span><kbd className="rounded border bg-gray-100 px-1 py-0.5 font-mono">↑↓</kbd> navigate</span>
           <span><kbd className="rounded border bg-gray-100 px-1 py-0.5 font-mono">↵</kbd> select</span>
           <span><kbd className="rounded border bg-gray-100 px-1 py-0.5 font-mono">esc</kbd> close</span>

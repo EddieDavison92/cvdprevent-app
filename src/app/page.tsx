@@ -96,7 +96,7 @@ export default function LandingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-nhs-pale-grey/30">
-      <div className="mx-auto max-w-3xl flex-1 px-4 py-16">
+      <main className="mx-auto max-w-3xl flex-1 px-4 py-16">
         {/* Header */}
         <div className="mb-10 text-center">
           <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-nhs-blue">
@@ -105,7 +105,7 @@ export default function LandingPage() {
           <h1 className="mb-2 text-3xl font-bold text-nhs-dark-blue">
             CVD<span className="font-normal opacity-70">PREVENT</span>
           </h1>
-          <p className="text-sm text-gray-400 mb-3">Unofficial data explorer</p>
+          <p className="text-sm text-gray-500 mb-3">Unofficial data explorer</p>
           <p className="text-gray-500">
             Search for your organisation to explore CVD prevention data
           </p>
@@ -153,17 +153,17 @@ export default function LandingPage() {
               ))}
             </div>
             {filteredAreas.length > 20 && (
-              <p className="mt-3 text-center text-sm text-gray-400">
+              <p className="mt-3 text-center text-sm text-gray-500">
                 Showing 20 of {filteredAreas.length} results. Keep typing to narrow down.
               </p>
             )}
           </>
         ) : search.length >= 2 ? (
-          <div className="flex h-32 items-center justify-center rounded-lg border border-dashed text-gray-400">
+          <div className="flex h-32 items-center justify-center rounded-lg border border-dashed text-gray-500">
             No organisations found for &ldquo;{search}&rdquo;
           </div>
         ) : (
-          <div className="text-center text-sm text-gray-400 py-8">
+          <div className="text-center text-sm text-gray-500 py-8">
             Type at least 2 characters to search
           </div>
         )}
@@ -216,7 +216,7 @@ export default function LandingPage() {
             </div>
           </button>
         </div>
-      </div>
+      </main>
 
       <Footer />
     </div>

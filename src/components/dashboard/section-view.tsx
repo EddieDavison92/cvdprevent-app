@@ -255,7 +255,7 @@ export function SectionView({
                       {value !== null ? formatFn(value) : '—'}
                     </span>
                     {!isEngland && baselineValue !== null && (
-                      <span className="text-xs text-gray-400 tabular-nums">
+                      <span className="text-xs text-gray-500 tabular-nums">
                         / {formatFn(baselineValue)}
                       </span>
                     )}

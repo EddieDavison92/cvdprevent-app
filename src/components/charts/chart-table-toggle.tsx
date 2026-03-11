@@ -59,7 +59,7 @@ export function useChartTableActions(opts: {
     <div className="flex items-center gap-3">
       <button
         onClick={handleExportCSV}
-        className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
         title="Download as CSV"
       >
         <Download className="h-3 w-3" />
@@ -67,7 +67,7 @@ export function useChartTableActions(opts: {
       </button>
       <button
         onClick={toggleView}
-        className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
       >
         {viewMode === 'chart' ? 'View as table' : 'View as chart'}
       </button>
@@ -82,7 +82,7 @@ export function CSVButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+      className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
       title="Download as CSV"
     >
       <Download className="h-3 w-3" />
@@ -112,7 +112,7 @@ export function ChartTableToggle({
         <div className="flex justify-end mb-2">
           <button
             onClick={() => setInternalViewMode(prev => prev === 'chart' ? 'table' : 'chart')}
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
           >
             {viewMode === 'chart' ? 'View as table' : 'View as chart'}
           </button>
