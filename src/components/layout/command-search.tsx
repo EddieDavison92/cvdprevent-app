@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Search, Building2, BarChart3, FileText, Globe, ArrowRight } from 'lucide-react';
+import { Search, Building2, BarChart3, Globe, ArrowRight } from 'lucide-react';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useOrganisation } from '@/providers/organisation-context';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
@@ -33,7 +33,6 @@ interface SearchResult {
 const PAGES = [
   { id: 'dashboard', title: 'Dashboard', subtitle: 'Overview of all indicators', path: '/dashboard', icon: BarChart3 },
   { id: 'benchmarks', title: 'Benchmarks', subtitle: 'Rank and compare areas across indicators', path: '/benchmarks', icon: BarChart3 },
-  { id: 'compare', title: 'Compare', subtitle: 'Side-by-side area comparison', path: '/compare', icon: FileText },
   { id: 'england', title: 'England Overview', subtitle: 'National-level data', path: '/dashboard', isEngland: true, icon: Globe },
 ];
 
