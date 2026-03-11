@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef } from 'react';
+import { memo, forwardRef } from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { nhsEChartsTheme, defaultChartOptions } from './chart-theme';
@@ -34,7 +34,7 @@ interface BarChartProps {
   barColor?: string;
 }
 
-export const BarChart = forwardRef<ReactECharts, BarChartProps>(function BarChart({
+export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function BarChart({
   data,
   title,
   xAxisLabel,
@@ -283,4 +283,4 @@ export const BarChart = forwardRef<ReactECharts, BarChartProps>(function BarChar
       opts={{ renderer: 'svg' }}
     />
   );
-});
+}));

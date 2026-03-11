@@ -484,10 +484,21 @@ export default function IndicatorDetailPage() {
     .replace(/ Integrated Care Board$/, '')
     .replace(/ Primary Care Network$/, '') ?? '';
 
+  const formatFn = useCallback((v: number) => formatValue(v, indicator?.FormatDisplayName ?? ''), [indicator?.FormatDisplayName]);
+
+  // Convert indicator to the format expected by components
+  const indicatorForComponents = useMemo(() => indicator ? ({
+    ...indicator,
+    DataUpdateInterval: indicator.DataUpdateInterval ?? null,
+    IndicatorStatus: indicator.IndicatorStatus ?? null,
+    HighestPriorityNotificationType: indicator.HighestPriorityNotificationType ?? null,
+    NotificationCount: indicator.NotificationCount ?? 0,
+  }) : null, [indicator]);
+
   // Don't render if redirecting
   if (!organisation && !isLoadingOrg) return null;
 
-  if (!indicator || isLoadingArea) {
+  if (!indicator || !indicatorForComponents || isLoadingArea) {
     return (
       <div className="flex min-h-screen flex-col">
         <Header />
@@ -501,17 +512,6 @@ export default function IndicatorDetailPage() {
       </div>
     );
   }
-
-  const formatFn = useCallback((v: number) => formatValue(v, indicator.FormatDisplayName), [indicator.FormatDisplayName]);
-
-  // Convert indicator to the format expected by components
-  const indicatorForComponents = useMemo(() => ({
-    ...indicator,
-    DataUpdateInterval: indicator.DataUpdateInterval ?? null,
-    IndicatorStatus: indicator.IndicatorStatus ?? null,
-    HighestPriorityNotificationType: indicator.HighestPriorityNotificationType ?? null,
-    NotificationCount: indicator.NotificationCount ?? 0,
-  }), [indicator]);
 
   return (
     <div className="flex min-h-screen flex-col">

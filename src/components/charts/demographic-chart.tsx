@@ -51,7 +51,9 @@ export function DemographicChart({
   const residual = rawStep / magnitude;
   const niceMultiplier = residual <= 1 ? 1 : residual <= 2 ? 2 : residual <= 5 ? 5 : 10;
   const step = niceMultiplier * magnitude;
-  const yMax = Math.ceil(maxValue * 1.15 / step) * step;
+  const yMaxRaw = Math.ceil(maxValue * 1.15 / step) * step;
+  // Cap at 100 for percentage data
+  const yMax = maxValue <= 100 ? Math.min(100, yMaxRaw) : yMaxRaw;
   const yInterval = step;
 
   const categories = shortenedData.map((d) => d.name);
