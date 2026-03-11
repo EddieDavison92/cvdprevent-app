@@ -58,8 +58,8 @@ src/
 ### Key patterns
 
 - **React Query** caches all API responses for 10 minutes — navigating between pages reuses cached data
-- **`notMerge`** on all ECharts instances prevents animation artifacts when switching datasets
-- **`React.memo`** / `useMemo` on chart components and their options to avoid unnecessary ECharts re-renders
+- **Single-call API** — `useAreaIndicators(periodId, areaId)` fetches all indicators for one area in one request, so switching between indicators is instant with no additional fetches
+- **URL-driven state** — benchmarks and indicator explorer persist filter/scope settings in URL params for shareable links and browser history navigation
 - **System level hierarchy**: England → Region → ICB → Sub-ICB → PCN, with parent scoping at each level
 
 ## Data Source
