@@ -75,7 +75,15 @@ export function DemographicChart({
         const dataIndex = items[0].dataIndex;
         const dataItem = data[dataIndex];
 
-        let html = `<strong>${dataItem.name}</strong><br/>`;
+        const DEPRIVATION_LABELS: Record<string, string> = {
+          '1 - most deprived': '1 - Most Deprived',
+          '2': '2 - Second Most Deprived',
+          '3': '3 - Middle',
+          '4': '4 - Second Least Deprived',
+          '5 - least deprived': '5 - Least Deprived',
+        };
+        const displayName = DEPRIVATION_LABELS[dataItem.name] ?? dataItem.name;
+        let html = `<strong>${displayName}</strong><br/>`;
 
         for (const item of items) {
           const isOrg = item.seriesName === orgName;
