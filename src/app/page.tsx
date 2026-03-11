@@ -168,16 +168,32 @@ export default function LandingPage() {
           </div>
         )}
 
-        {/* Quick links */}
-        <div className="mt-10 border-t pt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button variant="outline" onClick={handleViewEngland} className="gap-2">
-            <Globe className="h-4 w-4" />
-            England Overview
-          </Button>
-          <Button variant="outline" onClick={() => router.push('/benchmarks')} className="gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Benchmark Areas
-          </Button>
+        {/* Call-to-action cards */}
+        <div className="mt-10 border-t pt-8 grid sm:grid-cols-2 gap-4">
+          <button
+            onClick={handleViewEngland}
+            className="group flex items-start gap-4 rounded-xl border bg-white p-5 text-left shadow-sm transition-all hover:shadow-md hover:border-[#005EB8]/30"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#005EB8]/10 transition-colors group-hover:bg-[#005EB8]/20">
+              <Globe className="h-5 w-5 text-[#005EB8]" />
+            </div>
+            <div>
+              <p className="font-semibold text-[#003087]">England Overview</p>
+              <p className="mt-0.5 text-sm text-gray-500">National trends across all indicators</p>
+            </div>
+          </button>
+          <button
+            onClick={() => router.push('/benchmarks')}
+            className="group flex items-start gap-4 rounded-xl border bg-white p-5 text-left shadow-sm transition-all hover:shadow-md hover:border-[#005EB8]/30"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#005EB8]/10 transition-colors group-hover:bg-[#005EB8]/20">
+              <BarChart3 className="h-5 w-5 text-[#005EB8]" />
+            </div>
+            <div>
+              <p className="font-semibold text-[#003087]">Benchmark Areas</p>
+              <p className="mt-0.5 text-sm text-gray-500">Compare and rank ICBs, Sub-ICBs, and PCNs</p>
+            </div>
+          </button>
         </div>
       </div>
 
