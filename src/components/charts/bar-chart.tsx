@@ -278,6 +278,7 @@ export const BarChart = forwardRef<ReactECharts, BarChartProps>(function BarChar
     <ReactECharts
       ref={ref}
       option={option}
+      notMerge
       style={{ height: chartHeight, width: '100%' }}
       opts={{ renderer: 'svg' }}
     />

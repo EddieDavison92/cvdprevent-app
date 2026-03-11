@@ -194,6 +194,7 @@ export function LineChart({
   return (
     <ReactECharts
       option={option}
+      notMerge
       style={{ height, width: '100%' }}
       opts={{ renderer: 'svg' }}
     />

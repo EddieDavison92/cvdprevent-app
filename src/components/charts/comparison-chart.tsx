@@ -114,6 +114,7 @@ export function ComparisonChart({
   return (
     <ReactECharts
       option={option}
+      notMerge
       style={{ height, width: '100%' }}
       opts={{ renderer: 'svg' }}
     />

@@ -154,6 +154,7 @@ export function DemographicChart({
     <div>
       <ReactECharts
         option={option}
+        notMerge
         style={{ height, width: '100%' }}
         opts={{ renderer: 'svg' }}
       />
