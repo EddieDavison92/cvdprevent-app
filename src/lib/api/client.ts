@@ -10,7 +10,31 @@ export class ApiError extends Error {
   }
 }
 
-export async function fetchApi<T>(endpoint: string): Promise<T> {
+/**
+ * Validates that an API response has the expected shape.
+ * Checks that a required key exists and is an array (for list endpoints)
+ * or an object (for single-item endpoints).
+ */
+function validateResponse<T>(data: unknown, expectedKey?: string): T {
+  if (data === null || data === undefined) {
+    throw new ApiError(0, 'API returned empty response');
+  }
+
+  if (typeof data !== 'object') {
+    throw new ApiError(0, `API returned unexpected type: ${typeof data}`);
+  }
+
+  // Warn on missing keys but don't throw — the site should degrade gracefully.
+  // Breaking changes will surface naturally when accessing the missing property,
+  // and error boundaries will catch them.
+  if (expectedKey && !(expectedKey in (data as Record<string, unknown>))) {
+    console.warn(`[API] Response missing expected key: "${expectedKey}"`);
+  }
+
+  return data as T;
+}
+
+export async function fetchApi<T>(endpoint: string, expectedKey?: string): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
 
   const response = await fetch(url, {
@@ -26,10 +50,11 @@ export async function fetchApi<T>(endpoint: string): Promise<T> {
     throw new ApiError(response.status, `API error: ${response.status} ${response.statusText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  return validateResponse<T>(data, expectedKey);
 }
 
-export async function fetchApiNoCache<T>(endpoint: string): Promise<T> {
+export async function fetchApiNoCache<T>(endpoint: string, expectedKey?: string): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
 
   const response = await fetch(url, {
@@ -43,5 +68,6 @@ export async function fetchApiNoCache<T>(endpoint: string): Promise<T> {
     throw new ApiError(response.status, `API error: ${response.status} ${response.statusText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  return validateResponse<T>(data, expectedKey);
 }

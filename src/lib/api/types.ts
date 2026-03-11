@@ -5,6 +5,8 @@ export interface TimePeriod {
   TimePeriodName: string;
   StartDate: string;
   EndDate: string;
+  IndicatorTypeID: number;
+  IndicatorTypeName: string;
 }
 
 export interface TimePeriodResponse {
@@ -16,6 +18,7 @@ export interface SystemLevel {
   SystemLevelName: string;
   IsVisible: 'Y' | 'N';
   NationalLevel: 'Y' | 'N';
+  SystemLevelOrder: number;
 }
 
 export interface SystemLevelResponse {
@@ -57,6 +60,11 @@ export interface IndicatorResponse {
   indicatorList: Indicator[];
 }
 
+/**
+ * Normalised indicator data row used internally.
+ * Note: the rawDataJSON endpoint returns `LowerConfidenceLimit`/`UpperConfidenceLimit`
+ * but we map to `LowerCI`/`UpperCI` for brevity when constructing from other endpoints.
+ */
 export interface IndicatorRawData {
   IndicatorID: number;
   AreaCode: string;
@@ -74,8 +82,30 @@ export interface IndicatorRawData {
   ComparedToEnglandID: number | null;
 }
 
+/** Shape returned by /indicator/<id>/rawDataJSON — uses full field names from API */
+export interface RawDataJSONItem {
+  AreaCode: string;
+  AreaName: string;
+  CategoryAttribute: string;
+  Denominator: number | null;
+  Factor: number | null;
+  IndicatorCode: string;
+  IndicatorName: string;
+  IndicatorShortName: string;
+  LowerConfidenceLimit: number | null;
+  MetricCategoryName: string;
+  MetricCategoryTypeName: string;
+  Numerator: number | null;
+  TimePeriodName: string;
+  UpperConfidenceLimit: number | null;
+  Value: number | null;
+  ValueNote: string | null;
+  HighestPriorityNotificationType: string | null;
+  NotificationCount: number;
+}
+
 export interface IndicatorRawDataResponse {
-  indicatorRawData: IndicatorRawData[];
+  indicatorRawData: RawDataJSONItem[];
 }
 
 // System Level IDs
@@ -152,6 +182,12 @@ export interface TimeSeriesDataPoint {
   TimePeriodName: string;
   Value: number | null;
   Median?: number | null;
+  Count?: number | null;
+  Numerator?: number | null;
+  Denominator?: number | null;
+  Factor?: number | null;
+  HighestPriorityNotificationType?: string | null;
+  NotificationCount?: number;
   TimeseriesNotificationCount?: number;
 }
 
@@ -166,6 +202,7 @@ export interface TimeSeriesByMetricResponse {
   Data: {
     Areas: TimeSeriesArea[];
     TargetValue: number | null;
+    TargetLabel: string | null;
   };
 }
 
@@ -182,6 +219,19 @@ export interface SiblingDataItem {
   SystemLevelName: string;
   TimePeriodID: number;
   TimePeriodName: string;
+  Count: number | null;
+  DataID: number;
+  Factor: number | null;
+  Min: number | null;
+  Max: number | null;
+  Median: number | null;
+  Q20: number | null;
+  Q40: number | null;
+  Q60: number | null;
+  Q80: number | null;
+  ValueNote: string | null;
+  HighestPriorityNotificationType: string | null;
+  NotificationCount: number;
 }
 
 export interface SiblingDataResponse {
@@ -196,6 +246,8 @@ export interface SiblingDataResponse {
     MetricCategoryOrder: number;
     MetricCategoryTypeName: string;
     CategoryAttribute: string;
+    HighestPriorityNotificationType: string | null;
+    NotificationCount: number;
     Data: SiblingDataItem[];
   };
 }
@@ -242,6 +294,15 @@ export interface IndicatorCategoryData {
     TimePeriodID: number;
     Count: number | null;
     Median: number | null;
+    DataID: number;
+    Factor: number | null;
+    Min: number | null;
+    Max: number | null;
+    Q20: number | null;
+    Q40: number | null;
+    Q60: number | null;
+    Q80: number | null;
+    ValueNote: string | null;
   };
   TimeSeries: IndicatorTimeSeriesPoint[];
 }
@@ -257,6 +318,10 @@ export interface IndicatorWithData {
   AxisCharacter: string;
   IndicatorTypeID: number;
   IndicatorTypeName: string;
+  DataUpdateInterval: string | null;
+  IndicatorStatus: string | null;
+  HighestPriorityNotificationType: string | null;
+  NotificationCount: number;
   Categories: IndicatorCategoryData[];
 }
 
