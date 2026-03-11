@@ -37,7 +37,7 @@ const ENGLAND_BOUNDS = L.latLngBounds(
 
 // Diverging colour scale: red (below) → white (at baseline) → green (above)
 function getColor(value: number | null, min: number, max: number, baselineValue: number | null): string {
-  if (value === null) return '#aaa';
+  if (value === null) return NHS_COLORS.midGrey;
 
   if (baselineValue !== null && baselineValue !== 0) {
     const diff = value - baselineValue;
@@ -201,7 +201,7 @@ export function ChoroplethMap({
             const isSelected = code === selectedAreaCode;
             target.setStyle({
               weight: isSelected ? 3 : 1,
-              color: isSelected ? NHS_COLORS.darkBlue : '#fff',
+              color: isSelected ? NHS_COLORS.darkBlue : NHS_COLORS.white,
             });
           });
         },
@@ -252,20 +252,20 @@ export function ChoroplethMap({
       const baseLabel = baselineValue != null ? formatValue(baselineValue) : '—';
       const noDataRow = hasNoData
         ? `<div style="display:flex;align-items:center;gap:6px;margin-top:2px">
-            <span style="display:inline-block;width:14px;height:14px;background:#aaa;border-radius:2px"></span> No data
+            <span style="display:inline-block;width:14px;height:14px;background:${NHS_COLORS.midGrey};border-radius:2px"></span> No data
           </div>`
         : '';
       div.innerHTML = `
         <div style="background:white;padding:8px 10px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.15);font-size:11px;line-height:1.6">
           <div style="font-weight:600;margin-bottom:4px">vs ${baselineName} (${baseLabel})</div>
           <div style="display:flex;align-items:center;gap:6px">
-            <span style="display:inline-block;width:14px;height:14px;background:#DA291C;border-radius:2px"></span> Below
+            <span style="display:inline-block;width:14px;height:14px;background:${NHS_COLORS.red};border-radius:2px"></span> Below
           </div>
           <div style="display:flex;align-items:center;gap:6px">
             <span style="display:inline-block;width:14px;height:14px;background:#fff;border:1px solid #ccc;border-radius:2px"></span> At average
           </div>
           <div style="display:flex;align-items:center;gap:6px">
-            <span style="display:inline-block;width:14px;height:14px;background:#007F3B;border-radius:2px"></span> Above
+            <span style="display:inline-block;width:14px;height:14px;background:${NHS_COLORS.green};border-radius:2px"></span> Above
           </div>
           ${noDataRow}
         </div>

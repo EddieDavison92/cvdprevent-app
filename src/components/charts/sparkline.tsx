@@ -1,6 +1,7 @@
 'use client';
 
 import { useId } from 'react';
+import { NHS_COLORS } from '@/lib/constants/colors';
 
 interface SparklineProps {
   data: { x: string; y: number | null }[];
@@ -15,7 +16,7 @@ export function Sparkline({
   data,
   width = 200,
   height = 56,
-  color = '#005EB8',
+  color = NHS_COLORS.blue,
   showArea = true,
   className,
 }: SparklineProps) {

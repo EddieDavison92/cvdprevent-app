@@ -22,6 +22,7 @@ import { getIndicatorData } from '@/lib/api/indicators';
 import { SYSTEM_LEVELS, type Area } from '@/lib/api/types';
 import { SYSTEM_LEVEL_NAMES, getParentLevel } from '@/lib/constants/geography';
 import { formatValue, formatTimePeriod } from '@/lib/utils/format';
+import { NHS_COLORS } from '@/lib/constants/colors';
 import { useQuery } from '@tanstack/react-query';
 
 export default function IndicatorDetailPage() {
@@ -275,7 +276,7 @@ export default function IndicatorDetailPage() {
       result.push({
         value: englandValue,
         label: `England: ${formatFn(englandValue)}`,
-        color: '#231f20', // NHS Black
+        color: NHS_COLORS.black,
       });
     }
 
@@ -284,7 +285,7 @@ export default function IndicatorDetailPage() {
       result.push({
         value: parentValue,
         label: `${scopeToParent.AreaName.replace(/^NHS /, '').replace(/ Integrated Care Board$/, '')}: ${formatFn(parentValue)}`,
-        color: '#DA291C', // NHS Red
+        color: NHS_COLORS.red,
       });
     }
 
