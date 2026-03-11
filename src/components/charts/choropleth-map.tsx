@@ -293,7 +293,7 @@ export function ChoroplethMap({
   }
 
   return (
-    <div className="relative">
+    <div className="relative isolate">
       {loading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80">
           <span className="text-sm text-gray-400">Loading map...</span>
