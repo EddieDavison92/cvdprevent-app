@@ -27,53 +27,22 @@ Unofficial data explorer for the [CVDPREVENT](https://www.cvdprevent.nhs.uk) car
 
 ```
 src/
-├── app/                          # Next.js App Router pages
-│   ├── page.tsx                  # Home — org search + onboarding
-│   ├── dashboard/
-│   │   ├── page.tsx              # Org dashboard — all indicators at a glance
-│   │   └── [id]/page.tsx         # Indicator detail (org context)
-│   ├── indicators/
-│   │   ├── page.tsx              # Indicator index — all indicators by section
-│   │   └── [id]/page.tsx         # Indicator explorer (standalone, no org required)
-│   └── benchmarks/page.tsx       # Cross-area benchmarking heatmap
-│
+├── app/              # Next.js App Router pages
+│   ├── dashboard/    # Org-centric: dashboard + indicator detail
+│   ├── indicators/   # Indicator-centric: index + explorer
+│   └── benchmarks/   # Cross-area heatmap with composite scoring
 ├── components/
-│   ├── charts/                   # ECharts wrappers
-│   │   ├── bar-chart.tsx         # Horizontal/vertical bars with CI + benchmarks
-│   │   ├── line-chart.tsx        # Time series trends
-│   │   ├── demographic-chart.tsx # Side-by-side demographic comparison
-│   │   ├── choropleth-map.tsx    # Leaflet map with GeoJSON boundaries
-│   │   ├── sparkline.tsx         # Inline trend indicators
-│   │   ├── chart-theme.ts       # NHS ECharts theme (colours, typography)
-│   │   └── chart-table-toggle.tsx# Switch between chart and table views + CSV
-│   ├── indicator-detail/         # Reusable indicator page sections
-│   │   ├── indicator-nav.tsx     # Quick indicator switcher (horizontal scroll)
-│   │   ├── hero-section.tsx      # Key metrics row (value, gap, trend, rank)
-│   │   ├── trend-section.tsx     # Trend over time with chart/table toggle
-│   │   ├── peer-section.tsx      # Peer/children/national comparison
-│   │   └── demographics-grid.tsx # Breakdowns by sex, age, deprivation, ethnicity
-│   ├── dashboard/                # Dashboard-specific components
-│   │   └── pathway-funnel.tsx    # AF/hypertension/cholesterol care pathways
-│   ├── layout/                   # Header, footer, command search
-│   └── ui/                       # shadcn/ui primitives
-│
+│   ├── charts/       # ECharts wrappers (bar, line, sparkline, demographic, map)
+│   ├── indicator-detail/  # Reusable sections (hero, trend, peers, demographics)
+│   ├── dashboard/    # Pathway funnels
+│   ├── layout/       # Header, footer, command search (Ctrl+K)
+│   └── ui/           # shadcn/ui primitives
 ├── lib/
-│   ├── api/
-│   │   ├── types.ts              # TypeScript types matching CVDPREVENT API
-│   │   └── indicators.ts         # API client functions
-│   ├── hooks/
-│   │   ├── use-area-indicators.ts# Efficient: ALL indicators for one area (1 call)
-│   │   ├── use-indicator-data.ts # Raw data for one indicator at one level
-│   │   ├── use-areas.ts          # Area lists by system level
-│   │   └── use-time-periods.ts   # Time period resolution
-│   ├── constants/
-│   │   ├── indicator-sections.ts # Indicator groupings (prevalence → outcomes)
-│   │   ├── colors.ts             # NHS colour palette
-│   │   └── geography.ts          # System level hierarchy
-│   └── utils/                    # Formatting, CSV export, URL helpers
-│
-└── providers/
-    └── organisation-context.tsx   # Selected org persisted in URL params
+│   ├── api/          # API client + TypeScript types
+│   ├── hooks/        # React Query hooks (areas, indicators, time periods)
+│   ├── constants/    # Indicator sections, colours, geography hierarchy
+│   └── utils/        # Formatting, CSV export, URL helpers
+└── providers/        # Organisation context (persisted in URL params)
 ```
 
 ### Data flow

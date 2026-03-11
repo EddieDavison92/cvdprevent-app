@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -105,11 +106,54 @@ function getCellStyle(value: number | null, englandValue: number | null, lowerIs
 }
 
 export default function BenchmarksPage() {
-  const [levelId, setLevelId] = useState<number>(SYSTEM_LEVELS.ICB);
-  const [parentAreaId, setParentAreaId] = useState<number | undefined>();
-  const [compareToParent, setCompareToParent] = useState(true);
-  const [sectionFilter, setSectionFilter] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortConfig>({ column: 'score', direction: 'desc' });
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const isInitialMount = useRef(true);
+
+  // Initialize state from URL params
+  const [levelId, setLevelId] = useState<number>(() => {
+    const v = searchParams.get('level');
+    return v ? parseInt(v, 10) : SYSTEM_LEVELS.ICB;
+  });
+  const [parentAreaId, setParentAreaId] = useState<number | undefined>(() => {
+    const v = searchParams.get('parent');
+    return v ? parseInt(v, 10) : undefined;
+  });
+  const [compareToParent, setCompareToParent] = useState(() =>
+    searchParams.get('compare') !== 'england'
+  );
+  const [sectionFilter, setSectionFilter] = useState<string | null>(
+    () => searchParams.get('section') ?? null
+  );
+  const [sort, setSort] = useState<SortConfig>(() => {
+    const col = searchParams.get('sort');
+    const dir = searchParams.get('dir');
+    return {
+      column: col ?? 'score',
+      direction: dir === 'asc' ? 'asc' : 'desc',
+    };
+  });
+
+  // Sync state back to URL (skip initial mount)
+  const updateUrl = useCallback(() => {
+    const params = new URLSearchParams();
+    if (levelId !== SYSTEM_LEVELS.ICB) params.set('level', levelId.toString());
+    if (parentAreaId) params.set('parent', parentAreaId.toString());
+    if (sectionFilter) params.set('section', sectionFilter);
+    if (!compareToParent && parentAreaId) params.set('compare', 'england');
+    if (sort.column !== 'score') params.set('sort', sort.column);
+    if (sort.direction !== 'desc') params.set('dir', sort.direction);
+    const qs = params.toString();
+    router.replace(qs ? `/benchmarks?${qs}` : '/benchmarks', { scroll: false });
+  }, [levelId, parentAreaId, sectionFilter, compareToParent, sort, router]);
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    updateUrl();
+  }, [updateUrl]);
 
   // Determine time period (standard for most, outcome for mortality)
   const { data: standardPeriod } = useLatestTimePeriod('standard');
