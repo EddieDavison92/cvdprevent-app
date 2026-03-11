@@ -130,7 +130,7 @@ npx vitest run --reporter=verbose  # verbose output
 
 ## Deployment
 
-The app runs comfortably on Vercel with no environment variables. Other Next.js-compatible hosts should also work.
+Deploys to Vercel with zero configuration and no environment variables. Anywhere that runs Next.js should also work.
 
 ## License
 
