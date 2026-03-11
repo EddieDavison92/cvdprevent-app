@@ -11,6 +11,7 @@ Unofficial data explorer for the [CVDPREVENT](https://www.cvdprevent.nhs.uk) car
 - Sparkline trend charts across all indicators
 - Indicator detail pages with time series, peer comparison, and breakdowns by sex, age, ethnicity, and deprivation
 - Pathway funnel views for AF, hypertension, and cholesterol management
+- Benchmarking page — rank and compare areas across indicators with composite scoring, parent scoping (e.g. ICBs within a Region), and polarity-aware heatmap colouring
 - National (England) view with trend analysis
 - Chart download as PNG
 
