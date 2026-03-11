@@ -29,10 +29,10 @@ const BOUNDARY_FILES: Record<number, string> = {
   [SYSTEM_LEVELS.SUB_ICB]: '/geo/sub-icbs.geojson',
 };
 
-// England bounding box for better initial zoom
+// England bounding box — tighter to fill the map container
 const ENGLAND_BOUNDS = L.latLngBounds(
-  L.latLng(49.9, -6.5),  // Southwest
-  L.latLng(55.9, 2.0)    // Northeast
+  L.latLng(49.9, -5.8),  // Southwest
+  L.latLng(55.8, 1.8)    // Northeast
 );
 
 // Diverging colour scale: red (below) → white (at baseline) → green (above)
@@ -208,8 +208,15 @@ export function ChoroplethMap({
 
       geojsonLayerRef.current = layer;
 
-      // Fit to England bounds (tighter than layer bounds)
-      map.fitBounds(ENGLAND_BOUNDS, { padding: [10, 10] });
+      // Fit to data bounds then zoom in one level for a tighter view
+      const layerBounds = layer.getBounds();
+      if (layerBounds.isValid()) {
+        map.fitBounds(layerBounds, { padding: [10, 10] });
+        const fitZoom = map.getBoundsZoom(layerBounds, false, [10, 10]);
+        map.setZoom(fitZoom + 1, { animate: false });
+      } else {
+        map.fitBounds(ENGLAND_BOUNDS);
+      }
     };
 
     initMap();
