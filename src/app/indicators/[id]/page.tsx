@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Calendar } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { BarChart } from '@/components/charts/bar-chart';
@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAreaIndicators, getPersonsData } from '@/lib/hooks/use-area-indicators';
+import { isOutcomeIndicator } from '@/lib/api';
 import { useIndicatorData } from '@/lib/hooks/use-indicator-data';
 import { useAreas } from '@/lib/hooks/use-areas';
 import { SYSTEM_LEVELS, type IndicatorRawData, type IndicatorWithData } from '@/lib/api/types';
@@ -25,6 +26,8 @@ import { SYSTEM_LEVEL_NAMES, getParentLevel } from '@/lib/constants/geography';
 import { findSectionForIndicator } from '@/lib/constants/indicator-sections';
 import { formatValue, formatTimePeriod } from '@/lib/utils/format';
 import { NHS_COLORS } from '@/lib/constants/colors';
+import { cn } from '@/lib/utils';
+import type { Area } from '@/lib/api/types';
 
 const LEVEL_OPTIONS = [
   { id: SYSTEM_LEVELS.REGION, label: 'Regions' },
@@ -38,6 +41,43 @@ function cleanAreaName(name: string) {
     .replace(/^NHS /, '')
     .replace(/ Integrated Care Board$/, '')
     .replace(/ Primary Care Network$/, '');
+}
+
+function SelectedAreaCard({ area, value, rank, lowerIsBetter, formatFn }: {
+  area: Area;
+  value: number;
+  rank: { position: number; total: number } | null;
+  lowerIsBetter: boolean;
+  formatFn: (v: number) => string;
+}) {
+  // Chart sorts highest value first. For lowerIsBetter, high rank = worst.
+  let performance: 'top' | 'bottom' | 'mid' = 'mid';
+  if (rank) {
+    const inTopQuartile = rank.position <= Math.ceil(rank.total * 0.25);
+    const inBottomQuartile = rank.position > Math.ceil(rank.total * 0.75);
+    if (inTopQuartile) performance = lowerIsBetter ? 'bottom' : 'top';
+    else if (inBottomQuartile) performance = lowerIsBetter ? 'top' : 'bottom';
+  }
+
+  const style = performance === 'top'
+    ? { card: 'bg-green-50 border-green-200', value: 'text-green-700', rank: 'text-green-700', label: 'Top quartile' }
+    : performance === 'bottom'
+    ? { card: 'bg-red-50 border-red-200', value: 'text-red-700', rank: 'text-red-700', label: 'Bottom quartile' }
+    : { card: 'bg-gray-50', value: 'text-nhs-blue', rank: 'text-gray-500', label: null };
+
+  return (
+    <Card className={style.card}>
+      <CardContent className="p-3">
+        <div className="text-xs text-gray-500 mb-0.5">{cleanAreaName(area.AreaName)}</div>
+        <div className={cn('text-xl font-bold', style.value)}>{formatFn(value)}</div>
+        {rank && (
+          <div className={cn('text-xs font-medium mt-0.5', style.rank)}>
+            {style.label ? `${style.label} · ` : ''}Rank {rank.position} of {rank.total}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 function convertToRawData(
@@ -103,7 +143,7 @@ export default function IndicatorExplorePage() {
     [allEnglandInds, indicatorId],
   );
 
-  const isOutcome = indicator?.IndicatorTypeName === 'Outcome';
+  const isOutcome = indicator ? isOutcomeIndicator(indicator) : false;
   const periodId = isOutcome ? outPeriod?.TimePeriodID : stdPeriod?.TimePeriodID;
   const section = indicator ? findSectionForIndicator(indicator.IndicatorCode) : undefined;
 
@@ -423,6 +463,12 @@ export default function IndicatorExplorePage() {
               )}
             </div>
             <p className="text-sm text-gray-600 max-w-3xl">{indicator.IndicatorName}</p>
+            {(isOutcome ? outPeriod : stdPeriod) && (
+              <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-400">
+                <Calendar className="h-3 w-3" />
+                {formatTimePeriod((isOutcome ? outPeriod! : stdPeriod!).TimePeriodName)}
+              </div>
+            )}
           </div>
 
           {/* Indicator quick-switch nav */}
@@ -523,17 +569,13 @@ export default function IndicatorExplorePage() {
                 </CardContent>
               </Card>
               {selectedArea && selectedAreaValue != null ? (
-                <Card className="bg-nhs-blue/5 border-nhs-blue/20">
-                  <CardContent className="p-3">
-                    <div className="text-xs text-gray-500 mb-0.5">{cleanAreaName(selectedArea.AreaName)}</div>
-                    <div className="text-xl font-bold text-nhs-blue">{formatFn(selectedAreaValue)}</div>
-                    {selectedRank && (
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        Rank {selectedRank.position} of {selectedRank.total}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                <SelectedAreaCard
+                  area={selectedArea}
+                  value={selectedAreaValue}
+                  rank={selectedRank}
+                  lowerIsBetter={section?.lowerIsBetter ?? false}
+                  formatFn={formatFn}
+                />
               ) : (
                 <Card>
                   <CardContent className="p-3">

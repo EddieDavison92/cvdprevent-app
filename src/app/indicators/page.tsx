@@ -177,6 +177,7 @@ export default function IndicatorsIndexPage() {
                       <Icon className="h-3.5 w-3.5 text-gray-400" />
                       <h2 className="text-sm font-semibold text-gray-700">{section.name}</h2>
                       <span className="text-xs text-gray-400">({section.indicators.length})</span>
+                      <span className="ml-auto text-[10px] font-medium text-gray-400 uppercase tracking-wider">England</span>
                     </div>
 
                     <div className="rounded-lg border bg-white divide-y">

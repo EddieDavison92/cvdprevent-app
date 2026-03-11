@@ -11,7 +11,7 @@ import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAllAreas } from '@/lib/hooks/use-areas';
 import { getAreaDisplayName } from '@/lib/api';
 import { SYSTEM_LEVELS, type Area } from '@/lib/api/types';
-import { Search, Globe, Heart, BarChart3, ArrowRight } from 'lucide-react';
+import { Search, Globe, Heart, BarChart3, List, ArrowRight } from 'lucide-react';
 import { Footer } from '@/components/layout/footer';
 
 export default function LandingPage() {
@@ -169,7 +169,7 @@ export default function LandingPage() {
         )}
 
         {/* Call-to-action cards */}
-        <div className="mt-10 border-t pt-8 grid sm:grid-cols-2 gap-4">
+        <div className="mt-10 border-t pt-8 grid sm:grid-cols-3 gap-4">
           <button
             onClick={handleViewEngland}
             className="group rounded-xl border bg-gradient-to-br from-white to-nhs-pale-grey/50 p-6 text-left shadow-sm transition-all hover:shadow-lg hover:border-nhs-blue/30 hover:-translate-y-0.5"
@@ -179,7 +179,22 @@ export default function LandingPage() {
                 <Globe className="h-5 w-5 text-white" />
               </div>
               <p className="text-base font-semibold text-nhs-dark-blue">England Overview</p>
-              <p className="mt-1 text-sm text-gray-500">National trends and time series across all CVD indicators</p>
+              <p className="mt-1 text-sm text-gray-500">National trends and time series</p>
+              <div className="mt-3 flex items-center gap-1 text-xs font-medium text-nhs-blue opacity-0 transition-opacity group-hover:opacity-100">
+                Explore <ArrowRight className="h-3 w-3" />
+              </div>
+            </div>
+          </button>
+          <button
+            onClick={() => router.push('/indicators')}
+            className="group rounded-xl border bg-gradient-to-br from-white to-nhs-pale-grey/50 p-6 text-left shadow-sm transition-all hover:shadow-lg hover:border-nhs-blue/30 hover:-translate-y-0.5"
+          >
+            <div>
+              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-nhs-blue/80 shadow-md shadow-nhs-blue/20">
+                <List className="h-5 w-5 text-white" />
+              </div>
+              <p className="text-base font-semibold text-nhs-dark-blue">Indicators</p>
+              <p className="mt-1 text-sm text-gray-500">Browse and explore all CVD indicators</p>
               <div className="mt-3 flex items-center gap-1 text-xs font-medium text-nhs-blue opacity-0 transition-opacity group-hover:opacity-100">
                 Explore <ArrowRight className="h-3 w-3" />
               </div>
@@ -193,8 +208,8 @@ export default function LandingPage() {
               <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-nhs-dark-blue shadow-md shadow-nhs-dark-blue/20">
                 <BarChart3 className="h-5 w-5 text-white" />
               </div>
-              <p className="text-base font-semibold text-nhs-dark-blue">Benchmark Areas</p>
-              <p className="mt-1 text-sm text-gray-500">Compare and rank Regions, ICBs, Sub-ICBs, and PCNs across indicators</p>
+              <p className="text-base font-semibold text-nhs-dark-blue">Benchmarks</p>
+              <p className="mt-1 text-sm text-gray-500">Rank and compare areas across indicators</p>
               <div className="mt-3 flex items-center gap-1 text-xs font-medium text-nhs-blue opacity-0 transition-opacity group-hover:opacity-100">
                 Explore <ArrowRight className="h-3 w-3" />
               </div>

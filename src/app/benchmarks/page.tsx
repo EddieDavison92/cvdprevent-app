@@ -36,11 +36,11 @@ import { getIndicatorData, getPersonsData } from '@/lib/api';
 import { SYSTEM_LEVELS, type IndicatorRawData, type Area, type Indicator } from '@/lib/api/types';
 import { DASHBOARD_SECTIONS, findSectionForIndicator, type DashboardSection } from '@/lib/constants/indicator-sections';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
-import { formatValue } from '@/lib/utils/format';
+import { formatValue, formatTimePeriod } from '@/lib/utils/format';
 import { cn } from '@/lib/utils';
 import { downloadCSV } from '@/lib/utils/csv';
 import {
-  ArrowUpDown, ArrowUp, ArrowDown, BarChart3, Info, Download,
+  ArrowUpDown, ArrowUp, ArrowDown, ArrowUpRight, BarChart3, Info, Download, Calendar,
   Activity, SearchX, Pill, Target, ClipboardCheck, HeartPulse,
 } from 'lucide-react';
 import type { SectionType } from '@/lib/constants/indicator-sections';
@@ -457,6 +457,15 @@ export default function BenchmarksPage() {
                 <p className="text-sm text-gray-500">
                   Compare areas across indicators. Areas are ranked against each other — the score shows how consistently an area places near the top (100) or bottom (0) of the group, accounting for polarity.
                 </p>
+                {standardPeriod && (
+                  <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-400">
+                    <Calendar className="h-3 w-3" />
+                    {formatTimePeriod(standardPeriod.TimePeriodName)}
+                    {outcomePeriod && outcomePeriod.TimePeriodName !== standardPeriod.TimePeriodName && (
+                      <span> · Outcomes: {formatTimePeriod(outcomePeriod.TimePeriodName)}</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -638,8 +647,8 @@ export default function BenchmarksPage() {
                             <TooltipContent>
                               <p className="text-xs font-medium">{cleanIndicatorName(ind.IndicatorShortName)}</p>
                               <p className="text-xs text-gray-400">{ind.section?.lowerIsBetter ? 'Lower is better' : 'Higher is better'}</p>
-                              <Link href={indicatorHref(ind.IndicatorID)} className="text-xs text-nhs-blue hover:underline mt-1 block">
-                                View indicator details →
+                              <Link href={indicatorHref(ind.IndicatorID)} onClick={e => e.stopPropagation()} className="text-xs text-white hover:underline mt-1 block">
+                                View indicator details ↗
                               </Link>
                             </TooltipContent>
                           </Tooltip>
