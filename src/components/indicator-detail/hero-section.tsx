@@ -95,7 +95,7 @@ export function HeroSection({
               <BarChart3 className="h-3 w-3" />
               {isEngland ? 'England' : areaName}
             </div>
-            <div className="text-2xl font-bold text-[#005EB8]">
+            <div className="text-2xl font-bold text-nhs-blue">
               {hasValue ? fmt(areaData!.Value!) : 'N/A'}
             </div>
           </CardContent>

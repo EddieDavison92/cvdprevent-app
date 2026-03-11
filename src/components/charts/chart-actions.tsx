@@ -3,6 +3,7 @@
 import { useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, ImageIcon } from 'lucide-react';
+import { downloadCSV as downloadCSVFile } from '@/lib/utils/csv';
 
 interface ChartData {
   name: string;
@@ -18,29 +19,13 @@ interface ChartActionsProps {
 }
 
 export function ChartActions({ chartRef, data, filename = 'chart', title }: ChartActionsProps) {
-  const downloadCSV = useCallback(() => {
+  const handleDownloadCSV = useCallback(() => {
     if (!data.length) return;
-
-    // Build CSV from data
-    const headers = Object.keys(data[0]).filter(k => k !== 'isHighlighted');
-    const rows = data.map(row => 
-      headers.map(h => {
-        const val = row[h];
-        if (val === null || val === undefined) return '';
-        if (typeof val === 'string' && val.includes(',')) return `"${val}"`;
-        return String(val);
-      }).join(',')
-    );
-    
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${filename}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    const filtered = data.map(row => {
+      const { isHighlighted, ...rest } = row as Record<string, unknown>;
+      return rest;
+    });
+    downloadCSVFile(filtered, filename);
   }, [data, filename]);
 
   const downloadPNG = useCallback(() => {
@@ -69,7 +54,7 @@ export function ChartActions({ chartRef, data, filename = 'chart', title }: Char
       <Button
         variant="outline"
         size="sm"
-        onClick={downloadCSV}
+        onClick={handleDownloadCSV}
         className="gap-1.5"
         title="Download data as CSV"
       >

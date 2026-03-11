@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CSVButton } from '@/components/charts';
+import { downloadCSV } from '@/lib/utils/csv';
 
 // Leaflet requires browser APIs, so dynamic import with SSR disabled
 const ChoroplethMap = dynamic(
@@ -489,7 +491,7 @@ export default function IndicatorDetailPage() {
     return (
       <div className="flex min-h-screen flex-col">
         <Header />
-        <main className="flex-1 bg-[#E8EDEE]/30 p-6">
+        <main className="flex-1 bg-nhs-pale-grey/30 p-6">
           <div className="mx-auto max-w-6xl space-y-4">
             <Skeleton className="h-8 w-64" />
             <Skeleton className="h-4 w-96" />
@@ -513,7 +515,7 @@ export default function IndicatorDetailPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex-1 bg-[#E8EDEE]/30 p-6">
+      <main className="flex-1 bg-nhs-pale-grey/30 p-6">
         <div className="mx-auto max-w-6xl">
           {/* Back link */}
           <Link href={buildUrl('/dashboard', searchParams)}>
@@ -527,7 +529,7 @@ export default function IndicatorDetailPage() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">{isEngland ? 'National' : organisation?.SystemLevelName}</p>
-              <h1 className="text-xl font-bold text-[#003087]">{areaName}</h1>
+              <h1 className="text-xl font-bold text-nhs-dark-blue">{areaName}</h1>
             </div>
             {!isEngland && <BaselineSelector />}
           </div>
@@ -544,7 +546,7 @@ export default function IndicatorDetailPage() {
           {/* Indicator Header */}
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-2">
-              <h2 className="text-lg font-semibold text-[#003087]">{indicator.IndicatorShortName}</h2>
+              <h2 className="text-lg font-semibold text-nhs-dark-blue">{indicator.IndicatorShortName}</h2>
               <Badge variant={indicator.IndicatorTypeName === 'Outcome' ? 'secondary' : 'default'}>
                 {indicator.IndicatorTypeName}
               </Badge>
@@ -608,10 +610,25 @@ export default function IndicatorDetailPage() {
             {nationalData.length > 0 && (nationalLevelId === SYSTEM_LEVELS.REGION ||
               nationalLevelId === SYSTEM_LEVELS.ICB ||
               nationalLevelId === SYSTEM_LEVELS.SUB_ICB) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">National Map</CardTitle>
-                  <CardDescription>
+              <Card className="gap-2 py-4">
+                <CardHeader className="gap-1">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">National Map</CardTitle>
+                    <CSVButton onClick={() => {
+                      const rows = nationalData
+                        .filter(d => d.Value !== null)
+                        .sort((a, b) => (b.Value ?? 0) - (a.Value ?? 0))
+                        .map(d => ({
+                          Area: d.AreaName.replace(/^NHS /, '').replace(/ Integrated Care Board$/, ''),
+                          'Area Code': d.AreaCode,
+                          Value: d.Value,
+                          Numerator: d.Numerator,
+                          Denominator: d.Denominator,
+                        }));
+                      downloadCSV(rows, `${indicator.IndicatorCode}-map`);
+                    }} />
+                  </div>
+                  <CardDescription className="text-xs">
                     {indicator.IndicatorShortName} by {SYSTEM_LEVEL_NAMES[nationalLevelId ?? SYSTEM_LEVELS.ICB]}
                   </CardDescription>
                 </CardHeader>
@@ -635,7 +652,7 @@ export default function IndicatorDetailPage() {
 
             {/* Demographics Grid */}
             <div>
-              <h2 className="mb-4 text-lg font-semibold text-[#003087]">Demographic Breakdowns</h2>
+              <h2 className="mb-4 text-lg font-semibold text-nhs-dark-blue">Demographic Breakdowns</h2>
               <DemographicsGrid
                 indicator={indicatorForComponents}
                 areaData={areaAllData}

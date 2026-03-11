@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BarChart } from '@/components/charts/bar-chart';
-import { ChartTableToggle, type TableColumn } from '@/components/charts';
+import { ChartTableToggle, useChartTableActions, type TableColumn } from '@/components/charts';
 import type { Indicator, Area, IndicatorRawData } from '@/lib/api/types';
 import { SYSTEM_LEVELS } from '@/lib/api/types';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
@@ -246,33 +246,42 @@ export function PeerSection({
     })),
   [chartData, formatFn]);
 
+  const { viewMode: chartViewMode, actions: chartActions } = useChartTableActions({
+    tableData,
+    columns: tableColumns,
+    filename: `${indicator.IndicatorCode}-${viewMode}`,
+  });
+
   return (
-    <Card>
-      <CardHeader>
+    <Card className="gap-2 py-4">
+      <CardHeader className="gap-1">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">
             {viewMode === 'peers' ? 'Comparison with Peers'
               : viewMode === 'national' ? `All ${levelName}s`
                 : `${childLevelName} Breakdown`}
           </CardTitle>
-          {showToggle && (
-            <div className="flex rounded-lg bg-gray-100 p-0.5">
-              {availableViews.map((v) => (
-                <button
-                  key={v.key}
-                  onClick={() => setViewMode(v.key)}
-                  className={cn(
-                    'rounded-md px-3 py-1 text-xs font-medium transition-colors',
-                    viewMode === v.key
-                      ? 'bg-white text-[#005EB8] shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  )}
-                >
-                  {v.label}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {chartData.length > 0 && chartActions}
+            {showToggle && (
+              <div className="flex rounded-lg bg-gray-100 p-0.5">
+                {availableViews.map((v) => (
+                  <button
+                    key={v.key}
+                    onClick={() => setViewMode(v.key)}
+                    className={cn(
+                      'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                      viewMode === v.key
+                        ? 'bg-white text-nhs-blue shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    )}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
@@ -300,6 +309,7 @@ export function PeerSection({
             }
             tableData={tableData}
             columns={tableColumns}
+            viewMode={chartViewMode}
           />
         )}
       </CardContent>

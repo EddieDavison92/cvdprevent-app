@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { LineChart } from '@/components/charts/line-chart';
-import { ChartTableToggle, type TableColumn } from '@/components/charts';
+import { ChartTableToggle, useChartTableActions, type TableColumn } from '@/components/charts';
 import type { Indicator } from '@/lib/api/types';
 import { formatValue } from '@/lib/utils/format';
 import { NHS_COLORS } from '@/lib/constants/colors';
@@ -134,10 +134,19 @@ export function TrendSection({
     return cols;
   }, [isEngland, areaName, baselineName, formatFn, diffSuffix]);
 
+  const { viewMode, actions } = useChartTableActions({
+    tableData,
+    columns: tableColumns,
+    filename: `${indicator.IndicatorCode}-trend`,
+  });
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Performance Over Time</CardTitle>
+    <Card className="gap-2 py-4">
+      <CardHeader className="gap-1">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">Performance Over Time</CardTitle>
+          {hasData && actions}
+        </div>
         <CardDescription className="text-xs">
           {indicator.IndicatorShortName}
         </CardDescription>
@@ -164,6 +173,7 @@ export function TrendSection({
             }
             tableData={tableData}
             columns={tableColumns}
+            viewMode={viewMode}
           />
         )}
       </CardContent>
