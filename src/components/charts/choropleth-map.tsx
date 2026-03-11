@@ -84,6 +84,7 @@ export function ChoroplethMap({
   const geojsonLayerRef = useRef<L.GeoJSON | null>(null);
   const legendRef = useRef<L.Control | null>(null);
   const [geojson, setGeojson] = useState<GeoJSON.FeatureCollection | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -221,8 +222,10 @@ export function ChoroplethMap({
     };
 
     initMap();
+    setMapReady(true);
 
     return () => {
+      setMapReady(false);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -274,7 +277,7 @@ export function ChoroplethMap({
     };
     legend.addTo(map);
     legendRef.current = legend;
-  }, [geojson, baselineValue, baselineName, formatValue, hasNoData]);
+  }, [mapReady, baselineValue, baselineName, formatValue, hasNoData]);
 
   if (!boundaryFile) {
     return (
