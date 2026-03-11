@@ -172,10 +172,9 @@ export default function LandingPage() {
         <div className="mt-10 border-t pt-8 grid sm:grid-cols-2 gap-4">
           <button
             onClick={handleViewEngland}
-            className="group relative overflow-hidden rounded-xl border bg-gradient-to-br from-white to-[#E8EDEE]/50 p-6 text-left shadow-sm transition-all hover:shadow-lg hover:border-[#005EB8]/30 hover:-translate-y-0.5"
+            className="group rounded-xl border bg-gradient-to-br from-white to-[#E8EDEE]/50 p-6 text-left shadow-sm transition-all hover:shadow-lg hover:border-[#005EB8]/30 hover:-translate-y-0.5"
           >
-            <div className="absolute top-0 right-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-[#005EB8]/5 transition-transform group-hover:scale-150" />
-            <div className="relative">
+            <div>
               <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-[#005EB8] shadow-md shadow-[#005EB8]/20">
                 <Globe className="h-5 w-5 text-white" />
               </div>
@@ -188,10 +187,9 @@ export default function LandingPage() {
           </button>
           <button
             onClick={() => router.push('/benchmarks')}
-            className="group relative overflow-hidden rounded-xl border bg-gradient-to-br from-white to-[#E8EDEE]/50 p-6 text-left shadow-sm transition-all hover:shadow-lg hover:border-[#005EB8]/30 hover:-translate-y-0.5"
+            className="group rounded-xl border bg-gradient-to-br from-white to-[#E8EDEE]/50 p-6 text-left shadow-sm transition-all hover:shadow-lg hover:border-[#005EB8]/30 hover:-translate-y-0.5"
           >
-            <div className="absolute top-0 right-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-[#005EB8]/5 transition-transform group-hover:scale-150" />
-            <div className="relative">
+            <div>
               <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-[#003087] shadow-md shadow-[#003087]/20">
                 <BarChart3 className="h-5 w-5 text-white" />
               </div>
