@@ -384,7 +384,7 @@ export default function BenchmarksPage() {
               <div>
                 <h1 className="text-2xl font-bold text-[#003087]">Benchmarks</h1>
                 <p className="text-sm text-gray-500">
-                  Compare areas across indicators. Each area gets a composite score (0–100) based on its average percentile rank — higher means better overall performance, accounting for indicator polarity.
+                  Compare areas across indicators. Areas are ranked against each other — the score shows how consistently an area places near the top (100) or bottom (0) of the group, accounting for polarity.
                 </p>
               </div>
             </div>
@@ -602,9 +602,23 @@ export default function BenchmarksPage() {
                               {cleanAreaName(area.AreaName)}
                             </TableCell>
                             <TableCell className="text-center">
-                              <Badge variant="outline" className={cn('text-[10px] tabular-nums', scoreColor)}>
-                                {Math.round(score)}
-                              </Badge>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className={cn('text-[10px] tabular-nums cursor-help', scoreColor)}>
+                                    {Math.round(score)}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-xs font-medium">Score: {Math.round(score)} / 100</p>
+                                  <p className="text-xs text-gray-400 max-w-[200px]">
+                                    {score >= 66
+                                      ? 'Consistently ranks near the top of this group'
+                                      : score >= 33
+                                      ? 'Ranks around the middle of this group'
+                                      : 'Consistently ranks near the bottom of this group'}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
                             </TableCell>
                             {availableIndicators.map(ind => {
                               const val = matrix.get(area.AreaCode)?.get(ind.IndicatorID) ?? null;
