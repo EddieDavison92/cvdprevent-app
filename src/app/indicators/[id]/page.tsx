@@ -523,23 +523,15 @@ export default function IndicatorExplorePage() {
                 </CardContent>
               </Card>
               {selectedArea && selectedAreaValue != null ? (
-                <Card className={
-                  selectedRank && selectedRank.position <= Math.ceil(selectedRank.total * 0.25)
-                    ? 'bg-green-50'
-                    : selectedRank && selectedRank.position > Math.ceil(selectedRank.total * 0.75)
-                      ? 'bg-red-50'
-                      : 'bg-gray-50'
-                }>
+                <Card className="bg-nhs-blue/5 border-nhs-blue/20">
                   <CardContent className="p-3">
                     <div className="text-xs text-gray-500 mb-0.5">{cleanAreaName(selectedArea.AreaName)}</div>
-                    <div className="text-xl font-bold text-nhs-blue">
-                      {formatFn(selectedAreaValue)}
-                      {selectedRank && (
-                        <span className="text-sm font-normal text-gray-400 ml-1">
-                          ({selectedRank.position}/{selectedRank.total})
-                        </span>
-                      )}
-                    </div>
+                    <div className="text-xl font-bold text-nhs-blue">{formatFn(selectedAreaValue)}</div>
+                    {selectedRank && (
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        Rank {selectedRank.position} of {selectedRank.total}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ) : (

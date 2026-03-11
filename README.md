@@ -107,7 +107,7 @@ All data is fetched from the public CVDPREVENT API (`api.cvdprevent.nhs.uk`). Th
 ### Setup
 
 ```bash
-git clone https://github.com/your-username/cvdprevent-app.git
+git clone https://github.com/EddieDavison92/cvdprevent-app.git
 cd cvdprevent-app
 npm install
 npm run dev
