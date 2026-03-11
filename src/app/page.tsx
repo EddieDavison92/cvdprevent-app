@@ -11,7 +11,7 @@ import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAllAreas } from '@/lib/hooks/use-areas';
 import { getAreaDisplayName } from '@/lib/api';
 import { SYSTEM_LEVELS, type Area } from '@/lib/api/types';
-import { Search, Globe, Heart, BarChart3 } from 'lucide-react';
+import { Search, Globe, Heart, BarChart3, ArrowRight } from 'lucide-react';
 import { Footer } from '@/components/layout/footer';
 
 export default function LandingPage() {
@@ -172,26 +172,34 @@ export default function LandingPage() {
         <div className="mt-10 border-t pt-8 grid sm:grid-cols-2 gap-4">
           <button
             onClick={handleViewEngland}
-            className="group flex items-start gap-4 rounded-xl border bg-white p-5 text-left shadow-sm transition-all hover:shadow-md hover:border-[#005EB8]/30"
+            className="group relative overflow-hidden rounded-xl border bg-gradient-to-br from-white to-[#E8EDEE]/50 p-6 text-left shadow-sm transition-all hover:shadow-lg hover:border-[#005EB8]/30 hover:-translate-y-0.5"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#005EB8]/10 transition-colors group-hover:bg-[#005EB8]/20">
-              <Globe className="h-5 w-5 text-[#005EB8]" />
-            </div>
-            <div>
-              <p className="font-semibold text-[#003087]">England Overview</p>
-              <p className="mt-0.5 text-sm text-gray-500">National trends across all indicators</p>
+            <div className="absolute top-0 right-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-[#005EB8]/5 transition-transform group-hover:scale-150" />
+            <div className="relative">
+              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-[#005EB8] shadow-md shadow-[#005EB8]/20">
+                <Globe className="h-5 w-5 text-white" />
+              </div>
+              <p className="text-base font-semibold text-[#003087]">England Overview</p>
+              <p className="mt-1 text-sm text-gray-500">National trends and time series across all CVD indicators</p>
+              <div className="mt-3 flex items-center gap-1 text-xs font-medium text-[#005EB8] opacity-0 transition-opacity group-hover:opacity-100">
+                Explore <ArrowRight className="h-3 w-3" />
+              </div>
             </div>
           </button>
           <button
             onClick={() => router.push('/benchmarks')}
-            className="group flex items-start gap-4 rounded-xl border bg-white p-5 text-left shadow-sm transition-all hover:shadow-md hover:border-[#005EB8]/30"
+            className="group relative overflow-hidden rounded-xl border bg-gradient-to-br from-white to-[#E8EDEE]/50 p-6 text-left shadow-sm transition-all hover:shadow-lg hover:border-[#005EB8]/30 hover:-translate-y-0.5"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#005EB8]/10 transition-colors group-hover:bg-[#005EB8]/20">
-              <BarChart3 className="h-5 w-5 text-[#005EB8]" />
-            </div>
-            <div>
-              <p className="font-semibold text-[#003087]">Benchmark Areas</p>
-              <p className="mt-0.5 text-sm text-gray-500">Compare and rank Regions, ICBs, Sub-ICBs, and PCNs</p>
+            <div className="absolute top-0 right-0 h-24 w-24 translate-x-6 -translate-y-6 rounded-full bg-[#005EB8]/5 transition-transform group-hover:scale-150" />
+            <div className="relative">
+              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-[#003087] shadow-md shadow-[#003087]/20">
+                <BarChart3 className="h-5 w-5 text-white" />
+              </div>
+              <p className="text-base font-semibold text-[#003087]">Benchmark Areas</p>
+              <p className="mt-1 text-sm text-gray-500">Compare and rank Regions, ICBs, Sub-ICBs, and PCNs across indicators</p>
+              <div className="mt-3 flex items-center gap-1 text-xs font-medium text-[#005EB8] opacity-0 transition-opacity group-hover:opacity-100">
+                Explore <ArrowRight className="h-3 w-3" />
+              </div>
             </div>
           </button>
         </div>
