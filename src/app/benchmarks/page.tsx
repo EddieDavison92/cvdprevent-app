@@ -518,8 +518,15 @@ export default function BenchmarksPage() {
             </div>
           )}
 
+          {/* No data state */}
+          {(!isPcn || parentAreaId) && !isLoading && availableIndicators.length === 0 && (
+            <div className="flex h-40 items-center justify-center rounded-lg border border-dashed text-gray-400">
+              No indicators available at {SYSTEM_LEVEL_NAMES[levelId]} level for this section
+            </div>
+          )}
+
           {/* Heatmap Table */}
-          {(!isPcn || parentAreaId) && (
+          {(!isPcn || parentAreaId) && (availableIndicators.length > 0 || isLoading) && (
             <div className="rounded-lg border bg-white overflow-x-auto">
               <TooltipProvider delayDuration={200}>
                 <Table>
