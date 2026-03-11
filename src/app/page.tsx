@@ -11,7 +11,7 @@ import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAllAreas } from '@/lib/hooks/use-areas';
 import { getAreaDisplayName } from '@/lib/api';
 import { SYSTEM_LEVELS, type Area } from '@/lib/api/types';
-import { Search, Globe, Heart } from 'lucide-react';
+import { Search, Globe, Heart, BarChart3 } from 'lucide-react';
 import { Footer } from '@/components/layout/footer';
 
 export default function LandingPage() {
@@ -168,12 +168,15 @@ export default function LandingPage() {
           </div>
         )}
 
-        {/* England option */}
-        <div className="mt-10 border-t pt-8 text-center">
-          <p className="mb-3 text-sm text-gray-400">Or view national data</p>
+        {/* Quick links */}
+        <div className="mt-10 border-t pt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Button variant="outline" onClick={handleViewEngland} className="gap-2">
             <Globe className="h-4 w-4" />
-            View England Overview
+            England Overview
+          </Button>
+          <Button variant="outline" onClick={() => router.push('/benchmarks')} className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Benchmark Areas
           </Button>
         </div>
       </div>
