@@ -3,7 +3,7 @@
  * These hit the real API so they double as smoke tests for upstream changes.
  * Run as part of build (`npm run test && next build`).
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 
 const BASE_URL = 'https://api.cvdprevent.nhs.uk';
 
@@ -21,6 +21,15 @@ function expectKeys(obj: Record<string, unknown>, keys: string[]) {
     expect(obj, `missing key: ${key}`).toHaveProperty(key);
   }
 }
+
+// Shared state — initialised once before all tests
+let timePeriodId: number;
+
+beforeAll(async () => {
+  const periods = await fetchJSON<{ timePeriodList: { TimePeriodID: number; TimePeriodName: string }[] }>('/timePeriod');
+  const standardPeriods = periods.timePeriodList.filter(p => p.TimePeriodName.startsWith('To '));
+  timePeriodId = standardPeriods.sort((a, b) => b.TimePeriodID - a.TimePeriodID)[0].TimePeriodID;
+});
 
 // ---------- Time Periods ----------
 
@@ -42,14 +51,8 @@ describe('GET /timePeriod', () => {
 
 // ---------- System Levels ----------
 
-let timePeriodId: number;
-
 describe('GET /area/systemLevel', () => {
   it('returns systemLevels array with expected fields', async () => {
-    const periods = await fetchJSON<{ timePeriodList: { TimePeriodID: number; TimePeriodName: string }[] }>('/timePeriod');
-    const standardPeriods = periods.timePeriodList.filter(p => p.TimePeriodName.startsWith('To '));
-    timePeriodId = standardPeriods.sort((a, b) => b.TimePeriodID - a.TimePeriodID)[0].TimePeriodID;
-
     const data = await fetchJSON<Record<string, unknown>>(
       `/area/systemLevel?timePeriodID=${timePeriodId}`
     );

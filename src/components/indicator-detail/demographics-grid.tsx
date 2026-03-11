@@ -183,12 +183,12 @@ function DemographicCard({
   isEngland?: boolean;
   formatFn: (v: number) => string;
 }) {
-  const simpleChartData = chartData.map((d) => ({
+  const simpleChartData = useMemo(() => chartData.map((d) => ({
     name: d.name,
     value: d.orgValue,
     numerator: d.orgNumerator,
     denominator: d.orgDenominator,
-  }));
+  })), [chartData]);
 
   const tableData = useMemo(() => chartData.map((d) => ({
     category: d.name,

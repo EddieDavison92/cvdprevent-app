@@ -21,16 +21,17 @@ export function generateCSV(rows: Record<string, unknown>[]): string {
   return lines.join('\n');
 }
 
-/** Trigger a CSV file download in the browser. */
+/** Trigger a CSV file download in the browser. BOM prefix ensures Excel detects UTF-8. */
 export function downloadCSV(rows: Record<string, unknown>[], filename: string) {
   const csv = generateCSV(rows);
   if (!csv) return;
 
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const safeName = filename.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = filename.endsWith('.csv') ? filename : `${filename}.csv`;
+  link.download = safeName.endsWith('.csv') ? safeName : `${safeName}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }

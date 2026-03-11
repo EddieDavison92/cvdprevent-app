@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, type ReactNode } from 'react';
+import { useState, useCallback, useMemo, type ReactNode } from 'react';
 import { Download } from 'lucide-react';
 import {
   Table,
@@ -55,7 +55,7 @@ export function useChartTableActions(opts: {
     downloadCSV(rows, opts.filename ?? 'data');
   }, [opts.tableData, opts.columns, opts.filename]);
 
-  const actions = (
+  const actions = useMemo(() => (
     <div className="flex items-center gap-3">
       <button
         onClick={handleExportCSV}
@@ -72,7 +72,7 @@ export function useChartTableActions(opts: {
         {viewMode === 'chart' ? 'View as table' : 'View as chart'}
       </button>
     </div>
-  );
+  ), [handleExportCSV, toggleView, viewMode]);
 
   return { viewMode, actions, handleExportCSV };
 }
