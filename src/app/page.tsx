@@ -85,8 +85,8 @@ export default function LandingPage() {
   // Loading while checking for existing org
   if (isLoadingOrg) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#E8EDEE]/30">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#005EB8] border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-nhs-pale-grey/30">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-nhs-blue border-t-transparent" />
       </div>
     );
   }
@@ -95,14 +95,14 @@ export default function LandingPage() {
   if (organisation) return null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#E8EDEE]/30">
+    <div className="flex min-h-screen flex-col bg-nhs-pale-grey/30">
       <div className="mx-auto max-w-3xl flex-1 px-4 py-16">
         {/* Header */}
         <div className="mb-10 text-center">
-          <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[#005EB8]">
+          <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-nhs-blue">
             <Heart className="h-7 w-7 text-white" fill="currentColor" />
           </div>
-          <h1 className="mb-2 text-3xl font-bold text-[#003087]">
+          <h1 className="mb-2 text-3xl font-bold text-nhs-dark-blue">
             CVD<span className="font-normal opacity-70">PREVENT</span>
           </h1>
           <p className="text-sm text-gray-400 mb-3">Unofficial data explorer</p>
@@ -113,7 +113,7 @@ export default function LandingPage() {
             {['ICB', 'Sub-ICB', 'PCN', 'Region'].map((level) => (
               <span
                 key={level}
-                className="inline-flex items-center rounded-full bg-[#005EB8]/10 px-3 py-1 text-xs font-medium text-[#005EB8]"
+                className="inline-flex items-center rounded-full bg-nhs-blue/10 px-3 py-1 text-xs font-medium text-nhs-blue"
               >
                 {level}
               </span>
@@ -129,7 +129,7 @@ export default function LandingPage() {
             placeholder="Search Regions, ICBs, Sub-ICBs, PCNs..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-12 pl-12 text-base rounded-xl border-gray-300 shadow-sm focus:border-[#005EB8] focus:ring-[#005EB8]"
+            className="h-12 pl-12 text-base rounded-xl border-gray-300 shadow-sm focus:border-nhs-blue focus:ring-nhs-blue"
           />
         </div>
 
@@ -172,30 +172,30 @@ export default function LandingPage() {
         <div className="mt-10 border-t pt-8 grid sm:grid-cols-2 gap-4">
           <button
             onClick={handleViewEngland}
-            className="group rounded-xl border bg-gradient-to-br from-white to-[#E8EDEE]/50 p-6 text-left shadow-sm transition-all hover:shadow-lg hover:border-[#005EB8]/30 hover:-translate-y-0.5"
+            className="group rounded-xl border bg-gradient-to-br from-white to-nhs-pale-grey/50 p-6 text-left shadow-sm transition-all hover:shadow-lg hover:border-nhs-blue/30 hover:-translate-y-0.5"
           >
             <div>
-              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-[#005EB8] shadow-md shadow-[#005EB8]/20">
+              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-nhs-blue shadow-md shadow-nhs-blue/20">
                 <Globe className="h-5 w-5 text-white" />
               </div>
-              <p className="text-base font-semibold text-[#003087]">England Overview</p>
+              <p className="text-base font-semibold text-nhs-dark-blue">England Overview</p>
               <p className="mt-1 text-sm text-gray-500">National trends and time series across all CVD indicators</p>
-              <div className="mt-3 flex items-center gap-1 text-xs font-medium text-[#005EB8] opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="mt-3 flex items-center gap-1 text-xs font-medium text-nhs-blue opacity-0 transition-opacity group-hover:opacity-100">
                 Explore <ArrowRight className="h-3 w-3" />
               </div>
             </div>
           </button>
           <button
             onClick={() => router.push('/benchmarks')}
-            className="group rounded-xl border bg-gradient-to-br from-white to-[#E8EDEE]/50 p-6 text-left shadow-sm transition-all hover:shadow-lg hover:border-[#005EB8]/30 hover:-translate-y-0.5"
+            className="group rounded-xl border bg-gradient-to-br from-white to-nhs-pale-grey/50 p-6 text-left shadow-sm transition-all hover:shadow-lg hover:border-nhs-blue/30 hover:-translate-y-0.5"
           >
             <div>
-              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-[#003087] shadow-md shadow-[#003087]/20">
+              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-nhs-dark-blue shadow-md shadow-nhs-dark-blue/20">
                 <BarChart3 className="h-5 w-5 text-white" />
               </div>
-              <p className="text-base font-semibold text-[#003087]">Benchmark Areas</p>
+              <p className="text-base font-semibold text-nhs-dark-blue">Benchmark Areas</p>
               <p className="mt-1 text-sm text-gray-500">Compare and rank Regions, ICBs, Sub-ICBs, and PCNs across indicators</p>
-              <div className="mt-3 flex items-center gap-1 text-xs font-medium text-[#005EB8] opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="mt-3 flex items-center gap-1 text-xs font-medium text-nhs-blue opacity-0 transition-opacity group-hover:opacity-100">
                 Explore <ArrowRight className="h-3 w-3" />
               </div>
             </div>

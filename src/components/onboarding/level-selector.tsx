@@ -30,13 +30,13 @@ export function LevelSelector({ value, onChange }: LevelSelectorProps) {
             className={cn(
               'flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all',
               isSelected
-                ? 'border-[#005EB8] bg-[#005EB8]/5 text-[#005EB8]'
-                : 'border-gray-200 bg-white hover:border-[#005EB8]/50 hover:bg-gray-50'
+                ? 'border-nhs-blue bg-nhs-blue/5 text-nhs-blue'
+                : 'border-gray-200 bg-white hover:border-nhs-blue/50 hover:bg-gray-50'
             )}
           >
-            <Icon className={cn('h-8 w-8', isSelected ? 'text-[#005EB8]' : 'text-gray-400')} />
+            <Icon className={cn('h-8 w-8', isSelected ? 'text-nhs-blue' : 'text-gray-400')} />
             <div className="text-center">
-              <div className={cn('font-semibold', isSelected ? 'text-[#005EB8]' : 'text-gray-900')}>
+              <div className={cn('font-semibold', isSelected ? 'text-nhs-blue' : 'text-gray-900')}>
                 {level.label}
               </div>
               <div className="text-xs text-gray-500">{level.description}</div>

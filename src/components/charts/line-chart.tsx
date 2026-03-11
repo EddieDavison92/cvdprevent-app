@@ -2,7 +2,7 @@
 
 import ReactECharts from 'echarts-for-react';
 import { nhsEChartsTheme, defaultChartOptions } from './chart-theme';
-import { CHART_COLORS } from '@/lib/constants/colors';
+import { NHS_COLORS, CHART_COLORS } from '@/lib/constants/colors';
 
 // Parse "Mon YY" format to Date for sorting (e.g., "Jun 22" -> Date)
 function parsePeriodDate(period: string): Date {
@@ -112,7 +112,7 @@ export function LineChart({
               if (prevPoint?.y != null) {
                 const change = item.value - prevPoint.y;
                 const sign = change > 0 ? '+' : '';
-                html += ` <span style="color:${change > 0 ? '#15803d' : change < 0 ? '#b91c1c' : '#666'}">(${sign}${change.toFixed(1)}${diffSuffix})</span>`;
+                html += ` <span style="color:${change > 0 ? NHS_COLORS.green : change < 0 ? NHS_COLORS.red : NHS_COLORS.midGrey}">(${sign}${change.toFixed(1)}${diffSuffix})</span>`;
               }
             }
             html += '<br/>';
@@ -123,7 +123,7 @@ export function LineChart({
         if (values.length === 2) {
           const gap = values[0] - values[1];
           const sign = gap > 0 ? '+' : '';
-          html += `<span style="color:#666">Gap: ${sign}${gap.toFixed(1)}${diffSuffix}</span>`;
+          html += `<span style="color:${NHS_COLORS.midGrey}">Gap: ${sign}${gap.toFixed(1)}${diffSuffix}</span>`;
         }
 
         return html;

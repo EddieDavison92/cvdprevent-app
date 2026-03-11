@@ -72,11 +72,11 @@ export function SparklineCard({ indicator, sectionColor, lowerIsBetter }: Sparkl
     >
       <div className={cn(
         'rounded-lg border bg-white p-3 transition-all',
-        'hover:shadow-sm hover:border-[#005EB8]/30',
+        'hover:shadow-sm hover:border-nhs-blue/30',
       )}>
         {/* Name + trend icon */}
         <div className="flex items-center justify-between gap-2 mb-2">
-          <span className="text-xs font-medium text-gray-700 truncate group-hover:text-[#005EB8]">
+          <span className="text-xs font-medium text-gray-700 truncate group-hover:text-nhs-blue">
             {cleanName(indicator.IndicatorShortName)}
           </span>
           {trendDirection === 'up' && (

@@ -3,6 +3,7 @@ import type {
   Indicator,
   IndicatorRawData,
   IndicatorRawDataResponse,
+  RawDataJSONItem,
   IndicatorResponse,
   IndicatorDataResponse,
   TimeSeriesByMetricResponse,
@@ -14,9 +15,30 @@ import type {
 
 export async function getIndicators(timePeriodId: number, systemLevelId: number): Promise<Indicator[]> {
   const response = await fetchApi<IndicatorResponse>(
-    `/indicator/list?timePeriodID=${timePeriodId}&systemLevelID=${systemLevelId}`
+    `/indicator/list?timePeriodID=${timePeriodId}&systemLevelID=${systemLevelId}`,
+    'indicatorList'
   );
   return response.indicatorList;
+}
+
+/** Map raw API fields to our normalised internal shape */
+function mapRawDataItem(raw: RawDataJSONItem): IndicatorRawData {
+  return {
+    IndicatorID: 0, // Not provided by rawDataJSON endpoint
+    AreaCode: raw.AreaCode,
+    AreaName: raw.AreaName,
+    TimePeriodID: 0, // Not provided by rawDataJSON endpoint
+    TimePeriodName: raw.TimePeriodName,
+    MetricCategoryTypeName: raw.MetricCategoryTypeName,
+    MetricCategoryName: raw.MetricCategoryName,
+    Numerator: raw.Numerator,
+    Denominator: raw.Denominator,
+    Value: raw.Value,
+    LowerCI: raw.LowerConfidenceLimit,
+    UpperCI: raw.UpperConfidenceLimit,
+    ComparedToEnglandValue: null,
+    ComparedToEnglandID: null,
+  };
 }
 
 export async function getIndicatorData(
@@ -25,9 +47,10 @@ export async function getIndicatorData(
   systemLevelId: number
 ): Promise<IndicatorRawData[]> {
   const response = await fetchApi<IndicatorRawDataResponse>(
-    `/indicator/${indicatorId}/rawDataJSON?timePeriodID=${timePeriodId}&systemLevelID=${systemLevelId}`
+    `/indicator/${indicatorId}/rawDataJSON?timePeriodID=${timePeriodId}&systemLevelID=${systemLevelId}`,
+    'indicatorRawData'
   );
-  return response.indicatorRawData;
+  return response.indicatorRawData.map(mapRawDataItem);
 }
 
 export function filterByCategory(
@@ -84,7 +107,8 @@ export async function getIndicatorDataForArea(
   areaId: number
 ): Promise<IndicatorDataResponse['indicatorData']> {
   const response = await fetchApi<IndicatorDataResponse>(
-    `/indicator/${indicatorId}/data?timePeriodID=${timePeriodId}&areaID=${areaId}`
+    `/indicator/${indicatorId}/data?timePeriodID=${timePeriodId}&areaID=${areaId}`,
+    'indicatorData'
   );
   return response.indicatorData;
 }
@@ -95,7 +119,8 @@ export async function getTimeSeriesByMetric(
   areaId: number
 ): Promise<TimeSeriesByMetricResponse['Data']> {
   const response = await fetchApi<TimeSeriesByMetricResponse>(
-    `/indicator/timeSeriesByMetric/${metricId}?areaID=${areaId}`
+    `/indicator/timeSeriesByMetric/${metricId}?areaID=${areaId}`,
+    'Data'
   );
   return response.Data;
 }
@@ -107,7 +132,8 @@ export async function getSiblingData(
   metricId: number
 ): Promise<SiblingDataResponse['siblingData']> {
   const response = await fetchApi<SiblingDataResponse>(
-    `/indicator/siblingData?timePeriodID=${timePeriodId}&areaID=${areaId}&metricID=${metricId}`
+    `/indicator/siblingData?timePeriodID=${timePeriodId}&areaID=${areaId}&metricID=${metricId}`,
+    'siblingData'
   );
   return response.siblingData;
 }
@@ -120,7 +146,7 @@ export async function getDataAvailability(
 ): Promise<DataAvailabilityResponse['DataAvailability']> {
   let url = `/dataAvailability?timePeriodID=${timePeriodId}&systemLevelID=${systemLevelId}`;
   if (indicatorId) url += `&indicatorID=${indicatorId}`;
-  const response = await fetchApi<DataAvailabilityResponse>(url);
+  const response = await fetchApi<DataAvailabilityResponse>(url, 'DataAvailability');
   return response.DataAvailability;
 }
 
@@ -130,7 +156,8 @@ export async function getAllIndicatorsForArea(
   areaId: number
 ): Promise<IndicatorWithData[]> {
   const response = await fetchApi<AllIndicatorsForAreaResponse>(
-    `/indicator?timePeriodID=${timePeriodId}&areaID=${areaId}`
+    `/indicator?timePeriodID=${timePeriodId}&areaID=${areaId}`,
+    'indicatorList'
   );
   return response.indicatorList;
 }
@@ -151,7 +178,7 @@ export async function getChildAreas(
     areaDetails: {
       ChildAreaList?: { AreaID: number; AreaCode: string; AreaName: string; SystemLevelID: number }[];
     };
-  }>(`/area/${areaId}/details?timePeriodID=${timePeriodId}`);
+  }>(`/area/${areaId}/details?timePeriodID=${timePeriodId}`, 'areaDetails');
   return response.areaDetails.ChildAreaList ?? [];
 }
 
@@ -162,7 +189,8 @@ export async function getChildData(
   metricId: number
 ): Promise<SiblingDataResponse['siblingData']> {
   const response = await fetchApi<{ childData: SiblingDataResponse['siblingData'] }>(
-    `/indicator/childData?timePeriodID=${timePeriodId}&areaID=${areaId}&metricID=${metricId}`
+    `/indicator/childData?timePeriodID=${timePeriodId}&areaID=${areaId}&metricID=${metricId}`,
+    'childData'
   );
   return response.childData;
 }

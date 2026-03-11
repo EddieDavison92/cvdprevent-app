@@ -2,12 +2,12 @@ import { fetchApi } from './client';
 import type { Area, AreaResponse, SystemLevel, SystemLevelResponse } from './types';
 
 export async function getSystemLevels(timePeriodId: number): Promise<SystemLevel[]> {
-  const response = await fetchApi<SystemLevelResponse>(`/area/systemLevel?timePeriodID=${timePeriodId}`);
+  const response = await fetchApi<SystemLevelResponse>(`/area/systemLevel?timePeriodID=${timePeriodId}`, 'systemLevels');
   return response.systemLevels;
 }
 
 export async function getAreas(timePeriodId: number, systemLevelId: number): Promise<Area[]> {
-  const response = await fetchApi<AreaResponse>(`/area?timePeriodID=${timePeriodId}&systemLevelID=${systemLevelId}`);
+  const response = await fetchApi<AreaResponse>(`/area?timePeriodID=${timePeriodId}&systemLevelID=${systemLevelId}`, 'areaList');
   return response.areaList;
 }
 

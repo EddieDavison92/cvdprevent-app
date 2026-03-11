@@ -231,7 +231,7 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
       data-index={globalIdx}
       className={cn(
         'flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors',
-        globalIdx === highlightedIndex ? 'bg-[#005EB8]/5 text-[#005EB8]' : 'text-gray-700 hover:bg-gray-50'
+        globalIdx === highlightedIndex ? 'bg-nhs-blue/5 text-nhs-blue' : 'text-gray-700 hover:bg-gray-50'
       )}
       onClick={result.action}
       onMouseEnter={() => setHighlightedIndex(globalIdx)}

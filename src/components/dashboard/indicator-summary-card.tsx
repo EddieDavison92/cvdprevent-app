@@ -45,7 +45,7 @@ export function IndicatorSummaryCard({
 
   return (
     <Link href={buildUrl(`/dashboard/${indicator.IndicatorID}`, searchParams)}>
-      <Card className="flex h-full min-h-[160px] flex-col transition-all hover:border-[#005EB8]/50 hover:shadow-md">
+      <Card className="flex h-full min-h-[160px] flex-col transition-all hover:border-nhs-blue/50 hover:shadow-md">
         {/* Title section - fixed height area */}
         <CardHeader className="flex-none pb-2">
           <div className="flex items-start justify-between gap-2">
@@ -70,7 +70,7 @@ export function IndicatorSummaryCard({
           ) : data?.Value !== null && data?.Value !== undefined ? (
             <>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-[#005EB8]">
+                <span className="text-2xl font-bold text-nhs-blue">
                   {formatValue(data.Value, indicator.FormatDisplayName)}
                 </span>
                 {TrendIcon && trend !== null && (
@@ -96,7 +96,7 @@ export function IndicatorSummaryCard({
           ) : (
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500">{indicator.FormatDisplayName}</span>
-              <ArrowRight className="h-4 w-4 text-[#005EB8]" />
+              <ArrowRight className="h-4 w-4 text-nhs-blue" />
             </div>
           )}
         </CardContent>

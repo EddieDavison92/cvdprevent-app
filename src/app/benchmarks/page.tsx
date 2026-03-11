@@ -36,8 +36,9 @@ import { DASHBOARD_SECTIONS, findSectionForIndicator, type DashboardSection } fr
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
 import { formatValue } from '@/lib/utils/format';
 import { cn } from '@/lib/utils';
+import { downloadCSV } from '@/lib/utils/csv';
 import {
-  ArrowUpDown, ArrowUp, ArrowDown, BarChart3, Info,
+  ArrowUpDown, ArrowUp, ArrowDown, BarChart3, Info, Download,
   Activity, SearchX, Pill, Target, ClipboardCheck, HeartPulse,
 } from 'lucide-react';
 import type { SectionType } from '@/lib/constants/indicator-sections';
@@ -362,6 +363,23 @@ export default function BenchmarksPage() {
   const isLoading = dataQueries.some(q => q.isLoading) || englandQueries.some(q => q.isLoading);
   const isPcn = levelId === SYSTEM_LEVELS.PCN;
 
+  const handleExportCSV = () => {
+    if (sortedAreas.length === 0 || availableIndicators.length === 0) return;
+    const rows = sortedAreas.map(area => {
+      const row: Record<string, unknown> = {
+        'Area': cleanAreaName(area.AreaName),
+        'Area Code': area.AreaCode,
+        'Score': Math.round(areaScores.get(area.AreaCode) ?? 0),
+      };
+      for (const ind of availableIndicators) {
+        row[ind.IndicatorCode] = matrix.get(area.AreaCode)?.get(ind.IndicatorID) ?? '';
+      }
+      return row;
+    });
+    const levelName = SYSTEM_LEVEL_NAMES[levelId]?.toLowerCase().replace(/\s+/g, '-') ?? 'areas';
+    downloadCSV(rows, `benchmarks-${levelName}`);
+  };
+
   const SortIcon = ({ column }: { column: string }) => {
     if (sort.column !== column) return <ArrowUpDown className="h-3 w-3 opacity-40" />;
     return sort.direction === 'asc'
@@ -373,16 +391,16 @@ export default function BenchmarksPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex-1 bg-[#E8EDEE]/30 p-6">
+      <main className="flex-1 bg-nhs-pale-grey/30 p-6">
         <div className="mx-auto max-w-[1400px]">
           {/* Page header */}
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#005EB8]/10">
-                <BarChart3 className="h-5 w-5 text-[#005EB8]" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-nhs-blue/10">
+                <BarChart3 className="h-5 w-5 text-nhs-blue" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-[#003087]">Benchmarks</h1>
+                <h1 className="text-2xl font-bold text-nhs-dark-blue">Benchmarks</h1>
                 <p className="text-sm text-gray-500">
                   Compare areas across indicators. Areas are ranked against each other — the score shows how consistently an area places near the top (100) or bottom (0) of the group, accounting for polarity.
                 </p>
@@ -429,7 +447,7 @@ export default function BenchmarksPage() {
               onClick={() => setSectionFilter(null)}
               className={cn(
                 'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-                !sectionFilter ? 'bg-[#003087] text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'
+                !sectionFilter ? 'bg-nhs-dark-blue text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'
               )}
             >
               <BarChart3 className="h-3 w-3" />
@@ -444,7 +462,7 @@ export default function BenchmarksPage() {
                   onClick={() => setSectionFilter(active ? null : s.id)}
                   className={cn(
                     'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-                    active ? 'bg-[#003087] text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'
+                    active ? 'bg-nhs-dark-blue text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'
                   )}
                 >
                   <Icon className="h-3 w-3" />
@@ -452,6 +470,7 @@ export default function BenchmarksPage() {
                 </button>
               );
             })}
+
           </div>
 
           {/* PCN scoping message */}
@@ -509,7 +528,7 @@ export default function BenchmarksPage() {
                 {parentAreaId && (
                   <button
                     onClick={() => setCompareToParent(!compareToParent)}
-                    className="ml-auto text-[11px] text-[#005EB8] hover:underline"
+                    className="ml-auto text-[11px] text-nhs-blue hover:underline"
                   >
                     Compare to {compareToParent ? 'England' : cleanAreaName(selectedParent?.AreaName ?? '')} instead
                   </button>
@@ -651,10 +670,20 @@ export default function BenchmarksPage() {
                   </TableBody>
                 </Table>
               </TooltipProvider>
-              {isLoading && (
+              {isLoading ? (
                 <p className="px-4 py-2 text-[11px] text-gray-400">
                   Loading data{(levelId === SYSTEM_LEVELS.PCN || levelId === SYSTEM_LEVELS.SUB_ICB) ? ' — larger datasets may take a moment on first load' : ''}...
                 </p>
+              ) : sortedAreas.length > 0 && (
+                <div className="flex justify-end px-4 py-2">
+                  <button
+                    onClick={handleExportCSV}
+                    className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <Download className="h-3 w-3" />
+                    Export CSV
+                  </button>
+                </div>
               )}
             </div>
           )}

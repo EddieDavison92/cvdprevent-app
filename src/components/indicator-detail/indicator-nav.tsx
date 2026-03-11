@@ -117,14 +117,14 @@ export function IndicatorNav({ indicators, currentId, dataByIndicator }: Indicat
                       className={cn(
                         'flex shrink-0 flex-col rounded-lg border px-4 py-2 transition-all',
                         isActive
-                          ? 'border-[#005EB8] bg-[#005EB8] text-white'
-                          : 'border-gray-200 bg-white hover:border-[#005EB8]/50 hover:shadow-sm'
+                          ? 'border-nhs-blue bg-nhs-blue text-white'
+                          : 'border-gray-200 bg-white hover:border-nhs-blue/50 hover:shadow-sm'
                       )}
                     >
                       <span className={cn('text-xs font-medium', isActive ? 'text-white/80' : 'text-gray-500')}>
                         {indicator.IndicatorCode}
                       </span>
-                      <span className={cn('text-sm font-semibold', isActive ? 'text-white' : 'text-[#005EB8]')}>
+                      <span className={cn('text-sm font-semibold', isActive ? 'text-white' : 'text-nhs-blue')}>
                         {data?.Value !== null && data?.Value !== undefined
                           ? formatValue(data.Value, indicator.FormatDisplayName)
                           : '—'}

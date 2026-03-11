@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, useCallback, useMemo, type ReactNode } from 'react';
+import { Download } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -9,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { downloadCSV } from '@/lib/utils/csv';
 
 export interface TableColumn {
   key: string;
@@ -18,16 +20,75 @@ export interface TableColumn {
 }
 
 export interface ChartTableToggleProps {
-  /** The chart component to render in chart mode */
   chart: ReactNode;
-  /** Data for the table view */
   tableData: Record<string, unknown>[];
-  /** Column definitions for the table */
   columns: TableColumn[];
-  /** Initial view mode */
   defaultView?: 'chart' | 'table';
-  /** Optional class name for the container */
   className?: string;
+  filename?: string;
+  /** Controlled mode: pass viewMode from parent (use with useChartTableActions) */
+  viewMode?: 'chart' | 'table';
+}
+
+/** Hook to manage chart/table state + export. Place the returned `actions` element wherever you want. */
+export function useChartTableActions(opts: {
+  tableData: Record<string, unknown>[];
+  columns: TableColumn[];
+  filename?: string;
+}) {
+  const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
+
+  const toggleView = useCallback(() => {
+    setViewMode((prev) => (prev === 'chart' ? 'table' : 'chart'));
+  }, []);
+
+  const handleExportCSV = useCallback(() => {
+    if (!opts.tableData.length) return;
+    const rows = opts.tableData.map(row => {
+      const out: Record<string, unknown> = {};
+      for (const col of opts.columns) {
+        const raw = row[col.key];
+        out[col.header] = col.format ? col.format(raw) : raw;
+      }
+      return out;
+    });
+    downloadCSV(rows, opts.filename ?? 'data');
+  }, [opts.tableData, opts.columns, opts.filename]);
+
+  const actions = useMemo(() => (
+    <div className="flex items-center gap-3">
+      <button
+        onClick={handleExportCSV}
+        className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        title="Download as CSV"
+      >
+        <Download className="h-3 w-3" />
+        CSV
+      </button>
+      <button
+        onClick={toggleView}
+        className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        {viewMode === 'chart' ? 'View as table' : 'View as chart'}
+      </button>
+    </div>
+  ), [handleExportCSV, toggleView, viewMode]);
+
+  return { viewMode, actions, handleExportCSV };
+}
+
+/** Standalone CSV button for sections that don't use ChartTableToggle (e.g. map). */
+export function CSVButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+      title="Download as CSV"
+    >
+      <Download className="h-3 w-3" />
+      CSV
+    </button>
+  );
 }
 
 export function ChartTableToggle({
@@ -36,26 +97,28 @@ export function ChartTableToggle({
   columns,
   defaultView = 'chart',
   className = '',
+  viewMode: controlledViewMode,
 }: ChartTableToggleProps) {
-  const [viewMode, setViewMode] = useState<'chart' | 'table'>(defaultView);
+  const [internalViewMode, setInternalViewMode] = useState<'chart' | 'table'>(defaultView);
+  const viewMode = controlledViewMode ?? internalViewMode;
 
-  const toggleView = () => {
-    setViewMode((prev) => (prev === 'chart' ? 'table' : 'chart'));
-  };
+  // Uncontrolled fallback (backwards compat — not used by refactored sections)
+  const isUncontrolled = controlledViewMode === undefined;
 
   return (
     <div className={className}>
-      {/* Toggle button - top right, grey text */}
-      <div className="flex justify-end mb-2">
-        <button
-          onClick={toggleView}
-          className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          {viewMode === 'chart' ? 'View as table' : 'View as chart'}
-        </button>
-      </div>
+      {/* Uncontrolled mode: show toggle inline */}
+      {isUncontrolled && (
+        <div className="flex justify-end mb-2">
+          <button
+            onClick={() => setInternalViewMode(prev => prev === 'chart' ? 'table' : 'chart')}
+            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            {viewMode === 'chart' ? 'View as table' : 'View as chart'}
+          </button>
+        </div>
+      )}
 
-      {/* Content */}
       {viewMode === 'chart' ? (
         chart
       ) : (

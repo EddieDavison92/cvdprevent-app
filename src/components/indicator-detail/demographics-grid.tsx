@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DemographicChart } from '@/components/charts/demographic-chart';
 import { BarChart } from '@/components/charts/bar-chart';
-import { ChartTableToggle, type TableColumn } from '@/components/charts';
+import { ChartTableToggle, useChartTableActions, type TableColumn } from '@/components/charts';
 import type { Indicator, IndicatorRawData } from '@/lib/api/types';
 import { getIndicatorCategories } from '@/lib/api/indicators';
 import { formatValue } from '@/lib/utils/format';
@@ -111,8 +111,8 @@ export function DemographicsGrid({ indicator, areaData, baselineData, baselineNa
     return (
       <div className="grid gap-4 md:grid-cols-2">
         {DEMOGRAPHICS.slice(0, 4).map((demo) => (
-          <Card key={demo.type}>
-            <CardHeader className="pb-2">
+          <Card key={demo.type} className="gap-2 py-4">
+            <CardHeader className="gap-1">
               <CardTitle className="text-base">{demo.label}</CardTitle>
             </CardHeader>
             <CardContent>
@@ -148,79 +148,121 @@ export function DemographicsGrid({ indicator, areaData, baselineData, baselineNa
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        {visibleDemographics.map(({ demo, chartData }) => {
-          const simpleChartData = chartData.map((d) => ({
-            name: d.name,
-            value: d.orgValue,
-            numerator: d.orgNumerator,
-            denominator: d.orgDenominator,
-          }));
-
-          // Table data and columns for this demographic
-          const tableData = chartData.map((d) => ({
-            category: d.name,
-            value: d.orgValue,
-            numerator: d.orgNumerator,
-            denominator: d.orgDenominator,
-            baselineValue: d.baselineValue,
-          }));
-
-          const tableColumns: TableColumn[] = [
-            { key: 'category', header: demo.label.replace('By ', ''), align: 'left' },
-            { key: 'value', header: displayAreaName, align: 'right', format: (v) => v != null ? formatFn(v as number) : '—' },
-            { key: 'numerator', header: 'Count', align: 'right', format: (v) => v != null ? (v as number).toLocaleString() : '—' },
-            { key: 'denominator', header: 'Population', align: 'right', format: (v) => v != null ? (v as number).toLocaleString() : '—' },
-          ];
-          if (!isEngland) {
-            tableColumns.push({
-              key: 'baselineValue',
-              header: baselineName,
-              align: 'right',
-              format: (v) => v != null ? formatFn(v as number) : '—',
-            });
-          }
-
-          return (
-            <Card key={demo.type}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">{demo.label}</CardTitle>
-                <CardDescription className="text-xs">
-                  {indicator.IndicatorShortName}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {chartData.length === 0 ? (
-                  <div className="flex h-[150px] items-center justify-center text-sm text-gray-500">
-                    No data available
-                  </div>
-                ) : (
-                  <ChartTableToggle
-                    chart={
-                      isEngland ? (
-                        <BarChart
-                          data={simpleChartData}
-                          formatValue={formatFn}
-                          height={200}
-                        />
-                      ) : (
-                        <DemographicChart
-                          data={chartData}
-                          orgName={displayAreaName}
-                          baselineName={baselineName}
-                          formatValue={formatFn}
-                          height={200}
-                        />
-                      )
-                    }
-                    tableData={tableData}
-                    columns={tableColumns}
-                  />
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+        {visibleDemographics.map(({ demo, chartData }) => (
+          <DemographicCard
+            key={demo.type}
+            demo={demo}
+            chartData={chartData}
+            indicator={indicator}
+            displayAreaName={displayAreaName}
+            baselineName={baselineName}
+            isEngland={isEngland}
+            formatFn={formatFn}
+          />
+        ))}
       </div>
     </div>
+  );
+}
+
+/** Individual demographic card — extracted so each can use the useChartTableActions hook */
+function DemographicCard({
+  demo,
+  chartData,
+  indicator,
+  displayAreaName,
+  baselineName,
+  isEngland,
+  formatFn,
+}: {
+  demo: typeof DEMOGRAPHICS[0];
+  chartData: { name: string; orgValue: number | null; baselineValue: number | null; orgNumerator: number | null; orgDenominator: number | null; baselineNumerator: number | null; baselineDenominator: number | null }[];
+  indicator: Indicator;
+  displayAreaName: string;
+  baselineName: string;
+  isEngland?: boolean;
+  formatFn: (v: number) => string;
+}) {
+  const simpleChartData = useMemo(() => chartData.map((d) => ({
+    name: d.name,
+    value: d.orgValue,
+    numerator: d.orgNumerator,
+    denominator: d.orgDenominator,
+  })), [chartData]);
+
+  const tableData = useMemo(() => chartData.map((d) => ({
+    category: d.name,
+    value: d.orgValue,
+    numerator: d.orgNumerator,
+    denominator: d.orgDenominator,
+    baselineValue: d.baselineValue,
+  })), [chartData]);
+
+  const tableColumns: TableColumn[] = useMemo(() => {
+    const cols: TableColumn[] = [
+      { key: 'category', header: demo.label.replace('By ', ''), align: 'left' },
+      { key: 'value', header: displayAreaName, align: 'right', format: (v) => v != null ? formatFn(v as number) : '—' },
+      { key: 'numerator', header: 'Count', align: 'right', format: (v) => v != null ? (v as number).toLocaleString() : '—' },
+      { key: 'denominator', header: 'Population', align: 'right', format: (v) => v != null ? (v as number).toLocaleString() : '—' },
+    ];
+    if (!isEngland) {
+      cols.push({
+        key: 'baselineValue',
+        header: baselineName,
+        align: 'right',
+        format: (v) => v != null ? formatFn(v as number) : '—',
+      });
+    }
+    return cols;
+  }, [demo.label, displayAreaName, baselineName, isEngland, formatFn]);
+
+  const { viewMode, actions } = useChartTableActions({
+    tableData,
+    columns: tableColumns,
+    filename: `${indicator.IndicatorCode}-${demo.type.replace(/\s+/g, '-').toLowerCase()}`,
+  });
+
+  return (
+    <Card className="gap-2 py-4">
+      <CardHeader className="gap-1">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">{demo.label}</CardTitle>
+          {chartData.length > 0 && actions}
+        </div>
+        <CardDescription className="text-xs">
+          {indicator.IndicatorShortName}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {chartData.length === 0 ? (
+          <div className="flex h-[150px] items-center justify-center text-sm text-gray-500">
+            No data available
+          </div>
+        ) : (
+          <ChartTableToggle
+            chart={
+              isEngland ? (
+                <BarChart
+                  data={simpleChartData}
+                  formatValue={formatFn}
+                  height={200}
+                />
+              ) : (
+                <DemographicChart
+                  data={chartData}
+                  orgName={displayAreaName}
+                  baselineName={baselineName}
+                  formatValue={formatFn}
+                  height={200}
+                />
+              )
+            }
+            tableData={tableData}
+            columns={tableColumns}
+            viewMode={viewMode}
+          />
+        )}
+      </CardContent>
+    </Card>
   );
 }

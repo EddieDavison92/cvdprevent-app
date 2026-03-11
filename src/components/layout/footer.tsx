@@ -4,7 +4,7 @@ export function Footer() {
       Unofficial CVDPREVENT data explorer. Built by{' '}
       <a
         href="mailto:eddie.davison@nhs.net"
-        className="text-[#005EB8] hover:underline"
+        className="text-nhs-blue hover:underline"
       >
         Eddie Davison
       </a>
@@ -13,7 +13,7 @@ export function Footer() {
         href="https://www.cvdprevent.nhs.uk"
         target="_blank"
         rel="noopener noreferrer"
-        className="text-[#005EB8] hover:underline"
+        className="text-nhs-blue hover:underline"
       >
         CVDPREVENT
       </a>{' '}
@@ -22,7 +22,7 @@ export function Footer() {
         href="https://github.com/EddieDavison92/cvdprevent-app"
         target="_blank"
         rel="noopener noreferrer"
-        className="text-[#005EB8] hover:underline"
+        className="text-nhs-blue hover:underline"
       >
         GitHub
       </a>

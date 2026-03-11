@@ -20,11 +20,11 @@ export function OrganisationHeader() {
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#005EB8]/10">
-          <Building2 className="h-6 w-6 text-[#005EB8]" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-nhs-blue/10">
+          <Building2 className="h-6 w-6 text-nhs-blue" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-[#003087]">{displayName}</h1>
+          <h1 className="text-2xl font-bold text-nhs-dark-blue">{displayName}</h1>
           <p className="text-sm text-gray-500">
             {isEngland ? 'National Overview' : SYSTEM_LEVEL_NAMES[organisation.SystemLevelID]}
           </p>

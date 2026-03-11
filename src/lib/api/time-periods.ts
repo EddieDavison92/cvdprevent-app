@@ -2,7 +2,7 @@ import { fetchApi } from './client';
 import type { TimePeriod, TimePeriodResponse } from './types';
 
 export async function getTimePeriods(): Promise<TimePeriod[]> {
-  const response = await fetchApi<TimePeriodResponse>('/timePeriod');
+  const response = await fetchApi<TimePeriodResponse>('/timePeriod', 'timePeriodList');
   return response.timePeriodList;
 }
 
