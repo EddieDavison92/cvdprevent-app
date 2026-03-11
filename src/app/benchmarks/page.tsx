@@ -468,6 +468,14 @@ export default function BenchmarksPage() {
             </div>
           )}
 
+          {/* PCN loading hint */}
+          {isPcn && parentAreaId && isLoading && (
+            <div className="mb-3 flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700">
+              <Info className="h-3.5 w-3.5 shrink-0" />
+              PCN data covers all areas nationally — first load may take a moment. Subsequent views will be instant.
+            </div>
+          )}
+
           {/* Unavailable indicators notice */}
           {unavailableCount > 0 && !isLoading && (!isPcn || parentAreaId) && (
             <div className="mb-3 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
