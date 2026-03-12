@@ -2,7 +2,8 @@
 
 import { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ChartTableToggle, useChartTableActions, type TableColumn } from '@/components/charts';
 import { nhsEChartsTheme, defaultChartOptions } from '@/components/charts/chart-theme';
 import { NHS_COLORS } from '@/lib/constants/colors';
 import { DEPRIVATION_LABELS } from '@/lib/api/indicators';
@@ -23,6 +24,10 @@ interface PopulationProfileProps {
   baselineName?: string;
   isEngland?: boolean;
   isLoading?: boolean;
+  indicatorName?: string;
+  indicatorCode?: string;
+  areaCode?: string;
+  timePeriod?: string;
 }
 
 interface CategoryShare {
@@ -192,6 +197,99 @@ function ProfileChart({
   );
 }
 
+/** Individual profile card — extracted so each can use the useChartTableActions hook */
+function ProfileCard({
+  demo,
+  shares,
+  areaName,
+  baselineName,
+  isEngland,
+  indicatorName,
+  indicatorCode,
+  areaCode,
+  timePeriod,
+}: {
+  demo: typeof DEMOGRAPHICS[0];
+  shares: CategoryShare[];
+  areaName: string;
+  baselineName: string;
+  isEngland?: boolean;
+  indicatorName?: string;
+  indicatorCode?: string;
+  areaCode?: string;
+  timePeriod?: string;
+}) {
+  const fmtPct = (v: unknown) => v != null ? `${(v as number).toFixed(1)}%` : '—';
+  const fmtNum = (v: unknown) => v != null ? (v as number).toLocaleString() : '—';
+
+  const tableData = useMemo(() => shares.map((d) => ({
+    category: DEPRIVATION_LABELS[d.name]?.full ?? d.name,
+    areaShare: d.areaShare,
+    areaDenominator: d.areaDenominator,
+    ...(isEngland ? {} : {
+      baselineShare: d.baselineShare,
+      baselineDenominator: d.baselineDenominator,
+    }),
+  })), [shares, isEngland]);
+
+  const tableColumns: TableColumn[] = useMemo(() => {
+    const cols: TableColumn[] = [
+      { key: 'category', header: demo.label.replace('By ', ''), align: 'left' },
+      { key: 'areaShare', header: `${areaName} %`, align: 'right', format: fmtPct },
+      { key: 'areaDenominator', header: `${areaName} Population`, align: 'right', format: fmtNum },
+    ];
+    if (!isEngland) {
+      cols.push(
+        { key: 'baselineShare', header: `${baselineName} %`, align: 'right', format: fmtPct },
+        { key: 'baselineDenominator', header: `${baselineName} Population`, align: 'right', format: fmtNum },
+      );
+    }
+    return cols;
+  }, [demo.label, areaName, baselineName, isEngland]);
+
+  const periodSlug = timePeriod?.replace(/\s+/g, '-') ?? '';
+  const { viewMode, actions } = useChartTableActions({
+    tableData,
+    columns: tableColumns,
+    filename: `population-profile-${demo.type.replace(/\s+/g, '-').toLowerCase()}${areaCode ? `-${areaCode}` : ''}${periodSlug ? `-${periodSlug}` : ''}`,
+    metadata: [
+      ...(indicatorName && indicatorCode ? [['Indicator', `${indicatorName} (${indicatorCode})`] as [string, string]] : []),
+      ['Area', areaCode ? `${areaName} (${areaCode})` : areaName],
+      ['Breakdown', `Population Profile — ${demo.label}`],
+      ...(timePeriod ? [['Period', timePeriod] as [string, string]] : []),
+    ],
+  });
+
+  return (
+    <Card className="gap-2 py-4">
+      <CardHeader className="gap-1">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">{demo.label}</CardTitle>
+          {shares.length > 0 && actions}
+        </div>
+        {indicatorName && (
+          <CardDescription className="text-xs">{indicatorName}</CardDescription>
+        )}
+      </CardHeader>
+      <CardContent>
+        <ChartTableToggle
+          chart={
+            <ProfileChart
+              data={shares}
+              areaName={areaName}
+              baselineName={baselineName}
+              isEngland={isEngland}
+            />
+          }
+          tableData={tableData}
+          columns={tableColumns}
+          viewMode={viewMode}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
 export function PopulationProfile({
   areaData,
   baselineData,
@@ -199,6 +297,10 @@ export function PopulationProfile({
   baselineName = 'England',
   isEngland,
   isLoading,
+  indicatorName,
+  indicatorCode,
+  areaCode,
+  timePeriod,
 }: PopulationProfileProps) {
   const categories = getIndicatorCategories();
 
@@ -231,24 +333,33 @@ export function PopulationProfile({
     );
   }
 
-  if (profiles.length === 0) return null;
+  if (profiles.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <p className="text-center text-sm text-gray-500">
+            Population profile data is not available at this level.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {profiles.map(({ demo, shares }) => (
-        <Card key={demo.type} className="gap-2 py-4">
-          <CardHeader className="gap-1">
-            <CardTitle className="text-base">{demo.label}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ProfileChart
-              data={shares}
-              areaName={areaName}
-              baselineName={baselineName}
-              isEngland={isEngland}
-            />
-          </CardContent>
-        </Card>
+        <ProfileCard
+          key={demo.type}
+          demo={demo}
+          shares={shares}
+          areaName={areaName}
+          baselineName={baselineName}
+          isEngland={isEngland}
+          indicatorName={indicatorName}
+          indicatorCode={indicatorCode}
+          areaCode={areaCode}
+          timePeriod={timePeriod}
+        />
       ))}
     </div>
   );

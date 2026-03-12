@@ -694,6 +694,10 @@ export default function IndicatorDetailPage() {
                 baselineName={baselineName}
                 isEngland={isEngland}
                 isLoading={isLoadingArea || isLoadingBaseline}
+                indicatorName={indicator.IndicatorShortName}
+                indicatorCode={indicator.IndicatorCode}
+                areaCode={organisation?.AreaCode}
+                timePeriod={formatTimePeriod(timePeriodLabel)}
               />
             </div>
           </div>

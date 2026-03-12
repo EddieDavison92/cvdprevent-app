@@ -706,6 +706,10 @@ export default function IndicatorExplorePage() {
                 baselineName="England"
                 isEngland={!selectedArea}
                 isLoading={false}
+                indicatorName={indicator.IndicatorShortName}
+                indicatorCode={indicator.IndicatorCode}
+                areaCode={selectedAreaCode}
+                timePeriod={periodLabel}
               />
             </div>
           )}
