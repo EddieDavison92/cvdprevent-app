@@ -25,6 +25,7 @@ import {
   TrendSection,
   PeerSection,
   DemographicsGrid,
+  PopulationProfile,
 } from '@/components/indicator-detail';
 import { BaselineSelector } from '@/components/dashboard';
 import { useOrganisation } from '@/providers/organisation-context';
@@ -667,7 +668,8 @@ export default function IndicatorDetailPage() {
 
             {/* Demographics Grid */}
             <div>
-              <h2 className="mb-4 text-lg font-semibold text-nhs-dark-blue">Demographic Breakdowns</h2>
+              <h2 className="mb-1 text-lg font-semibold text-nhs-dark-blue">Demographic Breakdowns</h2>
+              <p className="mb-4 text-sm text-gray-500">How indicator outcomes vary across demographic groups</p>
               <DemographicsGrid
                 indicator={indicatorForComponents}
                 areaData={areaAllData}
@@ -676,6 +678,20 @@ export default function IndicatorDetailPage() {
                 areaName={areaName}
                 areaCode={organisation?.AreaCode}
                 timePeriod={formatTimePeriod(timePeriodLabel)}
+                isEngland={isEngland}
+                isLoading={isLoadingArea || isLoadingBaseline}
+              />
+            </div>
+
+            {/* Population Profile */}
+            <div>
+              <h2 className="mb-1 text-lg font-semibold text-nhs-dark-blue">Population Profile</h2>
+              <p className="mb-4 text-sm text-gray-500">How the eligible population is distributed across demographic groups</p>
+              <PopulationProfile
+                areaData={areaAllData}
+                baselineData={baselineAllData}
+                areaName={areaName}
+                baselineName={baselineName}
                 isEngland={isEngland}
                 isLoading={isLoadingArea || isLoadingBaseline}
               />

@@ -8,6 +8,7 @@ import { NHS_COLORS } from '@/lib/constants/colors';
 
 interface BarChartData {
   name: string;
+  tooltipName?: string;
   value: number | null;
   lowerCI?: number | null;
   upperCI?: number | null;
@@ -112,7 +113,7 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
         const p = (params as { name: string; value: number; dataIndex: number }[])[0];
         if (!p) return '';
         const item = validData[useHorizontal ? validData.length - 1 - p.dataIndex : p.dataIndex];
-        let html = `<strong>${p.name}</strong><br/>`;
+        let html = `<strong>${item?.tooltipName ?? p.name}</strong><br/>`;
         html += `Value: ${formatValue(p.value)}`;
         if (item?.numerator != null && item?.denominator != null) {
           html += ` <span style="color:#666">(${item.numerator.toLocaleString()}/${item.denominator.toLocaleString()})</span>`;

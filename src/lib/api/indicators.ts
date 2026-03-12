@@ -96,6 +96,15 @@ export function getIndicatorCategories(): { type: string; categories: string[] }
   ];
 }
 
+/** Friendly labels for deprivation quintile display */
+export const DEPRIVATION_LABELS: Record<string, { short: string; full: string }> = {
+  '1 - most deprived': { short: '1 (most deprived)', full: '1 - Most Deprived' },
+  '2': { short: '2', full: '2 - Second Most Deprived' },
+  '3': { short: '3', full: '3 - Middle' },
+  '4': { short: '4', full: '4 - Second Least Deprived' },
+  '5 - least deprived': { short: '5 (least deprived)', full: '5 - Least Deprived' },
+};
+
 export function isOutcomeIndicator(indicator: Indicator): boolean {
   return indicator.IndicatorCode.includes('MORT') || indicator.IndicatorCode.includes('ADMN');
 }

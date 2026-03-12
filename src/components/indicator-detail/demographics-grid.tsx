@@ -6,7 +6,7 @@ import { DemographicChart } from '@/components/charts/demographic-chart';
 import { BarChart } from '@/components/charts/bar-chart';
 import { ChartTableToggle, useChartTableActions, type TableColumn } from '@/components/charts';
 import type { Indicator, IndicatorRawData } from '@/lib/api/types';
-import { getIndicatorCategories } from '@/lib/api/indicators';
+import { getIndicatorCategories, DEPRIVATION_LABELS } from '@/lib/api/indicators';
 import { formatValue } from '@/lib/utils/format';
 interface DemographicsGridProps {
   indicator: Indicator;
@@ -192,14 +192,15 @@ function DemographicCard({
   formatFn: (v: number) => string;
 }) {
   const simpleChartData = useMemo(() => chartData.map((d) => ({
-    name: d.name,
+    name: DEPRIVATION_LABELS[d.name]?.short ?? d.name,
+    tooltipName: DEPRIVATION_LABELS[d.name]?.full,
     value: d.orgValue,
     numerator: d.orgNumerator,
     denominator: d.orgDenominator,
   })), [chartData]);
 
   const tableData = useMemo(() => chartData.map((d) => ({
-    category: d.name,
+    category: DEPRIVATION_LABELS[d.name]?.full ?? d.name,
     value: d.orgValue,
     numerator: d.orgNumerator,
     denominator: d.orgDenominator,

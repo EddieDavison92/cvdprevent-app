@@ -10,6 +10,7 @@ import { BarChart } from '@/components/charts/bar-chart';
 import { LineChart } from '@/components/charts/line-chart';
 import { ChartTableToggle, useChartTableActions, type TableColumn } from '@/components/charts';
 import { DemographicsGrid } from '@/components/indicator-detail/demographics-grid';
+import { PopulationProfile } from '@/components/indicator-detail/population-profile';
 import { IndicatorNav } from '@/components/indicator-detail/indicator-nav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -673,9 +674,10 @@ export default function IndicatorExplorePage() {
           {/* Demographics */}
           {indicatorForComponents && areaDemo.length > 0 && (
             <div className="mb-6">
-              <h2 className="mb-4 text-lg font-semibold text-nhs-dark-blue">
+              <h2 className="mb-1 text-lg font-semibold text-nhs-dark-blue">
                 Demographic Breakdowns — {selectedArea ? cleanAreaName(selectedArea.AreaName) : 'England'}
               </h2>
+              <p className="mb-4 text-sm text-gray-500">How indicator outcomes vary across demographic groups</p>
               <DemographicsGrid
                 indicator={indicatorForComponents}
                 areaData={areaDemo}
@@ -684,6 +686,24 @@ export default function IndicatorExplorePage() {
                 areaName={selectedArea ? cleanAreaName(selectedArea.AreaName) : 'England'}
                 areaCode={selectedArea?.AreaCode}
                 timePeriod={periodLabel}
+                isEngland={!selectedArea}
+                isLoading={false}
+              />
+            </div>
+          )}
+
+          {/* Population Profile */}
+          {areaDemo.length > 0 && (
+            <div className="mb-6">
+              <h2 className="mb-1 text-lg font-semibold text-nhs-dark-blue">
+                Population Profile — {selectedArea ? cleanAreaName(selectedArea.AreaName) : 'England'}
+              </h2>
+              <p className="mb-4 text-sm text-gray-500">How the eligible population is distributed across demographic groups</p>
+              <PopulationProfile
+                areaData={areaDemo}
+                baselineData={englandDemo}
+                areaName={selectedArea ? cleanAreaName(selectedArea.AreaName) : 'England'}
+                baselineName="England"
                 isEngland={!selectedArea}
                 isLoading={false}
               />
