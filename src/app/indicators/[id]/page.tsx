@@ -316,10 +316,18 @@ export default function IndicatorExplorePage() {
     [chartData, formatFn],
   );
 
+  const activePeriod = isOutcome ? outPeriod : stdPeriod;
+  const periodLabel = activePeriod ? formatTimePeriod(activePeriod.TimePeriodName) : '';
+  const periodSlug = periodLabel.replace(/\s+/g, '-');
   const { viewMode: chartViewMode, actions: chartActions } = useChartTableActions({
     tableData,
     columns: tableColumns,
-    filename: `${indicator?.IndicatorCode ?? 'indicator'}-${SYSTEM_LEVEL_NAMES[levelId]?.toLowerCase().replace(/\s+/g, '-') ?? 'areas'}`,
+    filename: `${indicator?.IndicatorCode ?? 'indicator'}-${SYSTEM_LEVEL_NAMES[levelId]?.toLowerCase().replace(/\s+/g, '-') ?? 'areas'}${periodSlug ? `-${periodSlug}` : ''}`,
+    metadata: indicator ? [
+      ['Indicator', `${indicator.IndicatorShortName} (${indicator.IndicatorCode})`],
+      ['Area Type', SYSTEM_LEVEL_NAMES[levelId] ?? 'Unknown'],
+      ...(periodLabel ? [['Period', periodLabel] as [string, string]] : []),
+    ] : undefined,
   });
 
   // --- Selected area ---
@@ -377,15 +385,18 @@ export default function IndicatorExplorePage() {
     return series;
   }, [englandTrend, selectedAreaTrend, selectedArea]);
 
-  // Selected area demographics
+  // Area demographics — show selected area vs England, or England alone
   const { areaDemo, englandDemo } = useMemo(() => {
-    if (!selectedAreaCode || !areaLevelData || !indicator) {
-      return { areaDemo: [], englandDemo: [] };
+    if (!indicator) return { areaDemo: [], englandDemo: [] };
+    const engData = indicator.Categories.map(cat => convertToRawData(indicator, cat, 'E92000001'));
+    if (selectedAreaCode && areaLevelData) {
+      return {
+        areaDemo: areaLevelData.filter(d => d.AreaCode === selectedAreaCode),
+        englandDemo: engData,
+      };
     }
-    return {
-      areaDemo: areaLevelData.filter(d => d.AreaCode === selectedAreaCode),
-      englandDemo: indicator.Categories.map(cat => convertToRawData(indicator, cat, 'E92000001')),
-    };
+    // No area selected — show England demographics
+    return { areaDemo: engData, englandDemo: engData };
   }, [selectedAreaCode, areaLevelData, indicator]);
 
   // Convert for DemographicsGrid
@@ -659,18 +670,21 @@ export default function IndicatorExplorePage() {
             </Card>
           )}
 
-          {/* Demographics (when area is selected) */}
-          {selectedArea && indicatorForComponents && areaDemo.length > 0 && (
+          {/* Demographics */}
+          {indicatorForComponents && areaDemo.length > 0 && (
             <div className="mb-6">
               <h2 className="mb-4 text-lg font-semibold text-nhs-dark-blue">
-                Demographic Breakdowns — {cleanAreaName(selectedArea.AreaName)}
+                Demographic Breakdowns — {selectedArea ? cleanAreaName(selectedArea.AreaName) : 'England'}
               </h2>
               <DemographicsGrid
                 indicator={indicatorForComponents}
                 areaData={areaDemo}
                 baselineData={englandDemo}
                 baselineName="England"
-                areaName={cleanAreaName(selectedArea.AreaName)}
+                areaName={selectedArea ? cleanAreaName(selectedArea.AreaName) : 'England'}
+                areaCode={selectedArea?.AreaCode}
+                timePeriod={periodLabel}
+                isEngland={!selectedArea}
                 isLoading={false}
               />
             </div>

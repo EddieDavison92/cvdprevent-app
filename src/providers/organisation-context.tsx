@@ -118,11 +118,11 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
         // Invalid stored data, ignore
       }
       setIsLoading(false);
-    } else if (hasUrlArea && !isLoadingUrlArea && !urlArea) {
+    } else if (hasUrlArea && !isLoadingUrlArea && !urlArea && !!latestTimePeriodId) {
       // URL area fetch completed but returned null (invalid area ID)
       setIsLoading(false);
     }
-  }, [urlArea, hasUrlArea, isLoadingUrlArea]);
+  }, [urlArea, hasUrlArea, isLoadingUrlArea, latestTimePeriodId]);
 
   // Initialize baseline from localStorage
   useEffect(() => {

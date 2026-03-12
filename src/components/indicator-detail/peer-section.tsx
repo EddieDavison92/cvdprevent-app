@@ -33,6 +33,7 @@ interface PeerSectionProps {
   isLoadingPeers?: boolean;
   isLoadingChildren?: boolean;
   isLoadingNational?: boolean;
+  timePeriod?: string;
 }
 
 type ViewMode = 'peers' | 'children' | 'national';
@@ -66,6 +67,7 @@ export function PeerSection({
   isLoadingPeers,
   isLoadingChildren,
   isLoadingNational,
+  timePeriod,
 }: PeerSectionProps) {
   const hasChildren = children.length > 0;
   const hasMeaningfulPeers = peers.length > 1;
@@ -251,10 +253,17 @@ export function PeerSection({
     })),
   [chartData, formatFn]);
 
+  const periodSlug = timePeriod?.replace(/\s+/g, '-') ?? '';
   const { viewMode: chartViewMode, actions: chartActions } = useChartTableActions({
     tableData,
     columns: tableColumns,
-    filename: `${indicator.IndicatorCode}-${viewMode}`,
+    filename: `${indicator.IndicatorCode}-${viewMode === 'national' ? `all-${levelName.toLowerCase()}s` : viewMode === 'children' ? childLevelName.toLowerCase() + 's' : viewMode}-${selectedAreaCode}${periodSlug ? `-${periodSlug}` : ''}`,
+    metadata: [
+      ['Indicator', `${indicator.IndicatorShortName} (${indicator.IndicatorCode})`],
+      ['Selected Area', selectedAreaCode],
+      ['Area Type', viewMode === 'national' ? `All ${levelName}s` : viewMode === 'children' ? childLevelName : levelName],
+      ...(timePeriod ? [['Period', timePeriod] as [string, string]] : []),
+    ],
   });
 
   return (

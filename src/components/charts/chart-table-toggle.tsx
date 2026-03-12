@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { downloadCSV } from '@/lib/utils/csv';
+import { downloadCSV, type CSVMetadata } from '@/lib/utils/csv';
 
 export interface TableColumn {
   key: string;
@@ -35,6 +35,7 @@ export function useChartTableActions(opts: {
   tableData: Record<string, unknown>[];
   columns: TableColumn[];
   filename?: string;
+  metadata?: CSVMetadata;
 }) {
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
 
@@ -52,8 +53,8 @@ export function useChartTableActions(opts: {
       }
       return out;
     });
-    downloadCSV(rows, opts.filename ?? 'data');
-  }, [opts.tableData, opts.columns, opts.filename]);
+    downloadCSV(rows, opts.filename ?? 'data', opts.metadata);
+  }, [opts.tableData, opts.columns, opts.filename, opts.metadata]);
 
   const actions = useMemo(() => (
     <div className="flex items-center gap-3">

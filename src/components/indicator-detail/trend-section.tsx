@@ -21,6 +21,8 @@ interface TrendSectionProps {
   baselineTrendData: TrendDataPoint[];
   baselineName?: string;
   areaName: string;
+  areaCode?: string;
+  timePeriod?: string;
   isLoading?: boolean;
   isEngland?: boolean;
 }
@@ -31,6 +33,8 @@ export function TrendSection({
   baselineTrendData,
   baselineName = 'England',
   areaName,
+  areaCode,
+  timePeriod,
   isLoading,
   isEngland,
 }: TrendSectionProps) {
@@ -134,10 +138,16 @@ export function TrendSection({
     return cols;
   }, [isEngland, areaName, baselineName, formatFn, diffSuffix]);
 
+  const periodSlug = timePeriod?.replace(/\s+/g, '-') ?? '';
   const { viewMode, actions } = useChartTableActions({
     tableData,
     columns: tableColumns,
-    filename: `${indicator.IndicatorCode}-trend`,
+    filename: `${indicator.IndicatorCode}-trend${areaCode ? `-${areaCode}` : ''}${periodSlug ? `-${periodSlug}` : ''}`,
+    metadata: [
+      ['Indicator', `${indicator.IndicatorShortName} (${indicator.IndicatorCode})`],
+      ['Area', areaCode ? `${areaName} (${areaCode})` : areaName],
+      ...(timePeriod ? [['Period', timePeriod] as [string, string]] : []),
+    ],
   });
 
   return (

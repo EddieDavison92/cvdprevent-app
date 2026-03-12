@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CSVButton } from '@/components/charts';
-import { downloadCSV } from '@/lib/utils/csv';
+import { downloadCSV, type CSVMetadata } from '@/lib/utils/csv';
 
 // Leaflet requires browser APIs, so dynamic import with SSR disabled
 const ChoroplethMap = dynamic(
@@ -579,6 +579,8 @@ export default function IndicatorDetailPage() {
               baselineTrendData={baselineTrendData}
               baselineName={baselineName}
               areaName={areaName}
+              areaCode={organisation?.AreaCode}
+              timePeriod={formatTimePeriod(timePeriodLabel)}
               isLoading={false}
               isEngland={isEngland}
             />
@@ -607,6 +609,7 @@ export default function IndicatorDetailPage() {
                 isLoadingPeers={isLoadingSiblings}
                 isLoadingChildren={isLoadingChildren}
                 isLoadingNational={isLoadingNational}
+                timePeriod={formatTimePeriod(timePeriodLabel)}
               />
             )}
 
@@ -629,7 +632,14 @@ export default function IndicatorDetailPage() {
                           Numerator: d.Numerator,
                           Denominator: d.Denominator,
                         }));
-                      downloadCSV(rows, `${indicator.IndicatorCode}-map`);
+                      const periodSlug = formatTimePeriod(timePeriodLabel).replace(/\s+/g, '-');
+                      const meta: CSVMetadata = [
+                        ['Indicator', `${indicator.IndicatorShortName} (${indicator.IndicatorCode})`],
+                        ['Area Type', SYSTEM_LEVEL_NAMES[nationalLevelId ?? SYSTEM_LEVELS.ICB]],
+                        ['Period', formatTimePeriod(timePeriodLabel)],
+                        ...(organisation ? [['Selected Area', `${areaName} (${organisation.AreaCode})`] as [string, string]] : []),
+                      ];
+                      downloadCSV(rows, `${indicator.IndicatorCode}-map-${organisation?.AreaCode ?? 'all'}-${periodSlug}`, meta);
                     }} />
                   </div>
                   <CardDescription className="text-xs">
@@ -664,6 +674,8 @@ export default function IndicatorDetailPage() {
                 baselineData={baselineAllData}
                 baselineName={baselineName}
                 areaName={areaName}
+                areaCode={organisation?.AreaCode}
+                timePeriod={formatTimePeriod(timePeriodLabel)}
                 isEngland={isEngland}
                 isLoading={isLoadingArea || isLoadingBaseline}
               />

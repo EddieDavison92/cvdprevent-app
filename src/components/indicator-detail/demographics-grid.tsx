@@ -14,6 +14,8 @@ interface DemographicsGridProps {
   baselineData: IndicatorRawData[];
   baselineName?: string;
   areaName?: string;
+  areaCode?: string;
+  timePeriod?: string;
   isEngland?: boolean;
   isLoading?: boolean;
 }
@@ -54,7 +56,7 @@ function findBiggestGap(
   return `Biggest gap to ${baselineName}: ${worst.name} (${worst.demoLabel.toLowerCase()}) — ${Math.abs(worst.gap).toFixed(1)}pp below`;
 }
 
-export function DemographicsGrid({ indicator, areaData, baselineData, baselineName = 'England', areaName, isEngland, isLoading }: DemographicsGridProps) {
+export function DemographicsGrid({ indicator, areaData, baselineData, baselineName = 'England', areaName, areaCode, timePeriod, isEngland, isLoading }: DemographicsGridProps) {
   const formatFn = useCallback((v: number) => formatValue(v, indicator.FormatDisplayName), [indicator.FormatDisplayName]);
   const categories = getIndicatorCategories();
   const displayAreaName = areaName || 'Selected Area';
@@ -155,7 +157,9 @@ export function DemographicsGrid({ indicator, areaData, baselineData, baselineNa
             chartData={chartData}
             indicator={indicator}
             displayAreaName={displayAreaName}
+            areaCode={areaCode}
             baselineName={baselineName}
+            timePeriod={timePeriod}
             isEngland={isEngland}
             formatFn={formatFn}
           />
@@ -171,7 +175,9 @@ function DemographicCard({
   chartData,
   indicator,
   displayAreaName,
+  areaCode,
   baselineName,
+  timePeriod,
   isEngland,
   formatFn,
 }: {
@@ -179,7 +185,9 @@ function DemographicCard({
   chartData: { name: string; orgValue: number | null; baselineValue: number | null; orgNumerator: number | null; orgDenominator: number | null; baselineNumerator: number | null; baselineDenominator: number | null }[];
   indicator: Indicator;
   displayAreaName: string;
+  areaCode?: string;
   baselineName: string;
+  timePeriod?: string;
   isEngland?: boolean;
   formatFn: (v: number) => string;
 }) {
@@ -216,10 +224,17 @@ function DemographicCard({
     return cols;
   }, [demo.label, displayAreaName, baselineName, isEngland, formatFn]);
 
+  const periodSlug = timePeriod?.replace(/\s+/g, '-') ?? '';
   const { viewMode, actions } = useChartTableActions({
     tableData,
     columns: tableColumns,
-    filename: `${indicator.IndicatorCode}-${demo.type.replace(/\s+/g, '-').toLowerCase()}`,
+    filename: `${indicator.IndicatorCode}-${demo.type.replace(/\s+/g, '-').toLowerCase()}${areaCode ? `-${areaCode}` : ''}${periodSlug ? `-${periodSlug}` : ''}`,
+    metadata: [
+      ['Indicator', `${indicator.IndicatorShortName} (${indicator.IndicatorCode})`],
+      ['Area', areaCode ? `${displayAreaName} (${areaCode})` : displayAreaName],
+      ['Breakdown', demo.label],
+      ...(timePeriod ? [['Period', timePeriod] as [string, string]] : []),
+    ],
   });
 
   return (

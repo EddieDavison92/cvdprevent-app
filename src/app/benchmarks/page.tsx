@@ -425,8 +425,10 @@ export default function BenchmarksPage() {
       }
       return row;
     });
-    const levelName = SYSTEM_LEVEL_NAMES[levelId]?.toLowerCase().replace(/\s+/g, '-') ?? 'areas';
-    downloadCSV(rows, `benchmarks-${levelName}`);
+    const levelName = SYSTEM_LEVEL_NAMES[levelId] ?? 'Unknown';
+    downloadCSV(rows, `benchmarks-${levelName.toLowerCase().replace(/\s+/g, '-')}`, [
+      ['Area Type', levelName],
+    ]);
   };
 
   // Build indicator link preserving current level/parent context
