@@ -174,6 +174,7 @@ export function TrendSection({
           <ChartTableToggle
             chart={
               <LineChart
+                key={indicator.IndicatorID}
                 series={series}
                 yAxisLabel={indicator.AxisCharacter}
                 formatValue={formatFn}

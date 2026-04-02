@@ -30,6 +30,10 @@ export function useAllAreas(timePeriodId: number | undefined) {
 
   const isLoading =
     regionsQuery.isLoading || icbsQuery.isLoading || subIcbsQuery.isLoading || pcnsQuery.isLoading;
+  const isError =
+    regionsQuery.isError || icbsQuery.isError || subIcbsQuery.isError || pcnsQuery.isError;
+  const error =
+    regionsQuery.error || icbsQuery.error || subIcbsQuery.error || pcnsQuery.error || null;
 
   const areasByLevel = new Map<number, Area[]>();
   if (regionsQuery.data) areasByLevel.set(SYSTEM_LEVELS.REGION, regionsQuery.data);
@@ -44,6 +48,8 @@ export function useAllAreas(timePeriodId: number | undefined) {
     subIcbs: subIcbsQuery.data,
     pcns: pcnsQuery.data,
     isLoading,
+    isError,
+    error,
   };
 }
 

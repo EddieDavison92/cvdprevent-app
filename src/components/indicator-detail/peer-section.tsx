@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BarChart } from '@/components/charts/bar-chart';
 import { ChartTableToggle, useChartTableActions, type TableColumn } from '@/components/charts';
@@ -16,7 +16,7 @@ interface PeerSectionProps {
   peerData: IndicatorRawData[];
   peers: Area[];
   childrenData?: IndicatorRawData[];
-  children?: Area[];
+  childAreas?: Area[];
   nationalData?: IndicatorRawData[];
   nationalAreas?: Area[];
   selectedAreaCode: string;
@@ -50,7 +50,7 @@ export function PeerSection({
   peerData,
   peers,
   childrenData = [],
-  children = [],
+  childAreas = [],
   nationalData = [],
   nationalAreas = [],
   selectedAreaCode,
@@ -69,21 +69,13 @@ export function PeerSection({
   isLoadingNational,
   timePeriod,
 }: PeerSectionProps) {
-  const hasChildren = children.length > 0;
+  const hasChildren = childAreas.length > 0;
   const hasMeaningfulPeers = peers.length > 1;
   const hasNational = nationalAreas.length > 0;
   const allowNational = levelId !== SYSTEM_LEVELS.PCN && levelId !== SYSTEM_LEVELS.ENGLAND;
+  const preferredViewMode: ViewMode = hasMeaningfulPeers ? 'peers' : hasChildren ? 'children' : 'national';
 
-  const [viewMode, setViewMode] = useState<ViewMode>('peers');
-
-  // Auto-switch based on data availability
-  useEffect(() => {
-    if (hasMeaningfulPeers) {
-      setViewMode('peers');
-    } else if (hasChildren) {
-      setViewMode('children');
-    }
-  }, [hasMeaningfulPeers, hasChildren]);
+  const [viewMode, setViewMode] = useState<ViewMode>(preferredViewMode);
 
   const formatFn = useCallback((v: number) => formatValue(v, indicator.FormatDisplayName), [indicator.FormatDisplayName]);
 
@@ -108,7 +100,7 @@ export function PeerSection({
   [peers, peerData, selectedAreaCode, lowerIsBetter]);
 
   // Children chart data
-  const childrenChartData = useMemo(() => children
+  const childrenChartData = useMemo(() => childAreas
     .map((area) => {
       const data = childrenData.find(
         (d) => d.AreaCode === area.AreaCode && d.MetricCategoryTypeName === 'Sex' && d.MetricCategoryName === 'Persons'
@@ -125,7 +117,7 @@ export function PeerSection({
     })
     .filter((d) => d.value !== null)
     .sort((a, b) => lowerIsBetter ? (a.value ?? 0) - (b.value ?? 0) : (b.value ?? 0) - (a.value ?? 0)),
-  [children, childrenData, lowerIsBetter]);
+  [childAreas, childrenData, lowerIsBetter]);
 
   // National chart data
   const nationalChartData = useMemo(() => nationalAreas
@@ -145,7 +137,7 @@ export function PeerSection({
     .sort((a, b) => lowerIsBetter ? (a.value ?? 0) - (b.value ?? 0) : (b.value ?? 0) - (a.value ?? 0)),
   [nationalAreas, nationalData, selectedAreaCode, lowerIsBetter]);
 
-  const childLevelId = children[0]?.SystemLevelID;
+  const childLevelId = childAreas[0]?.SystemLevelID;
   const childLevelName = childLevelId ? SYSTEM_LEVEL_NAMES[childLevelId] : 'Children';
   const levelName = SYSTEM_LEVEL_NAMES[levelId] ?? 'area';
 
@@ -204,32 +196,33 @@ export function PeerSection({
   }, [englandValue, regionValue, regionName, formatFn]);
 
   // Select active data
-  const chartData = viewMode === 'peers' ? peerChartData : viewMode === 'children' ? childrenChartData : nationalChartData;
-  const benchmarks = viewMode === 'peers' ? peerBenchmarks : viewMode === 'children' ? childrenBenchmarks : nationalBenchmarks;
-  const isLoading = viewMode === 'peers' ? isLoadingPeers : viewMode === 'children' ? isLoadingChildren : isLoadingNational;
-
-  // Rank for the selected view
-  const selectedRank = viewMode === 'peers'
-    ? peerChartData.findIndex((d) => d.isHighlighted) + 1
-    : viewMode === 'national'
-      ? nationalChartData.findIndex((d) => d.isHighlighted) + 1
-      : 0;
-  const totalInView = viewMode === 'peers' ? peerChartData.length : viewMode === 'national' ? nationalChartData.length : 0;
-
-  // Description
-  const description = viewMode === 'peers'
-    ? `${indicator.IndicatorShortName} • ${parentName ? `${levelName}s in ${parentName}` : `All ${levelName}s`}${peerChartData.length > 0 ? ` (${peerChartData.length})` : ''}${selectedRank > 0 ? ` • Rank: ${selectedRank} of ${peerChartData.length}` : ''}`
-    : viewMode === 'children'
-      ? `${indicator.IndicatorShortName} • ${childLevelName}s within this area${childrenChartData.length > 0 ? ` (${childrenChartData.length})` : ''}`
-      : `${indicator.IndicatorShortName} • All ${levelName}s nationally${nationalChartData.length > 0 ? ` (${nationalChartData.length})` : ''}${selectedRank > 0 ? ` • Rank: ${selectedRank} of ${totalInView}` : ''}`;
-
-  // Build toggle options
   const views: { key: ViewMode; label: string; available: boolean }[] = [
     { key: 'peers', label: 'Peers', available: hasMeaningfulPeers },
-    { key: 'national', label: `All ${levelName}s`, available: allowNational },
+    { key: 'national', label: `All ${levelName}s`, available: allowNational && hasNational },
     { key: 'children', label: `${childLevelName}s`, available: hasChildren },
   ];
   const availableViews = views.filter((v) => v.available);
+  const activeViewMode = availableViews.some((view) => view.key === viewMode) ? viewMode : preferredViewMode;
+
+  const chartData = activeViewMode === 'peers' ? peerChartData : activeViewMode === 'children' ? childrenChartData : nationalChartData;
+  const benchmarks = activeViewMode === 'peers' ? peerBenchmarks : activeViewMode === 'children' ? childrenBenchmarks : nationalBenchmarks;
+  const isLoading = activeViewMode === 'peers' ? isLoadingPeers : activeViewMode === 'children' ? isLoadingChildren : isLoadingNational;
+
+  // Rank for the selected view
+  const selectedRank = activeViewMode === 'peers'
+    ? peerChartData.findIndex((d) => d.isHighlighted) + 1
+    : activeViewMode === 'national'
+      ? nationalChartData.findIndex((d) => d.isHighlighted) + 1
+      : 0;
+  const totalInView = activeViewMode === 'peers' ? peerChartData.length : activeViewMode === 'national' ? nationalChartData.length : 0;
+
+  // Description
+  const description = activeViewMode === 'peers'
+    ? `${indicator.IndicatorShortName} • ${parentName ? `${levelName}s in ${parentName}` : `All ${levelName}s`}${peerChartData.length > 0 ? ` (${peerChartData.length})` : ''}${selectedRank > 0 ? ` • Rank: ${selectedRank} of ${peerChartData.length}` : ''}`
+    : activeViewMode === 'children'
+      ? `${indicator.IndicatorShortName} • ${childLevelName}s within this area${childrenChartData.length > 0 ? ` (${childrenChartData.length})` : ''}`
+      : `${indicator.IndicatorShortName} • All ${levelName}s nationally${nationalChartData.length > 0 ? ` (${nationalChartData.length})` : ''}${selectedRank > 0 ? ` • Rank: ${selectedRank} of ${totalInView}` : ''}`;
+
   const showToggle = availableViews.length > 1;
 
   // Table columns for chart/table toggle
@@ -257,11 +250,11 @@ export function PeerSection({
   const { viewMode: chartViewMode, actions: chartActions } = useChartTableActions({
     tableData,
     columns: tableColumns,
-    filename: `${indicator.IndicatorCode}-${viewMode === 'national' ? `all-${levelName.toLowerCase()}s` : viewMode === 'children' ? childLevelName.toLowerCase() + 's' : viewMode}-${selectedAreaCode}${periodSlug ? `-${periodSlug}` : ''}`,
+    filename: `${indicator.IndicatorCode}-${activeViewMode === 'national' ? `all-${levelName.toLowerCase()}s` : activeViewMode === 'children' ? childLevelName.toLowerCase() + 's' : activeViewMode}-${selectedAreaCode}${periodSlug ? `-${periodSlug}` : ''}`,
     metadata: [
       ['Indicator', `${indicator.IndicatorShortName} (${indicator.IndicatorCode})`],
       ['Selected Area', selectedAreaCode],
-      ['Area Type', viewMode === 'national' ? `All ${levelName}s` : viewMode === 'children' ? childLevelName : levelName],
+      ['Area Type', activeViewMode === 'national' ? `All ${levelName}s` : activeViewMode === 'children' ? childLevelName : levelName],
       ...(timePeriod ? [['Period', timePeriod] as [string, string]] : []),
     ],
   });
@@ -271,8 +264,8 @@ export function PeerSection({
       <CardHeader className="gap-1">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">
-            {viewMode === 'peers' ? 'Comparison with Peers'
-              : viewMode === 'national' ? `All ${levelName}s`
+            {activeViewMode === 'peers' ? 'Comparison with Peers'
+              : activeViewMode === 'national' ? `All ${levelName}s`
                 : `${childLevelName} Breakdown`}
           </CardTitle>
           <div className="flex items-center gap-3">
@@ -285,7 +278,7 @@ export function PeerSection({
                     onClick={() => setViewMode(v.key)}
                     className={cn(
                       'rounded-md px-3 py-1 text-xs font-medium transition-colors',
-                      viewMode === v.key
+                      activeViewMode === v.key
                         ? 'bg-white text-nhs-blue shadow-sm'
                         : 'text-gray-600 hover:text-gray-900'
                     )}
@@ -306,8 +299,8 @@ export function PeerSection({
           </div>
         ) : chartData.length === 0 ? (
           <div className="flex h-[200px] items-center justify-center text-gray-500">
-            {viewMode === 'peers' ? 'No peer data available'
-              : viewMode === 'national' ? `No ${levelName.toLowerCase()} data available`
+            {activeViewMode === 'peers' ? 'No peer data available'
+              : activeViewMode === 'national' ? `No ${levelName.toLowerCase()} data available`
                 : `No ${childLevelName.toLowerCase()} data available`}
           </div>
         ) : (

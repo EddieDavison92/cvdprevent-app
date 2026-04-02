@@ -7,7 +7,7 @@ import { CONDITION_PATHWAYS, type ConditionPathway, type PathwayStage } from '@/
 import type { IndicatorWithData } from '@/lib/api/types';
 import { formatValue } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
-import { ChevronRight, AlertTriangle } from 'lucide-react';
+import { ChevronRight, AlertTriangle, CheckCircle2, Route } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -16,7 +16,6 @@ interface PathwayOverviewProps {
   indicators: IndicatorWithData[];
   baselineIndicators?: IndicatorWithData[];
   baselineName?: string;
-  areaName: string;
 }
 
 interface StageData {
@@ -112,6 +111,7 @@ function PathwayCard({
   if (!hasData) return null;
 
   const stageCount = stageData.length;
+  const populatedStages = stageData.filter(sd => sd.value !== null).length;
 
   // Build grid template: stage columns separated by narrow arrow columns
   // e.g. for 4 stages: "1fr 20px 1fr 20px 1fr 20px 1fr"
@@ -120,10 +120,14 @@ function PathwayCard({
     .join(' 20px ');
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+    <Card className="overflow-hidden border-gray-200 shadow-sm">
+      <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-white to-nhs-pale-grey/30 pb-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
+            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+              <Route className="h-3.5 w-3.5" />
+              Pathway view
+            </div>
             <CardTitle className="text-base flex items-center gap-2">
               <span
                 className="w-2.5 h-2.5 rounded-full flex-shrink-0"
@@ -131,19 +135,41 @@ function PathwayCard({
               />
               {pathway.name}
             </CardTitle>
-            <CardDescription className="text-xs mt-0.5">
+            <CardDescription className="mt-1 max-w-2xl text-sm">
               {pathway.description}
             </CardDescription>
           </div>
-          {worstStage && (
-            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 flex-shrink-0">
-              <AlertTriangle className="w-3 h-3 mr-1" />
-              Focus on {worstStage.stage.type}
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline" className="border-gray-200 bg-white text-gray-600">
+              {populatedStages} of {stageCount} stages populated
             </Badge>
-          )}
+            {worstStage && (
+              <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 flex-shrink-0">
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                Focus on {worstStage.stage.type}
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="space-y-4 pt-5">
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border bg-white p-4">
+            <div className="text-[11px] uppercase tracking-wide text-gray-400">Stages with data</div>
+            <div className="mt-2 text-2xl font-semibold text-nhs-dark-blue">{populatedStages}</div>
+          </div>
+          <div className="rounded-2xl border bg-white p-4">
+            <div className="text-[11px] uppercase tracking-wide text-gray-400">Key bottleneck</div>
+            <div className="mt-2 text-sm font-semibold text-gray-900">
+              {worstStage ? worstStage.stage.name : 'No gap identified'}
+            </div>
+          </div>
+          <div className="rounded-2xl border bg-white p-4">
+            <div className="text-[11px] uppercase tracking-wide text-gray-400">Comparison point</div>
+            <div className="mt-2 text-sm font-semibold text-gray-900">{baselineName}</div>
+          </div>
+        </div>
+
         {/* Grid: equal-width stage cards with arrows between */}
         <div
           className="grid items-stretch"
@@ -201,9 +227,9 @@ function PathwayCard({
             );
 
             const cardClasses = cn(
-              'flex flex-col p-3 rounded-lg border h-full transition-shadow',
-              isWorst ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200',
-              sd.indicatorId && 'hover:shadow-md cursor-pointer',
+              'flex h-full flex-col rounded-2xl border p-4 transition-all',
+              isWorst ? 'border-amber-300 bg-amber-50/60 shadow-sm' : 'border-gray-200 bg-white',
+              sd.indicatorId && 'cursor-pointer hover:border-nhs-blue/35 hover:shadow-md',
             );
 
             const elements = [
@@ -237,16 +263,16 @@ function PathwayCard({
 
         {/* Insight for worst stage */}
         {worstStage && worstStage.gap !== null && (
-          <div className="mt-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-amber-700">
+            <p className="text-sm text-amber-700">
               <span className="font-medium">{worstStage.indicatorName}</span> is{' '}
               {Math.abs(worstStage.gap).toFixed(1)}pp{' '}
               {worstStage.stage.higherIsBetter
                 ? (worstStage.gap < 0 ? 'below' : 'above')
                 : (worstStage.gap > 0 ? 'above' : 'below')
               }{' '}
-              average.
+              {baselineName}. This is the biggest opportunity in the pathway right now.
             </p>
           </div>
         )}
@@ -259,7 +285,6 @@ export function PathwayOverview({
   indicators,
   baselineIndicators = [],
   baselineName = 'England',
-  areaName,
 }: PathwayOverviewProps) {
   const indicatorMap = useMemo(() => {
     const map = new Map<string, IndicatorWithData>();
@@ -279,6 +304,40 @@ export function PathwayOverview({
 
   return (
     <div className="space-y-4">
+      <Card className="border-nhs-blue/10 bg-gradient-to-r from-white via-white to-nhs-pale-grey/40">
+        <CardContent className="grid gap-4 p-5 md:grid-cols-[1.5fr_1fr]">
+          <div>
+            <div className="mb-1 text-sm font-medium text-nhs-blue">
+              Pathways
+            </div>
+            <h2 className="text-lg font-semibold text-nhs-dark-blue">From prevalence to outcomes</h2>
+            <p className="mt-2 text-sm leading-6 text-gray-600">
+              Each pathway follows the logical clinical journey and highlights where performance drops furthest away from {baselineName}.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-1">
+            <div className="rounded-2xl border bg-white p-4">
+              <div className="text-[11px] uppercase tracking-wide text-gray-400">Pathways shown</div>
+              <div className="mt-2 text-2xl font-semibold text-nhs-dark-blue">{CONDITION_PATHWAYS.length}</div>
+            </div>
+            <div className="rounded-2xl border bg-white p-4">
+              <div className="text-[11px] uppercase tracking-wide text-gray-400">Focus logic</div>
+              <div className="mt-2 flex items-center gap-2 text-sm font-medium text-gray-800">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                Largest gap first
+              </div>
+            </div>
+            <div className="rounded-2xl border bg-white p-4">
+              <div className="text-[11px] uppercase tracking-wide text-gray-400">Interpretation</div>
+              <div className="mt-2 flex items-center gap-2 text-sm font-medium text-gray-800">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                Bottlenecks made visible
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {CONDITION_PATHWAYS.map(pathway => (
         <PathwayCard
           key={pathway.id}

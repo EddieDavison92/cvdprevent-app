@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -33,7 +33,6 @@ import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAreaIndicators, getPersonsData, useSiblingData, useChildAreas, useChildData } from '@/lib/hooks/use-area-indicators';
 import { useIndicatorData } from '@/lib/hooks/use-indicator-data';
 import { useAllAreas } from '@/lib/hooks/use-areas';
-import { isOutcomeIndicator } from '@/lib/api';
 import { SYSTEM_LEVELS, type Area, type IndicatorRawData, type IndicatorWithData } from '@/lib/api/types';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
 import { findSectionForIndicator } from '@/lib/constants/indicator-sections';
@@ -68,9 +67,28 @@ export default function IndicatorDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const indicatorId = parseInt(params.id as string, 10);
+  const routeIndicatorId = parseInt(params.id as string, 10);
+  const [selectedIndicatorId, setSelectedIndicatorId] = useState(routeIndicatorId);
 
   const { organisation, levelId, isEngland, isLoading: isLoadingOrg, baseline } = useOrganisation();
+
+  useEffect(() => {
+    setSelectedIndicatorId(routeIndicatorId);
+  }, [routeIndicatorId]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const match = window.location.pathname.match(/\/dashboard\/(\d+)/);
+      if (!match) return;
+      const nextId = Number.parseInt(match[1], 10);
+      if (!Number.isNaN(nextId)) {
+        setSelectedIndicatorId(nextId);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Get clean baseline name for display
   const baselineName = useMemo(() => {
@@ -129,10 +147,10 @@ export default function IndicatorDetailPage() {
 
   // Determine which time period this indicator uses
   const latestPeriod = useMemo(() => {
-    const ind = areaIndicators?.find((i) => i.IndicatorID === indicatorId);
+    const ind = areaIndicators?.find((i) => i.IndicatorID === selectedIndicatorId);
     if (!ind) return latestStandardPeriod; // default to standard while loading
     return ind.IndicatorTypeName === 'Outcome' ? latestOutcomePeriod : latestStandardPeriod;
-  }, [areaIndicators, indicatorId, latestStandardPeriod, latestOutcomePeriod]);
+  }, [areaIndicators, selectedIndicatorId, latestStandardPeriod, latestOutcomePeriod]);
 
   // Always fetch England data for reference lines (cached by React Query)
   const { data: englandIndicators } = useAreaIndicators(
@@ -145,12 +163,12 @@ export default function IndicatorDetailPage() {
 
   // Find the current indicator from cached data
   const indicator = useMemo(() => {
-    return areaIndicators?.find((ind) => ind.IndicatorID === indicatorId);
-  }, [areaIndicators, indicatorId]);
+    return areaIndicators?.find((ind) => ind.IndicatorID === selectedIndicatorId);
+  }, [areaIndicators, selectedIndicatorId]);
 
   const baselineIndicator = useMemo(() => {
-    return baselineIndicators?.find((ind) => ind.IndicatorID === indicatorId);
-  }, [baselineIndicators, indicatorId]);
+    return baselineIndicators?.find((ind) => ind.IndicatorID === selectedIndicatorId);
+  }, [baselineIndicators, selectedIndicatorId]);
 
 
   // Get the metricID for Persons (needed for siblingData)
@@ -344,7 +362,7 @@ export default function IndicatorDetailPage() {
   // Also fetch ICB data when viewing England (for map)
   const nationalLevelId = isEngland ? SYSTEM_LEVELS.ICB : (levelId !== SYSTEM_LEVELS.PCN ? levelId : null);
   const { data: nationalRawData, isLoading: isLoadingNational } = useIndicatorData(
-    indicatorId,
+    selectedIndicatorId,
     latestPeriod?.TimePeriodID,
     nationalLevelId ?? undefined
   );
@@ -367,7 +385,7 @@ export default function IndicatorDetailPage() {
     }));
 
     return { nationalAreas, nationalData: personsData };
-  }, [nationalRawData, levelId]);
+  }, [nationalRawData, nationalLevelId]);
 
   // Find organisation in areasByLevel (has correct Parents array from API)
   const orgFromAreas = useMemo(() => {
@@ -390,8 +408,8 @@ export default function IndicatorDetailPage() {
 
   // Find parent indicator from fetched data
   const parentIndicator = useMemo(() => {
-    return parentIndicators2?.find((ind) => ind.IndicatorID === indicatorId);
-  }, [parentIndicators2, indicatorId]);
+    return parentIndicators2?.find((ind) => ind.IndicatorID === selectedIndicatorId);
+  }, [parentIndicators2, selectedIndicatorId]);
 
   // Get parent info for peer section
   const { parentName, parentValue } = useMemo(() => {
@@ -427,11 +445,11 @@ export default function IndicatorDetailPage() {
   // England value for reference line (always available unless we ARE England)
   const englandValue = useMemo(() => {
     if (isEngland) return areaData?.Value ?? null;
-    const englandInd = englandIndicators?.find(i => i.IndicatorID === indicatorId);
+    const englandInd = englandIndicators?.find(i => i.IndicatorID === selectedIndicatorId);
     if (!englandInd) return null;
     const persons = getPersonsData(englandInd);
     return persons?.Data.Value ?? null;
-  }, [isEngland, areaData, englandIndicators, indicatorId]);
+  }, [isEngland, areaData, englandIndicators, selectedIndicatorId]);
 
   // Region value: for ICBs the parent IS the region
   // For Sub-ICBs, find the region from the parent chain
@@ -488,6 +506,14 @@ export default function IndicatorDetailPage() {
 
   const formatFn = useCallback((v: number) => formatValue(v, indicator?.FormatDisplayName ?? ''), [indicator?.FormatDisplayName]);
 
+  const handleSelectIndicator = useCallback((nextIndicatorId: number) => {
+    if (nextIndicatorId === selectedIndicatorId) return;
+
+    const nextUrl = buildUrl(`/dashboard/${nextIndicatorId}`, searchParams);
+    window.history.pushState(null, '', nextUrl);
+    setSelectedIndicatorId(nextIndicatorId);
+  }, [selectedIndicatorId, searchParams]);
+
   // Convert indicator to the format expected by components
   const indicatorForComponents = useMemo(() => indicator ? ({
     ...indicator,
@@ -542,8 +568,9 @@ export default function IndicatorDetailPage() {
           {indicators && (
             <IndicatorNav
               indicators={indicators}
-              currentId={indicatorId}
+              currentId={selectedIndicatorId}
               dataByIndicator={navDataByIndicator}
+              onSelectIndicator={handleSelectIndicator}
             />
           )}
 
@@ -593,7 +620,7 @@ export default function IndicatorDetailPage() {
                 peerData={peerData}
                 peers={peers}
                 childrenData={childrenData}
-                children={children}
+                childAreas={children}
                 nationalData={nationalData}
                 nationalAreas={nationalAreas}
                 selectedAreaCode={organisation?.AreaCode ?? ''}

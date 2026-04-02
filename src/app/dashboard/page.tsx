@@ -6,7 +6,7 @@ import { Header } from '@/components/layout/header';
 import {
   OrganisationHeader,
   QuickStats,
-  IndicatorSummaryGrid,
+  AllIndicatorsExplorer,
   ConditionFilter,
   BaselineSelector,
   SectionView,
@@ -363,7 +363,6 @@ export default function DashboardPage() {
                     indicators={areaIndicators}
                     baselineIndicators={baselineIndicators ?? []}
                     baselineName={baselineName}
-                    areaName={organisation?.AreaName ?? ''}
                   />
                 )}
               </TabsContent>
@@ -377,15 +376,15 @@ export default function DashboardPage() {
                 onSelectCondition={setSelectedCondition}
               />
 
-              <IndicatorSummaryGrid
+              <AllIndicatorsExplorer
                 indicators={filteredIndicators}
                 dataByIndicator={dataByIndicator}
                 previousDataByIndicator={previousDataByIndicator}
                 baselineDataByIndicator={baselineDataByIndicator}
                 baselineName={baselineName}
-                loadingIndicators={new Set()}
                 isLoadingIndicators={isLoadingOrg || isLoadingData}
                 isEngland={isEngland}
+                selectedCondition={selectedCondition}
               />
             </TabsContent>
           </Tabs>
