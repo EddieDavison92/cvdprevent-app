@@ -46,6 +46,7 @@ export function useSiblingData(
     queryFn: () => getSiblingData(timePeriodId!, areaId!, metricId!),
     enabled: !!timePeriodId && !!areaId && !!metricId,
     staleTime: 10 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -73,5 +74,6 @@ export function useChildData(
     queryFn: () => getChildData(timePeriodId!, areaId!, metricId!),
     enabled: !!timePeriodId && !!areaId && !!metricId,
     staleTime: 10 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
   });
 }

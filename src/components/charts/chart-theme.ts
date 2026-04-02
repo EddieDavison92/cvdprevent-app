@@ -79,4 +79,6 @@ export const defaultChartOptions = {
   },
   animation: true,
   animationDuration: 300,
+  animationDurationUpdate: 180,
+  animationEasingUpdate: 'cubicOut' as const,
 };

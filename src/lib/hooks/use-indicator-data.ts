@@ -22,6 +22,7 @@ export function useIndicatorData(
     queryFn: () => getIndicatorData(indicatorId!, timePeriodId!, systemLevelId!),
     enabled: !!indicatorId && !!timePeriodId && !!systemLevelId,
     staleTime: 10 * 60 * 1000, // 10 minutes - data doesn't change frequently
+    placeholderData: (previousData) => previousData,
   });
 }
 

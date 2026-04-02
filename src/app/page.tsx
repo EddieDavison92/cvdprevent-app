@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AreaCard } from '@/components/onboarding/area-card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,7 +10,7 @@ import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAllAreas } from '@/lib/hooks/use-areas';
 import { getAreaDisplayName } from '@/lib/api';
 import { SYSTEM_LEVELS, type Area } from '@/lib/api/types';
-import { Search, Globe, Heart, BarChart3, List, ArrowRight } from 'lucide-react';
+import { Search, Globe, Heart, BarChart3, List, ArrowRight, AlertTriangle, Clock3 } from 'lucide-react';
 import { Footer } from '@/components/layout/footer';
 
 export default function LandingPage() {
@@ -27,10 +26,18 @@ export default function LandingPage() {
   }, [isLoadingOrg, organisation, router]);
 
   // Load time period for fetching areas
-  const { data: latestPeriod } = useLatestTimePeriod('standard');
+  const {
+    data: latestPeriod,
+    isLoading: isLoadingPeriod,
+    isError: isPeriodError,
+  } = useLatestTimePeriod('standard');
 
   // Load all areas across all levels
-  const { areasByLevel, isLoading: isLoadingAreas } = useAllAreas(latestPeriod?.TimePeriodID);
+  const {
+    areasByLevel,
+    isLoading: isLoadingAreas,
+    isError: isAreasError,
+  } = useAllAreas(latestPeriod?.TimePeriodID);
 
   // Flatten all areas + build parent lookup
   const { allOrgs, parentLookup } = useMemo(() => {
@@ -45,13 +52,13 @@ export default function LandingPage() {
     return { allOrgs: orgs, parentLookup: lookup };
   }, [areasByLevel]);
 
-  const getParentName = (area: Area): string | undefined => {
+  const getParentName = useCallback((area: Area): string | undefined => {
     if (area.Parents?.length > 0) {
       const parent = parentLookup.get(area.Parents[0]);
       return parent ? getAreaDisplayName(parent) : undefined;
     }
     return undefined;
-  };
+  }, [parentLookup]);
 
   // Filter areas by search
   const filteredAreas = useMemo(() => {
@@ -62,7 +69,10 @@ export default function LandingPage() {
       const parentName = getParentName(area)?.toLowerCase() ?? '';
       return name.includes(q) || parentName.includes(q);
     });
-  }, [allOrgs, search, parentLookup]);
+  }, [allOrgs, search, getParentName]);
+
+  const showSlowApiHint = search.length >= 2 && (isLoadingPeriod || isLoadingAreas);
+  const showApiError = isPeriodError || isAreasError;
 
   const handleSelectArea = (area: Area) => {
     setOrganisation(area);
@@ -132,6 +142,24 @@ export default function LandingPage() {
             className="h-12 pl-12 text-base rounded-xl border-gray-300 shadow-sm focus:border-nhs-blue focus:ring-nhs-blue"
           />
         </div>
+
+        {showApiError && (
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <p>
+              Organisation search is temporarily unavailable because the upstream CVDPREVENT API is not responding reliably. Please try again shortly.
+            </p>
+          </div>
+        )}
+
+        {!showApiError && showSlowApiHint && (
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <Clock3 className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <p>
+              Search can be slow at the moment while the CVDPREVENT API responds. Results should appear once the area lists finish loading.
+            </p>
+          </div>
+        )}
 
         {/* Results */}
         {isLoadingAreas && search.length >= 2 ? (

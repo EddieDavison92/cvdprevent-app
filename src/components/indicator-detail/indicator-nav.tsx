@@ -21,9 +21,16 @@ interface IndicatorNavProps {
   currentId: number;
   dataByIndicator: Map<number, IndicatorRawData>;
   basePath?: string;
+  onSelectIndicator?: (indicatorId: number) => void;
 }
 
-export function IndicatorNav({ indicators, currentId, dataByIndicator, basePath = '/dashboard' }: IndicatorNavProps) {
+export function IndicatorNav({
+  indicators,
+  currentId,
+  dataByIndicator,
+  basePath = '/dashboard',
+  onSelectIndicator,
+}: IndicatorNavProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
   const [canScroll, setCanScroll] = useState(false);
@@ -63,7 +70,7 @@ export function IndicatorNav({ indicators, currentId, dataByIndicator, basePath 
 
     const currentButton = container.querySelector(`[data-indicator-id="${currentId}"]`);
     if (currentButton) {
-      currentButton.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      currentButton.scrollIntoView({ inline: 'center', block: 'nearest' });
     }
   }, [currentId]);
 
@@ -108,13 +115,31 @@ export function IndicatorNav({ indicators, currentId, dataByIndicator, basePath 
             {filteredIndicators.map((indicator) => {
               const data = dataByIndicator.get(indicator.IndicatorID);
               const isActive = indicator.IndicatorID === currentId;
+              const href = buildIndicatorLink(indicator.IndicatorID);
 
               return (
                 <Tooltip key={indicator.IndicatorID}>
                   <TooltipTrigger asChild>
                     <Link
-                      href={buildIndicatorLink(indicator.IndicatorID)}
+                      href={href}
+                      scroll={false}
                       data-indicator-id={indicator.IndicatorID}
+                      onClick={(event) => {
+                        if (!onSelectIndicator || indicator.IndicatorID === currentId) return;
+                        if (
+                          event.defaultPrevented ||
+                          event.button !== 0 ||
+                          event.metaKey ||
+                          event.ctrlKey ||
+                          event.shiftKey ||
+                          event.altKey
+                        ) {
+                          return;
+                        }
+
+                        event.preventDefault();
+                        onSelectIndicator(indicator.IndicatorID);
+                      }}
                       className={cn(
                         'flex shrink-0 flex-col rounded-lg border px-4 py-2 transition-all',
                         isActive
