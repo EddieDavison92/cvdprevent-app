@@ -49,7 +49,7 @@ export function Header() {
           >
             <Search className="h-3.5 w-3.5" />
             <span>Search...</span>
-            <kbd className="ml-2 rounded border border-white/20 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-white/50">
+            <kbd className="ml-auto rounded border border-white/20 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-white/50">
               {typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'}K
             </kbd>
           </button>
