@@ -65,6 +65,31 @@ export function formatTick(value: number, format: string): string {
   return formatted.replace(/\.0(%?)$/, '$1');
 }
 
+/**
+ * Format a value using the indicator's FormatDisplayName.
+ * Convenience wrapper so callers don't need to pass format strings around.
+ */
+export function formatIndicatorValue(value: number | null, formatDisplayName: string): string {
+  return formatValue(value, formatDisplayName);
+}
+
+/**
+ * Format a gap/diff value (e.g. trend or baseline comparison).
+ * Appends "pp" for percentage indicators, nothing for rates.
+ */
+export function formatDiff(diff: number, formatDisplayName: string): string {
+  const suffix = formatDisplayName.includes('%') ? 'pp' : '';
+  return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}${suffix}`;
+}
+
+/**
+ * Format an absolute gap value for display in badges (no sign prefix).
+ */
+export function formatAbsDiff(diff: number, formatDisplayName: string): string {
+  const suffix = formatDisplayName.includes('%') ? 'pp' : '';
+  return `${Math.abs(diff).toFixed(1)}${suffix}`;
+}
+
 // Extract condition code from indicator short name (e.g., "CKD: ..." -> "CKD")
 export function extractCondition(indicatorShortName: string): string {
   const colonIndex = indicatorShortName.indexOf(':');

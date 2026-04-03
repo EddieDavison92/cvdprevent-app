@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import type { IndicatorWithData } from '@/lib/api/types';
 import { DASHBOARD_SECTIONS } from '@/lib/constants/indicator-sections';
-import { formatValue } from '@/lib/utils/format';
+import { formatValue, formatDiff, formatAbsDiff } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 import { AlertTriangle, TrendingDown, Target, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -154,8 +154,6 @@ export function PrioritiesCard({
     );
   }
 
-  const formatFn = (v: number) => formatValue(v, '%');
-
   return (
     <Card className="border-amber-200 bg-gradient-to-br from-amber-50/80 to-white">
       <CardHeader className="pb-2">
@@ -178,7 +176,7 @@ export function PrioritiesCard({
                 href={buildUrl(`/dashboard/${indicator.IndicatorID}`, searchParams)}
                 className="block"
               >
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-amber-200 bg-white hover:bg-amber-50/50 transition-colors">
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-amber-200 bg-white hover:bg-amber-100/60 transition-colors">
                   {/* Icon based on reason */}
                   <div className={cn(
                     'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
@@ -203,16 +201,16 @@ export function PrioritiesCard({
                         .trim()}
                     </div>
                     <div className="text-xs text-gray-500 flex items-center gap-2">
-                      <span>{formatFn(value)}</span>
+                      <span>{formatValue(value, indicator.FormatDisplayName)}</span>
                       <span className="text-gray-300">•</span>
                       <span className={lowerIsBetter ? (gap > 0 ? 'text-red-600' : 'text-green-600') : (gap < 0 ? 'text-red-600' : 'text-green-600')}>
-                        {gap > 0 ? '+' : ''}{gap.toFixed(1)}pp vs {baselineName}
+                        {formatDiff(gap, indicator.FormatDisplayName)} vs {baselineName}
                       </span>
                       {trend !== null && Math.abs(trend) > 0.5 && (
                         <>
                           <span className="text-gray-300">•</span>
                           <span className={lowerIsBetter ? (trend > 0 ? 'text-red-600' : 'text-green-600') : (trend < 0 ? 'text-red-600' : 'text-green-600')}>
-                            {trend > 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}pp
+                            {trend > 0 ? '↑' : '↓'} {formatAbsDiff(trend, indicator.FormatDisplayName)}
                           </span>
                         </>
                       )}

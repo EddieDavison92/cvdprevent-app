@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import type { Indicator, IndicatorRawData } from '@/lib/api/types';
-import { formatValue, formatNumber } from '@/lib/utils/format';
+import { formatValue, formatNumber, formatDiff } from '@/lib/utils/format';
 import { TrendingUp, TrendingDown, Minus, Users, Hash, BarChart3, Activity } from 'lucide-react';
 
 interface HeroSectionProps {
@@ -35,8 +35,6 @@ export function HeroSection({
   timePeriodLabel,
 }: HeroSectionProps) {
   const fmt = (v: number) => formatValue(v, indicator.FormatDisplayName);
-  const isPercentage = indicator.FormatDisplayName?.includes('%');
-  const diffSuffix = isPercentage ? 'pp' : '';
 
   const trend =
     areaData?.Value !== null &&
@@ -126,7 +124,7 @@ export function HeroSection({
               </div>
               <div className={`text-xl font-bold ${gapColor}`}>
                 {gapIsSignificant
-                  ? `${gap > 0 ? '+' : ''}${gap.toFixed(1)}${diffSuffix}`
+                  ? formatDiff(gap, indicator.FormatDisplayName)
                   : 'Similar'}
               </div>
             </CardContent>
@@ -144,7 +142,7 @@ export function HeroSection({
               <div className={`text-xl font-bold ${trendColor}`}>
                 {trendDirection === 'flat'
                   ? 'Stable'
-                  : `${trend > 0 ? '+' : ''}${trend.toFixed(1)}${diffSuffix}`}
+                  : formatDiff(trend, indicator.FormatDisplayName)}
               </div>
               {trendDirection !== 'flat' && (
                 <div className={`text-xs ${trendColor} opacity-75`}>

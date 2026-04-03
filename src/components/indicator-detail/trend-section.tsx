@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { LineChart } from '@/components/charts/line-chart';
 import { ChartTableToggle, useChartTableActions, type TableColumn } from '@/components/charts';
 import type { Indicator } from '@/lib/api/types';
-import { formatValue } from '@/lib/utils/format';
+import { formatValue, formatDiff } from '@/lib/utils/format';
 import { NHS_COLORS } from '@/lib/constants/colors';
 
 interface TrendDataPoint {
@@ -40,8 +40,7 @@ export function TrendSection({
 }: TrendSectionProps) {
   const formatFn = useMemo(() => (v: number) => formatValue(v, indicator.FormatDisplayName), [indicator.FormatDisplayName]);
 
-  const isPercentage = indicator.FormatDisplayName?.includes('%');
-  const diffSuffix = isPercentage ? 'pp' : '';
+  const fmtDisplay = indicator.FormatDisplayName;
 
   // When viewing England, areaTrendData contains England's data (no separate fetch)
   const series = useMemo(() => isEngland
@@ -99,9 +98,7 @@ export function TrendSection({
   const tableColumns: TableColumn[] = useMemo(() => {
     const fmtDiff = (v: unknown) => {
       if (v == null) return '—';
-      const n = v as number;
-      const sign = n > 0 ? '+' : '';
-      return `${sign}${n.toFixed(1)}${diffSuffix}`;
+      return formatDiff(v as number, fmtDisplay);
     };
 
     const cols: TableColumn[] = [
@@ -136,7 +133,7 @@ export function TrendSection({
       format: fmtDiff,
     });
     return cols;
-  }, [isEngland, areaName, baselineName, formatFn, diffSuffix]);
+  }, [isEngland, areaName, baselineName, formatFn, fmtDisplay]);
 
   const periodSlug = timePeriod?.replace(/\s+/g, '-') ?? '';
   const { viewMode, actions } = useChartTableActions({
@@ -179,7 +176,7 @@ export function TrendSection({
                 yAxisLabel={indicator.AxisCharacter}
                 formatValue={formatFn}
                 height={300}
-                diffSuffix={diffSuffix}
+                diffSuffix={fmtDisplay.includes('%') ? 'pp' : ''}
               />
             }
             tableData={tableData}

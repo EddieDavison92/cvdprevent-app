@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { DashboardSection } from '@/lib/constants/indicator-sections';
 import type { IndicatorWithData } from '@/lib/api/types';
-import { formatValue } from '@/lib/utils/format';
+import { formatValue, formatAbsDiff, formatDiff } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 import { TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -164,8 +164,6 @@ export function SectionView({
     return null;
   }
 
-  const formatFn = (v: number) => formatValue(v, '%');
-
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -209,6 +207,7 @@ export function SectionView({
         <div className="space-y-2">
           {displayIndicators.map((row) => {
             const { indicator, value, baselineValue, gap, trend } = row;
+            const fmt = indicator.FormatDisplayName;
 
             // For lowerIsBetter, invert the color logic
             const effectiveGap = section.lowerIsBetter && gap !== null ? -gap : gap;
@@ -252,11 +251,11 @@ export function SectionView({
                   {/* Value */}
                   <div className="flex items-baseline gap-1.5 flex-shrink-0">
                     <span className="text-sm font-semibold tabular-nums text-gray-900">
-                      {value !== null ? formatFn(value) : '—'}
+                      {value !== null ? formatValue(value, fmt) : '—'}
                     </span>
                     {!isEngland && baselineValue !== null && (
                       <span className="text-xs text-gray-500 tabular-nums">
-                        / {formatFn(baselineValue)}
+                        / {formatValue(baselineValue, fmt)}
                       </span>
                     )}
                   </div>
@@ -273,7 +272,7 @@ export function SectionView({
                             !trendGood && 'border-red-300 bg-red-50 text-red-700',
                           )}
                         >
-                          {trend > 0 ? '+' : ''}{trend.toFixed(1)}pp {trendGood ? 'improving' : 'declining'}
+                          {formatDiff(trend, fmt)} {trendGood ? 'improving' : 'declining'}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="text-xs justify-center whitespace-nowrap border-gray-200 text-gray-500">
@@ -296,7 +295,7 @@ export function SectionView({
                           >
                             {gapDirection === 'at'
                               ? `At ${baselineName}`
-                              : `${Math.abs(gap).toFixed(1)}pp ${gapDirection}`}
+                              : `${formatAbsDiff(gap, fmt)} ${gapDirection}`}
                           </Badge>
                         )}
                       </>

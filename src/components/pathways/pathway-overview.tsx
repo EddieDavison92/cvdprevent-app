@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { CONDITION_PATHWAYS, type ConditionPathway, type PathwayStage } from '@/lib/constants/pathways';
 import type { IndicatorWithData } from '@/lib/api/types';
-import { formatValue } from '@/lib/utils/format';
+import { formatValue, formatAbsDiff } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 import { ChevronRight, AlertTriangle, CheckCircle2, Route } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -26,6 +26,7 @@ interface StageData {
   indicatorName: string;
   indicatorId: number | null;
   indicatorCode: string | null;
+  formatDisplayName: string;
 }
 
 function getPersonsValue(indicator: IndicatorWithData): number | null {
@@ -54,8 +55,6 @@ function PathwayCard({
   baselineMap: Map<string, IndicatorWithData>;
   baselineName: string;
 }) {
-  const formatFn = (v: number) => formatValue(v, '%');
-
   const searchParams = useSearchParams();
 
   const stageData: StageData[] = useMemo(() => {
@@ -65,6 +64,7 @@ function PathwayCard({
       let indicatorName = stage.name;
       let indicatorId: number | null = null;
       let indicatorCode: string | null = null;
+      let formatDisplayName = '%';
 
       for (const code of stage.indicatorCodes) {
         const ind = indicatorMap.get(code);
@@ -76,6 +76,7 @@ function PathwayCard({
               .replace(/\s*\(CVDP\d+[A-Z]+\)/, '').trim();
             indicatorId = ind.IndicatorID;
             indicatorCode = code;
+            formatDisplayName = ind.FormatDisplayName;
 
             const baseInd = baselineMap.get(code);
             if (baseInd) {
@@ -87,7 +88,7 @@ function PathwayCard({
       }
 
       const gap = value !== null && baselineValue !== null ? value - baselineValue : null;
-      return { stage, value, baselineValue, gap, indicatorName, indicatorId, indicatorCode };
+      return { stage, value, baselineValue, gap, indicatorName, indicatorId, indicatorCode, formatDisplayName };
     });
   }, [pathway.stages, indicatorMap, baselineMap]);
 
@@ -205,7 +206,7 @@ function PathwayCard({
                   gapDirection === 'below' ? 'text-red-600' :
                   gapDirection === 'above' ? 'text-green-700' : 'text-gray-900'
                 )}>
-                  {sd.value !== null ? formatFn(sd.value) : '—'}
+                  {sd.value !== null ? formatValue(sd.value, sd.formatDisplayName) : '—'}
                 </div>
 
                 {/* Row 4: Gap vs baseline (always reserves space) */}
@@ -215,7 +216,7 @@ function PathwayCard({
                   gapDirection === 'below' ? 'text-red-600' : 'text-gray-400'
                 )}>
                   {sd.gap !== null
-                    ? `${Math.abs(sd.gap).toFixed(1)}pp ${gapDirection === 'above' ? 'above' : gapDirection === 'below' ? 'below' : 'at'} avg`
+                    ? `${formatAbsDiff(sd.gap, sd.formatDisplayName)} ${gapDirection === 'above' ? 'above' : gapDirection === 'below' ? 'below' : 'at'} avg`
                     : '\u00A0'}
                 </div>
 
@@ -267,7 +268,7 @@ function PathwayCard({
             <AlertTriangle className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-amber-700">
               <span className="font-medium">{worstStage.indicatorName}</span> is{' '}
-              {Math.abs(worstStage.gap).toFixed(1)}pp{' '}
+              {formatAbsDiff(worstStage.gap, worstStage.formatDisplayName)}{' '}
               {worstStage.stage.higherIsBetter
                 ? (worstStage.gap < 0 ? 'below' : 'above')
                 : (worstStage.gap > 0 ? 'above' : 'below')

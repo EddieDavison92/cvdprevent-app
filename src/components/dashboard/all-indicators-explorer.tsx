@@ -12,7 +12,7 @@ import { ComparisonBadge } from './comparison-badge';
 import { buildUrl } from '@/lib/utils/url';
 import { cn } from '@/lib/utils';
 import { DASHBOARD_SECTIONS, findSectionForIndicator, type DashboardSection } from '@/lib/constants/indicator-sections';
-import { formatValue } from '@/lib/utils/format';
+import { formatValue, formatDiff, formatAbsDiff } from '@/lib/utils/format';
 import type { Indicator, IndicatorRawData } from '@/lib/api/types';
 
 type SortMode = 'gap' | 'trend' | 'name';
@@ -427,7 +427,7 @@ export function AllIndicatorsExplorer({
                                   trendState === 'flat' && 'text-gray-400'
                                 )}
                               />
-                              {indicator.trend === null ? '—' : `${indicator.trend > 0 ? '+' : ''}${indicator.trend.toFixed(1)}pp`}
+                              {indicator.trend === null ? '—' : formatDiff(indicator.trend, indicator.FormatDisplayName)}
                             </div>
                           </div>
 
@@ -439,7 +439,7 @@ export function AllIndicatorsExplorer({
                                 comparisonState === 'below' && 'text-red-700',
                                 comparisonState === 'neutral' && 'text-gray-500'
                               )}>
-                                {indicator.gap > 0 ? '+' : ''}{indicator.gap.toFixed(1)}pp
+                                {formatDiff(indicator.gap, indicator.FormatDisplayName)}
                               </div>
                             ) : (
                               <div className="text-sm text-gray-400">

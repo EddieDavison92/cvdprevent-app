@@ -7,7 +7,7 @@ import { BarChart } from '@/components/charts/bar-chart';
 import { ChartTableToggle, useChartTableActions, type TableColumn } from '@/components/charts';
 import type { Indicator, IndicatorRawData } from '@/lib/api/types';
 import { getIndicatorCategories, DEPRIVATION_LABELS } from '@/lib/api/indicators';
-import { formatValue } from '@/lib/utils/format';
+import { formatValue, formatAbsDiff } from '@/lib/utils/format';
 interface DemographicsGridProps {
   indicator: Indicator;
   areaData: IndicatorRawData[];
@@ -34,6 +34,7 @@ function findBiggestGap(
     chartData: { name: string; orgValue: number | null; baselineValue: number | null }[];
   }[],
   baselineName: string,
+  formatDisplayName: string,
 ): string | null {
   let worst: { demoLabel: string; name: string; gap: number } | null = null;
 
@@ -53,7 +54,7 @@ function findBiggestGap(
     .flatMap((d) => d.chartData)
     .find((d) => d.name === worst!.name)?.baselineValue;
   if (baseVal && (Math.abs(worst.gap) / baseVal) * 100 < 3) return null;
-  return `Biggest gap to ${baselineName}: ${worst.name} (${worst.demoLabel.toLowerCase()}) — ${Math.abs(worst.gap).toFixed(1)}pp below`;
+  return `Biggest gap to ${baselineName}: ${worst.name} (${worst.demoLabel.toLowerCase()}) — ${formatAbsDiff(worst.gap, formatDisplayName)} below`;
 }
 
 export function DemographicsGrid({ indicator, areaData, baselineData, baselineName = 'England', areaName, areaCode, timePeriod, isEngland, isLoading }: DemographicsGridProps) {
@@ -106,7 +107,7 @@ export function DemographicsGrid({ indicator, areaData, baselineData, baselineNa
   // Single most notable demographic insight
   const biggestGap = useMemo(() => {
     if (isEngland) return null;
-    return findBiggestGap(visibleDemographics, baselineName);
+    return findBiggestGap(visibleDemographics, baselineName, indicator.FormatDisplayName);
   }, [visibleDemographics, isEngland, baselineName]);
 
   if (isLoading) {

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import type { ConditionPathway, PathwayStage } from '@/lib/constants/pathways';
 import type { IndicatorWithData } from '@/lib/api/types';
-import { formatValue } from '@/lib/utils/format';
+import { formatValue, formatDiff, formatAbsDiff } from '@/lib/utils/format';
 import { ArrowRight, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +23,7 @@ interface StageData {
   baselineValue: number | null;
   gap: number | null;
   indicatorName: string;
+  formatDisplayName: string;
 }
 
 function getPersonsValue(indicator: IndicatorWithData): number | null {
@@ -64,6 +65,7 @@ export function PathwayFunnel({
       let value: number | null = null;
       let baselineValue: number | null = null;
       let indicatorName = stage.name;
+      let formatDisplayName = '%';
 
       for (const code of stage.indicatorCodes) {
         const ind = indicatorMap.get(code);
@@ -72,7 +74,8 @@ export function PathwayFunnel({
           if (v !== null) {
             value = v;
             indicatorName = ind.IndicatorShortName;
-            
+            formatDisplayName = ind.FormatDisplayName;
+
             const baseInd = baselineMap.get(code);
             if (baseInd) {
               baselineValue = getPersonsValue(baseInd);
@@ -84,7 +87,7 @@ export function PathwayFunnel({
 
       const gap = value !== null && baselineValue !== null ? value - baselineValue : null;
 
-      return { stage, value, baselineValue, gap, indicatorName };
+      return { stage, value, baselineValue, gap, indicatorName, formatDisplayName };
     });
   }, [pathway.stages, indicatorMap, baselineMap]);
 
@@ -108,8 +111,6 @@ export function PathwayFunnel({
 
     return worst;
   }, [stageData]);
-
-  const formatFn = (v: number) => formatValue(v, '%');
 
   return (
     <Card>
@@ -170,7 +171,7 @@ export function PathwayFunnel({
 
                   {/* Value */}
                   <div className="text-2xl font-bold" style={{ color: pathway.color }}>
-                    {sd.value !== null ? formatFn(sd.value) : '—'}
+                    {sd.value !== null ? formatValue(sd.value, sd.formatDisplayName) : '—'}
                   </div>
 
                   {/* Baseline comparison */}
@@ -180,7 +181,7 @@ export function PathwayFunnel({
                       gapDirection === 'above' ? 'text-green-600' :
                       gapDirection === 'below' ? 'text-red-600' : 'text-gray-500'
                     )}>
-                      {sd.gap > 0 ? '+' : ''}{sd.gap.toFixed(1)}pp vs {baselineName}
+                      {formatDiff(sd.gap, sd.formatDisplayName)} vs {baselineName}
                     </div>
                   )}
 
@@ -207,7 +208,7 @@ export function PathwayFunnel({
               <div className="text-sm">
                 <span className="font-medium text-amber-800">Priority area: </span>
                 <span className="text-amber-700">
-                  {worstStage.indicatorName} is {Math.abs(worstStage.gap!).toFixed(1)}pp 
+                  {worstStage.indicatorName} is {formatAbsDiff(worstStage.gap!, worstStage.formatDisplayName)}{' '}
                   {worstStage.stage.higherIsBetter 
                     ? (worstStage.gap! < 0 ? ' below ' : ' above ')
                     : (worstStage.gap! > 0 ? ' worse than ' : ' better than ')
