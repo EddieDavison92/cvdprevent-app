@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "test": "vitest run",
-    "build": "vitest run && next build",
+    "build": "next build",
+    "test:api": "vitest run",
     "start": "next start",
     "lint": "eslint"
   },

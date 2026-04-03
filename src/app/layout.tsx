@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { QueryProvider } from '@/providers/query-provider';
 import { OrganisationProvider } from '@/providers/organisation-context';
+import { ApiStatusBanner } from '@/components/api-status-banner';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -29,6 +30,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <QueryProvider>
+          <ApiStatusBanner />
           <Suspense fallback={null}>
             <OrganisationProvider>{children}</OrganisationProvider>
           </Suspense>
