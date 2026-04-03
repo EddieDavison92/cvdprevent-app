@@ -10,8 +10,9 @@ import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAllAreas } from '@/lib/hooks/use-areas';
 import { getAreaDisplayName } from '@/lib/api';
 import { SYSTEM_LEVELS, type Area } from '@/lib/api/types';
-import { Search, Globe, Heart, BarChart3, List, ArrowRight, AlertTriangle, Clock3 } from 'lucide-react';
+import { Search, Globe, Heart, BarChart3, List, ArrowRight, Clock3 } from 'lucide-react';
 import { Footer } from '@/components/layout/footer';
+import { ApiUnavailable } from '@/components/api-status-banner';
 
 export default function LandingPage() {
   const router = useRouter();
@@ -144,12 +145,7 @@ export default function LandingPage() {
         </div>
 
         {showApiError && (
-          <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-            <p>
-              Organisation search is temporarily unavailable because the upstream CVDPREVENT API is not responding reliably. Please try again shortly.
-            </p>
-          </div>
+          <ApiUnavailable className="mb-4" />
         )}
 
         {!showApiError && showSlowApiHint && (

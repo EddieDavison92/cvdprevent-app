@@ -26,6 +26,7 @@ import { useAreaIndicators, getPersonsData } from '@/lib/hooks/use-area-indicato
 import { extractCondition } from '@/lib/utils/format';
 import { DASHBOARD_SECTIONS } from '@/lib/constants/indicator-sections';
 import type { IndicatorCategoryData, IndicatorWithData } from '@/lib/api/types';
+import { ApiUnavailable } from '@/components/api-status-banner';
 
 // Convert new data format to the format expected by IndicatorSummaryGrid
 function convertToRawDataFormat(category: IndicatorCategoryData, indicator: IndicatorWithData) {
@@ -102,20 +103,22 @@ export default function DashboardPage() {
   }, [isLoadingOrg, organisation, router]);
 
   // Get latest time periods for both standard and outcome indicators
-  const { data: latestStandardPeriod } = useLatestTimePeriod('standard');
+  const { data: latestStandardPeriod, isError: isPeriodError } = useLatestTimePeriod('standard');
   const { data: latestOutcomePeriod } = useLatestTimePeriod('outcome');
 
   // Fetch standard indicators
-  const { data: standardIndicators, isLoading: isLoadingStandard } = useAreaIndicators(
+  const { data: standardIndicators, isLoading: isLoadingStandard, isError: isStdError } = useAreaIndicators(
     latestStandardPeriod?.TimePeriodID,
     organisation?.AreaID
   );
 
   // Fetch outcome indicators (different time period)
-  const { data: outcomeIndicators, isLoading: isLoadingOutcome } = useAreaIndicators(
+  const { data: outcomeIndicators, isLoading: isLoadingOutcome, isError: isOutError } = useAreaIndicators(
     latestOutcomePeriod?.TimePeriodID,
     organisation?.AreaID
   );
+
+  const isDataError = isPeriodError || isStdError || isOutError;
 
   // Merge both sets - they contain different indicators
   const areaIndicators = useMemo(() => {
@@ -274,6 +277,8 @@ export default function DashboardPage() {
               <BaselineSelector />
             </div>
           )}
+
+          {isDataError && <ApiUnavailable className="mb-4" />}
 
           <QuickStats
             aboveCount={quickStats.above}

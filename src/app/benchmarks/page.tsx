@@ -37,6 +37,7 @@ import { SYSTEM_LEVELS, type IndicatorRawData, type Area, type Indicator } from 
 import { DASHBOARD_SECTIONS, findSectionForIndicator, type DashboardSection } from '@/lib/constants/indicator-sections';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
 import { formatValue, formatTimePeriod } from '@/lib/utils/format';
+import { ApiUnavailable } from '@/components/api-status-banner';
 import { cn } from '@/lib/utils';
 import { downloadCSV } from '@/lib/utils/csv';
 import {
@@ -160,11 +161,11 @@ export default function BenchmarksPage() {
   }, [updateUrl]);
 
   // Determine time period (standard for most, outcome for mortality)
-  const { data: standardPeriod } = useLatestTimePeriod('standard');
+  const { data: standardPeriod, isError: isPeriodError } = useLatestTimePeriod('standard');
   const { data: outcomePeriod } = useLatestTimePeriod('outcome');
 
   // Fetch indicator list to resolve codes → IDs
-  const { data: indicatorList } = useIndicators(
+  const { data: indicatorList, isError: isIndError } = useIndicators(
     standardPeriod?.TimePeriodID,
     SYSTEM_LEVELS.ENGLAND
   );
@@ -172,6 +173,8 @@ export default function BenchmarksPage() {
     outcomePeriod?.TimePeriodID,
     SYSTEM_LEVELS.ENGLAND
   );
+
+  const isDataError = isPeriodError || isIndError;
 
   // Fetch parent-level areas for scoping
   const { data: regions } = useAreas(standardPeriod?.TimePeriodID, SYSTEM_LEVELS.REGION);
@@ -452,6 +455,8 @@ export default function BenchmarksPage() {
 
       <main className="flex-1 bg-nhs-pale-grey/30 p-6">
         <div className="mx-auto max-w-[1400px]">
+          {isDataError && <ApiUnavailable className="mb-5" />}
+
           {/* Page header */}
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-2">

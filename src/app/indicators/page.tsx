@@ -14,6 +14,7 @@ import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAreaIndicators, getPersonsData } from '@/lib/hooks/use-area-indicators';
 import { DASHBOARD_SECTIONS, type SectionType } from '@/lib/constants/indicator-sections';
 import { formatValue, extractCondition } from '@/lib/utils/format';
+import { ApiUnavailable } from '@/components/api-status-banner';
 import { cn } from '@/lib/utils';
 
 const SECTION_ICONS: Record<SectionType, React.ComponentType<{ className?: string }>> = {
@@ -29,11 +30,13 @@ export default function IndicatorsIndexPage() {
   const searchParams = useSearchParams();
   const [conditionFilter, setConditionFilter] = useState<string | null>(null);
 
-  const { data: stdPeriod } = useLatestTimePeriod('standard');
+  const { data: stdPeriod, isError: isPeriodError } = useLatestTimePeriod('standard');
   const { data: outPeriod } = useLatestTimePeriod('outcome');
 
-  const { data: engStdInds, isLoading: isLoadingStd } = useAreaIndicators(stdPeriod?.TimePeriodID, 1);
-  const { data: engOutInds, isLoading: isLoadingOut } = useAreaIndicators(outPeriod?.TimePeriodID, 1);
+  const { data: engStdInds, isLoading: isLoadingStd, isError: isStdError } = useAreaIndicators(stdPeriod?.TimePeriodID, 1);
+  const { data: engOutInds, isLoading: isLoadingOut, isError: isOutError } = useAreaIndicators(outPeriod?.TimePeriodID, 1);
+
+  const isDataError = isPeriodError || isStdError || isOutError;
 
   const allIndicators = useMemo(
     () => [...(engStdInds ?? []), ...(engOutInds ?? [])],
@@ -125,6 +128,8 @@ export default function IndicatorsIndexPage() {
               </div>
             </div>
           </div>
+
+          {isDataError && <ApiUnavailable className="mb-5" />}
 
           {/* Condition filters */}
           {conditions.length > 0 && (
