@@ -75,7 +75,7 @@ export function PeerSection({
   const allowNational = levelId !== SYSTEM_LEVELS.PCN && levelId !== SYSTEM_LEVELS.ENGLAND;
   const preferredViewMode: ViewMode = hasMeaningfulPeers ? 'peers' : hasChildren ? 'children' : 'national';
 
-  const [viewMode, setViewMode] = useState<ViewMode>(preferredViewMode);
+  const [manualViewMode, setManualViewMode] = useState<ViewMode | null>(null);
 
   const formatFn = useCallback((v: number) => formatValue(v, indicator.FormatDisplayName), [indicator.FormatDisplayName]);
 
@@ -202,7 +202,10 @@ export function PeerSection({
     { key: 'children', label: `${childLevelName}s`, available: hasChildren },
   ];
   const availableViews = views.filter((v) => v.available);
-  const activeViewMode = availableViews.some((view) => view.key === viewMode) ? viewMode : preferredViewMode;
+  const activeViewMode =
+    manualViewMode && availableViews.some((view) => view.key === manualViewMode)
+      ? manualViewMode
+      : preferredViewMode;
 
   const chartData = activeViewMode === 'peers' ? peerChartData : activeViewMode === 'children' ? childrenChartData : nationalChartData;
   const benchmarks = activeViewMode === 'peers' ? peerBenchmarks : activeViewMode === 'children' ? childrenBenchmarks : nationalBenchmarks;
@@ -275,7 +278,7 @@ export function PeerSection({
                 {availableViews.map((v) => (
                   <button
                     key={v.key}
-                    onClick={() => setViewMode(v.key)}
+                    onClick={() => setManualViewMode(v.key)}
                     className={cn(
                       'rounded-md px-3 py-1 text-xs font-medium transition-colors',
                       activeViewMode === v.key

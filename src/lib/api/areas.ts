@@ -1,5 +1,7 @@
-import { fetchApi } from './client';
+import { fetchApi, fetchApiWithBrowserCache } from './client';
 import type { Area, AreaResponse, SystemLevel, SystemLevelResponse } from './types';
+
+const AREA_LIST_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 
 export async function getSystemLevels(timePeriodId: number): Promise<SystemLevel[]> {
   const response = await fetchApi<SystemLevelResponse>(`/area/systemLevel?timePeriodID=${timePeriodId}`, 'systemLevels');
@@ -7,7 +9,14 @@ export async function getSystemLevels(timePeriodId: number): Promise<SystemLevel
 }
 
 export async function getAreas(timePeriodId: number, systemLevelId: number): Promise<Area[]> {
-  const response = await fetchApi<AreaResponse>(`/area?timePeriodID=${timePeriodId}&systemLevelID=${systemLevelId}`, 'areaList');
+  const response = await fetchApiWithBrowserCache<AreaResponse>(
+    `/area?timePeriodID=${timePeriodId}&systemLevelID=${systemLevelId}`,
+    'areaList',
+    {
+      cacheKey: `cvdprevent:areas:${timePeriodId}:${systemLevelId}`,
+      ttlMs: AREA_LIST_CACHE_TTL_MS,
+    }
+  );
   return response.areaList;
 }
 

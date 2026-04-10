@@ -1,4 +1,12 @@
 const BASE_URL = 'https://api.cvdprevent.nhs.uk';
+const DEFAULT_REVALIDATE_SECONDS = 3600;
+
+interface BrowserCacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+
+const pendingRequests = new Map<string, Promise<unknown>>();
 
 export class ApiError extends Error {
   constructor(
@@ -42,7 +50,7 @@ export async function fetchApi<T>(endpoint: string, expectedKey?: string): Promi
       Accept: 'application/json',
     },
     next: {
-      revalidate: 3600, // Cache for 1 hour
+      revalidate: DEFAULT_REVALIDATE_SECONDS,
     },
   });
 
@@ -52,6 +60,71 @@ export async function fetchApi<T>(endpoint: string, expectedKey?: string): Promi
 
   const data = await response.json();
   return validateResponse<T>(data, expectedKey);
+}
+
+function canUseBrowserStorage() {
+  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+}
+
+function readBrowserCache<T>(cacheKey: string): T | null {
+  if (!canUseBrowserStorage()) return null;
+
+  try {
+    const raw = window.localStorage.getItem(cacheKey);
+    if (!raw) return null;
+
+    const entry = JSON.parse(raw) as BrowserCacheEntry<T>;
+    if (!entry || typeof entry.expiresAt !== 'number' || entry.expiresAt <= Date.now()) {
+      window.localStorage.removeItem(cacheKey);
+      return null;
+    }
+
+    return entry.data;
+  } catch {
+    window.localStorage.removeItem(cacheKey);
+    return null;
+  }
+}
+
+function writeBrowserCache<T>(cacheKey: string, data: T, ttlMs: number) {
+  if (!canUseBrowserStorage()) return;
+
+  try {
+    const entry: BrowserCacheEntry<T> = {
+      data,
+      expiresAt: Date.now() + ttlMs,
+    };
+    window.localStorage.setItem(cacheKey, JSON.stringify(entry));
+  } catch {
+    // Ignore quota/storage errors so network fetch remains the fallback.
+  }
+}
+
+export async function fetchApiWithBrowserCache<T>(
+  endpoint: string,
+  expectedKey: string | undefined,
+  options: {
+    cacheKey: string;
+    ttlMs: number;
+  }
+): Promise<T> {
+  const cached = readBrowserCache<T>(options.cacheKey);
+  if (cached) return cached;
+
+  const existingRequest = pendingRequests.get(options.cacheKey) as Promise<T> | undefined;
+  if (existingRequest) return existingRequest;
+
+  const request = fetchApi<T>(endpoint, expectedKey)
+    .then((data) => {
+      writeBrowserCache(options.cacheKey, data, options.ttlMs);
+      return data;
+    })
+    .finally(() => {
+      pendingRequests.delete(options.cacheKey);
+    });
+
+  pendingRequests.set(options.cacheKey, request);
+  return request;
 }
 
 export async function fetchApiNoCache<T>(endpoint: string, expectedKey?: string): Promise<T> {
