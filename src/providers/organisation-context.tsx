@@ -45,6 +45,42 @@ interface OrganisationContextValue {
 
 const OrganisationContext = createContext<OrganisationContextValue | null>(null);
 
+function isValidArea(value: unknown): value is Area {
+  if (!value || typeof value !== 'object') return false;
+
+  const candidate = value as Partial<Area>;
+  return (
+    typeof candidate.AreaID === 'number' &&
+    Number.isFinite(candidate.AreaID) &&
+    typeof candidate.AreaCode === 'string' &&
+    typeof candidate.AreaName === 'string' &&
+    Array.isArray(candidate.Parents) &&
+    typeof candidate.SystemLevelID === 'number' &&
+    typeof candidate.SystemLevelName === 'string'
+  );
+}
+
+function readStoredOrganisation(): StoredOrganisation | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return null;
+
+    const parsed = JSON.parse(stored) as Partial<StoredOrganisation>;
+    if (!parsed || !isValidArea(parsed.area) || typeof parsed.levelId !== 'number') {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+
+    return {
+      area: parsed.area,
+      levelId: parsed.levelId,
+    };
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+}
+
 // Fetch area details by ID
 async function fetchAreaById(areaId: number, timePeriodId: number): Promise<Area | null> {
   try {
@@ -73,7 +109,6 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
   const [organisation, setOrganisationState] = useState<Area | null>(null);
   const [levelId, setLevelId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [urlAreaId, setUrlAreaId] = useState<number | null>(null);
   const [baseline, setBaselineState] = useState<Area>(ENGLAND_AREA);
 
   const { data: latestPeriod } = useLatestTimePeriod('standard');
@@ -84,18 +119,11 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
   const parsedUrlAreaId = areaParam ? parseInt(areaParam, 10) : null;
   const hasUrlArea = parsedUrlAreaId !== null && !isNaN(parsedUrlAreaId);
 
-  // Keep urlAreaId in sync with URL param
-  useEffect(() => {
-    if (hasUrlArea) {
-      setUrlAreaId(parsedUrlAreaId);
-    }
-  }, [hasUrlArea, parsedUrlAreaId]);
-
   // Fetch area from URL param if present
   const { data: urlArea, isLoading: isLoadingUrlArea } = useQuery({
     queryKey: ['areaDetails', parsedUrlAreaId, latestTimePeriodId],
     queryFn: () => fetchAreaById(parsedUrlAreaId!, latestTimePeriodId!),
-    enabled: hasUrlArea && !!latestTimePeriodId && !organisation,
+    enabled: hasUrlArea && !!latestTimePeriodId,
     staleTime: Infinity,
   });
 
@@ -104,18 +132,19 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
     if (urlArea) {
       setOrganisationState(urlArea);
       setLevelId(urlArea.SystemLevelID);
+      try {
+        const toStore: StoredOrganisation = { area: urlArea, levelId: urlArea.SystemLevelID };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+      } catch {
+        // Storage failed, continue with in-memory state
+      }
       setIsLoading(false);
     } else if (!hasUrlArea) {
       // No URL param, try localStorage
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsed: StoredOrganisation = JSON.parse(stored);
-          setOrganisationState(parsed.area);
-          setLevelId(parsed.levelId);
-        }
-      } catch {
-        // Invalid stored data, ignore
+      const stored = readStoredOrganisation();
+      if (stored) {
+        setOrganisationState(stored.area);
+        setLevelId(stored.levelId);
       }
       setIsLoading(false);
     } else if (hasUrlArea && !isLoadingUrlArea && !urlArea && !!latestTimePeriodId) {
@@ -171,7 +200,6 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
   const clearOrganisation = useCallback(() => {
     setOrganisationState(null);
     setLevelId(null);
-    setUrlAreaId(null);
 
     // Remove from URL
     const params = new URLSearchParams(searchParams.toString());
