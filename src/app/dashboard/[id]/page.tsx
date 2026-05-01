@@ -26,6 +26,7 @@ import {
   PeerSection,
   DemographicsGrid,
   PopulationProfile,
+  PolarityBadge,
 } from '@/components/indicator-detail';
 import { BaselineSelector } from '@/components/dashboard';
 import { useOrganisation } from '@/providers/organisation-context';
@@ -169,6 +170,10 @@ export default function IndicatorDetailPage() {
   const baselineIndicator = useMemo(() => {
     return baselineIndicators?.find((ind) => ind.IndicatorID === selectedIndicatorId);
   }, [baselineIndicators, selectedIndicatorId]);
+
+  const lowerIsBetter = indicator
+    ? findSectionForIndicator(indicator.IndicatorCode)?.lowerIsBetter ?? false
+    : false;
 
 
   // Get the metricID for Persons (needed for siblingData)
@@ -581,6 +586,7 @@ export default function IndicatorDetailPage() {
               <Badge variant={indicator.IndicatorTypeName === 'Outcome' ? 'secondary' : 'default'}>
                 {indicator.IndicatorTypeName}
               </Badge>
+              <PolarityBadge lowerIsBetter={lowerIsBetter} />
             </div>
             <p className="text-sm text-gray-600">{indicator.IndicatorName}</p>
           </div>
@@ -598,6 +604,7 @@ export default function IndicatorDetailPage() {
               isEngland={isEngland}
               rank={rank}
               timePeriodLabel={timePeriodLabel}
+              lowerIsBetter={lowerIsBetter}
             />
 
             {/* Trend Section - data is already loaded from the main query! */}
@@ -633,7 +640,7 @@ export default function IndicatorDetailPage() {
                 regionValue={regionValue}
                 regionName={regionName}
                 levelId={effectiveLevelId ?? SYSTEM_LEVELS.ICB}
-                lowerIsBetter={indicator ? findSectionForIndicator(indicator.IndicatorCode)?.lowerIsBetter ?? false : false}
+                lowerIsBetter={lowerIsBetter}
                 isLoadingPeers={isLoadingSiblings}
                 isLoadingChildren={isLoadingChildren}
                 isLoadingNational={isLoadingNational}
@@ -685,7 +692,7 @@ export default function IndicatorDetailPage() {
                     selectedAreaCode={organisation?.AreaCode}
                     baselineValue={baselineData?.Value ?? null}
                     baselineName={baselineName}
-                    lowerIsBetter={indicator ? findSectionForIndicator(indicator.IndicatorCode)?.lowerIsBetter ?? false : false}
+                    lowerIsBetter={lowerIsBetter}
                     formatValue={formatFn}
                     height={450}
                   />
@@ -707,6 +714,7 @@ export default function IndicatorDetailPage() {
                 timePeriod={formatTimePeriod(timePeriodLabel)}
                 isEngland={isEngland}
                 isLoading={isLoadingArea || isLoadingBaseline}
+                lowerIsBetter={lowerIsBetter}
               />
             </div>
 

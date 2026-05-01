@@ -15,6 +15,7 @@ interface HeroSectionProps {
   isEngland?: boolean;
   rank?: { position: number; total: number; levelName: string } | null;
   timePeriodLabel?: string;
+  lowerIsBetter: boolean;
 }
 
 function getOrdinal(n: number): string {
@@ -33,6 +34,7 @@ export function HeroSection({
   isEngland,
   rank,
   timePeriodLabel,
+  lowerIsBetter,
 }: HeroSectionProps) {
   const fmt = (v: number) => formatValue(v, indicator.FormatDisplayName);
 
@@ -54,11 +56,12 @@ export function HeroSection({
   const baseVal = baselineData?.Value ?? 0;
   const gapIsSignificant = gap !== null && baseVal !== 0 && (Math.abs(gap) / baseVal) * 100 > 0.25;
 
+  const gapIsGood = gap !== null && (lowerIsBetter ? gap < 0 : gap > 0);
   const gapColor = gapIsSignificant
-    ? (gap! > 0 ? 'text-green-700' : 'text-red-700')
+    ? (gapIsGood ? 'text-green-700' : 'text-red-700')
     : 'text-gray-900';
   const gapBg = gapIsSignificant
-    ? (gap! > 0 ? 'bg-green-50' : 'bg-red-50')
+    ? (gapIsGood ? 'bg-green-50' : 'bg-red-50')
     : 'bg-gray-50';
 
   // Use relative threshold for trend stability (0.25% of area value)
@@ -66,8 +69,10 @@ export function HeroSection({
   const trendThreshold = areaVal !== 0 ? Math.abs(areaVal) * 0.0025 : 0.1;
   const trendDirection = trend !== null ? (trend > trendThreshold ? 'up' : trend < -trendThreshold ? 'down' : 'flat') : null;
   const TrendIcon = trendDirection === 'up' ? TrendingUp : trendDirection === 'down' ? TrendingDown : Minus;
-  const trendColor = trendDirection === 'up' ? 'text-green-700' : trendDirection === 'down' ? 'text-red-700' : 'text-gray-900';
-  const trendBg = trendDirection === 'up' ? 'bg-green-50' : trendDirection === 'down' ? 'bg-red-50' : 'bg-gray-50';
+  const trendIsGood = trendDirection === (lowerIsBetter ? 'down' : 'up');
+  const trendIsBad = trendDirection === (lowerIsBetter ? 'up' : 'down');
+  const trendColor = trendIsGood ? 'text-green-700' : trendIsBad ? 'text-red-700' : 'text-gray-900';
+  const trendBg = trendIsGood ? 'bg-green-50' : trendIsBad ? 'bg-red-50' : 'bg-gray-50';
 
   const rankQuartile = rank
     ? (rank.position <= Math.ceil(rank.total * 0.25) ? 'Top quartile'

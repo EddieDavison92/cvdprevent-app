@@ -18,6 +18,7 @@ interface DemographicsGridProps {
   timePeriod?: string;
   isEngland?: boolean;
   isLoading?: boolean;
+  lowerIsBetter: boolean;
 }
 
 const DEMOGRAPHICS = [
@@ -35,29 +36,34 @@ function findBiggestGap(
   }[],
   baselineName: string,
   formatDisplayName: string,
+  lowerIsBetter: boolean,
 ): string | null {
-  let worst: { demoLabel: string; name: string; gap: number } | null = null;
+  // Signed gap is normalised so negative = worse, regardless of polarity
+  const sign = lowerIsBetter ? -1 : 1;
+  let worst: { demoLabel: string; name: string; gap: number; signed: number } | null = null;
 
   for (const { demo, chartData } of demographicsWithData) {
     for (const d of chartData) {
       if (d.orgValue === null || d.baselineValue === null) continue;
       const gap = d.orgValue - d.baselineValue;
-      if (!worst || gap < worst.gap) {
-        worst = { demoLabel: demo.label.replace('By ', ''), name: d.name, gap };
+      const signed = gap * sign;
+      if (!worst || signed < worst.signed) {
+        worst = { demoLabel: demo.label.replace('By ', ''), name: d.name, gap, signed };
       }
     }
   }
 
   // Only flag if gap is both >2pp absolute AND >3% relative to baseline value
-  if (!worst || worst.gap >= -2) return null;
+  if (!worst || worst.signed >= -2) return null;
   const baseVal = demographicsWithData
     .flatMap((d) => d.chartData)
     .find((d) => d.name === worst!.name)?.baselineValue;
   if (baseVal && (Math.abs(worst.gap) / baseVal) * 100 < 3) return null;
-  return `Biggest gap to ${baselineName}: ${worst.name} (${worst.demoLabel.toLowerCase()}) — ${formatAbsDiff(worst.gap, formatDisplayName)} below`;
+  const direction = worst.gap < 0 ? 'below' : 'above';
+  return `Biggest gap to ${baselineName}: ${worst.name} (${worst.demoLabel.toLowerCase()}) — ${formatAbsDiff(worst.gap, formatDisplayName)} ${direction}`;
 }
 
-export function DemographicsGrid({ indicator, areaData, baselineData, baselineName = 'England', areaName, areaCode, timePeriod, isEngland, isLoading }: DemographicsGridProps) {
+export function DemographicsGrid({ indicator, areaData, baselineData, baselineName = 'England', areaName, areaCode, timePeriod, isEngland, isLoading, lowerIsBetter }: DemographicsGridProps) {
   const formatFn = useCallback((v: number) => formatValue(v, indicator.FormatDisplayName), [indicator.FormatDisplayName]);
   const categories = getIndicatorCategories();
   const displayAreaName = areaName || 'Selected Area';
@@ -107,8 +113,8 @@ export function DemographicsGrid({ indicator, areaData, baselineData, baselineNa
   // Single most notable demographic insight
   const biggestGap = useMemo(() => {
     if (isEngland) return null;
-    return findBiggestGap(visibleDemographics, baselineName, indicator.FormatDisplayName);
-  }, [visibleDemographics, isEngland, baselineName]);
+    return findBiggestGap(visibleDemographics, baselineName, indicator.FormatDisplayName, lowerIsBetter);
+  }, [visibleDemographics, isEngland, baselineName, indicator.FormatDisplayName, lowerIsBetter]);
 
   if (isLoading) {
     return (

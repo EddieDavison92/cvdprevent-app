@@ -4,3 +4,4 @@ export { PeerSection } from './peer-section';
 export { DemographicsGrid } from './demographics-grid';
 export { PopulationProfile } from './population-profile';
 export { IndicatorNav } from './indicator-nav';
+export { PolarityBadge } from './polarity-badge';

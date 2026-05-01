@@ -12,6 +12,7 @@ import { ChartTableToggle, useChartTableActions, type TableColumn } from '@/comp
 import { DemographicsGrid } from '@/components/indicator-detail/demographics-grid';
 import { PopulationProfile } from '@/components/indicator-detail/population-profile';
 import { IndicatorNav } from '@/components/indicator-detail/indicator-nav';
+import { PolarityBadge } from '@/components/indicator-detail/polarity-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -473,6 +474,7 @@ export default function IndicatorExplorePage() {
                   {section.name}
                 </Badge>
               )}
+              {section && <PolarityBadge lowerIsBetter={section.lowerIsBetter} />}
             </div>
             <p className="text-sm text-gray-600 max-w-3xl">{indicator.IndicatorName}</p>
             {(isOutcome ? outPeriod : stdPeriod) && (
@@ -688,6 +690,7 @@ export default function IndicatorExplorePage() {
                 timePeriod={periodLabel}
                 isEngland={!selectedArea}
                 isLoading={false}
+                lowerIsBetter={section?.lowerIsBetter ?? false}
               />
             </div>
           )}
