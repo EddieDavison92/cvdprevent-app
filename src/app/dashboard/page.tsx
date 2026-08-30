@@ -291,7 +291,7 @@ export default function DashboardPage() {
                 improvingCount={quickStats.improving}
                 stableCount={quickStats.stable}
                 decliningCount={quickStats.declining}
-                isLoading={isLoadingData}
+                isLoading={isLoadingOrg || isLoadingData || isLoadingBaseline}
               />
             </div>
           </div>
