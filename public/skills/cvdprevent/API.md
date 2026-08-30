@@ -1,6 +1,6 @@
 # CVDPREVENT API field and route reference
 
-Agent API index: `https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=3`
+Agent API index: `https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=4`
 
 Agent API route prefix: `https://cvdprevent-explorer.app/api/cvdprevent`
 
@@ -13,7 +13,7 @@ All routes use `GET`. The API needs no authentication. The Agent API base is a r
 Start at the versioned API index and follow `_links.timePeriods`. The version parameter prevents assistants from reusing cached pre-link responses. Direct clients can also append routes to the route prefix. For example:
 
 ```text
-https://cvdprevent-explorer.app/api/cvdprevent/area/search?agentVersion=3&partialAreaName=North%20Central%20London&timePeriodID=33
+https://cvdprevent-explorer.app/api/cvdprevent/area/search?agentVersion=4&partialAreaName=North%20Central%20London&timePeriodID=33
 ```
 
 The relay excludes the CSV and XLSX download routes. Use the official API origin for those files.
@@ -24,7 +24,8 @@ Every relayed response has top-level links for `self`, `apiIndex`, `skill`, and 
 
 - period rows: `navigation`;
 - period navigation: the published `systemLevels`, plus `areas`, `indicatorLists`, and `dataAvailability` links for only those levels;
-- area rows: `details`, `indicatorList`, and `allIndicatorsLarge`; prefer `indicatorList` for assistants;
+- area rows: `details`, `summaryVsEngland`, `indicatorList`, and `allIndicatorsLarge`; prefer the summary for an organisation overview;
+- parent rows in area details: `summaryForSubject` compares the original area with that parent;
 - indicator rows: `details`, `data`, `rawDataAtSystemLevel`, `rawPersonsDataAtSystemLevel`, and `dataAvailability` when their parameters are known;
 - metric category rows: `trend`, `geographicPeers`, `immediateChildren`, `areaBreakdown`, `systemLevelComparison`, and `nationalAndArea`.
 
@@ -225,6 +226,24 @@ Response: `IndicatorGroup` with `HighestPriorityNotificationType`, `IndicatorGro
 
 ## Indicator data routes
 
+### `/summary` (Agent API only)
+
+Parameters:
+
+- `timePeriodID` - required.
+- `areaID` - required subject organisation.
+- `comparisonAreaID` - optional; defaults to England (`1`).
+
+This compact route compares the Sex / Persons headline for every subject indicator with a comparison organisation. It fetches official `/indicator` and area-detail responses, matches indicators by `IndicatorCode`, and returns:
+
+- `TimePeriodID`, `SubjectArea`, `ComparisonArea`, `ComparisonTolerance`, and `ComparisonToleranceNote`;
+- `Counts.subjectIndicators`, `comparable`, `missingComparison`, `favourable`, `similar`, `unfavourable`, and `unclassified`;
+- `Counts.recordedPrevalence.higher`, `similar`, and `lower`;
+- `Indicators[]`, containing every `IndicatorDescriptor` field returned upstream plus `IndicatorTypeID`, `IndicatorTypeName`, `Section`, `Polarity`, `Subject`, `Comparison`, `Difference`, `DifferenceUnit`, `Relation`, `Assessment`, and focused `_links`;
+- top-level `_links.self`, `apiIndex`, and `skill`.
+
+`Subject` and `Comparison` retain every field from the corresponding Sex / Persons `Data` object. `Relation` is neutral. `Assessment` applies the explorer's polarity rules and is null for recorded prevalence. Differences whose absolute value is at or below `ComparisonTolerance` are similar. Use separate summary calls for Standard and Outcomes periods.
+
 ### `/indicator`
 
 Parameters:
@@ -371,6 +390,7 @@ Response: `DataAvailability[]`. Rows have `DataAvailabilityID`, `DataAvailabilit
 | Question | Route | Scope |
 |---|---|---|
 | What is this organisation's parent? | `/area/{areaId}/details` | `ParentAreaList` with IDs, names, and levels |
+| Where does this organisation stand across all indicators? | linked `/summary` | Compact Sex / Persons comparison with polarity-aware counts |
 | How does it compare with nearby peers? | `/indicator/siblingData` | Same-level organisations sharing the selected area's parent; includes the selected area |
 | How does one ICB compare with every ICB? | linked `rawPersonsDataAtSystemLevel` | Sex / Persons rows for all ICBs with data |
 | How does one area compare across system levels? | `/indicator/metricSystemLevelComparison/{metricId}` | Returned national and same-level comparison groups with medians |

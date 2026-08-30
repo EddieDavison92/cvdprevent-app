@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 const CACHE_CONTROL = 'public, s-maxage=21600, stale-while-revalidate=86400';
-const AGENT_VERSION = '3';
+const AGENT_VERSION = '4';
 const PUBLIC_ORIGIN = 'https://cvdprevent-explorer.app';
 
 export function GET(request: Request) {

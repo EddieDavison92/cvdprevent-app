@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 const API_ORIGIN = 'https://api.cvdprevent.nhs.uk';
 const CACHE_CONTROL = 'public, s-maxage=21600, stale-while-revalidate=86400';
-const AGENT_VERSION = '3';
+const AGENT_VERSION = '4';
 const PUBLIC_ORIGIN = 'https://cvdprevent-explorer.app';
 
 const JSON_PATHS = [
@@ -63,6 +63,7 @@ function areaLinks(origin: string, area: JsonObject, timePeriodID?: number, inhe
 
   area._links = {
     details: relayUrl(origin, `area/${areaID}/details`, { timePeriodID }),
+    summaryVsEngland: relayUrl(origin, 'summary', { timePeriodID, areaID, comparisonAreaID: 1 }),
     indicatorList: systemLevelID === undefined
       ? undefined
       : relayUrl(origin, 'indicator/list', { timePeriodID, systemLevelID, areaID }),
@@ -176,6 +177,20 @@ function enrichResponse(payload: unknown, requestUrl: URL, apiPath: string) {
     areaLinks(origin, payload.areaDetails, timePeriodID);
     decorateAreaRows(payload.areaDetails.ParentAreaList, origin, timePeriodID);
     decorateAreaRows(payload.areaDetails.ChildAreaList, origin, timePeriodID);
+
+    const subjectAreaID = numberField(payload.areaDetails, 'AreaID');
+    if (subjectAreaID !== undefined && timePeriodID !== undefined && Array.isArray(payload.areaDetails.ParentAreaList)) {
+      for (const parent of payload.areaDetails.ParentAreaList) {
+        if (!isObject(parent) || !isObject(parent._links)) continue;
+        const parentAreaID = numberField(parent, 'AreaID');
+        if (parentAreaID === undefined) continue;
+        parent._links.summaryForSubject = relayUrl(origin, 'summary', {
+          timePeriodID,
+          areaID: subjectAreaID,
+          comparisonAreaID: parentAreaID,
+        });
+      }
+    }
   }
 
   if (Array.isArray(payload.indicatorList)) {

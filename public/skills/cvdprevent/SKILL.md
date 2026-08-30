@@ -12,7 +12,7 @@ Answer questions about aggregate cardiovascular prevention data in England using
 - Explorer: https://cvdprevent-explorer.app
 - Skill: https://cvdprevent-explorer.app/skill.md
 - API field and route reference: https://cvdprevent-explorer.app/api-reference.md
-- Agent API index: https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=3
+- Agent API index: https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=4
 - Agent API route prefix: https://cvdprevent-explorer.app/api/cvdprevent
 - Official API origin: https://api.cvdprevent.nhs.uk
 - Official CVDPREVENT site: https://www.cvdprevent.nhs.uk
@@ -23,7 +23,7 @@ Treat every API path below as relative to the Agent API route prefix. The relay 
 Start by opening this exact URL:
 
 ```text
-https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=3
+https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=4
 ```
 
 Its `_links.timePeriods` value is the exact URL for the first data request. Follow URLs from `_links` rather than assembling them when the fetch tool has a per-URL allowlist. Do not replace, shorten, decode, or re-order a linked URL's query string.
@@ -61,6 +61,8 @@ Do not explore response shapes or attempt constructed URLs before answering. Ope
 |---|---|
 | Find an organisation | period `_links.navigation` -> `_links.areas` -> requested level -> filter `areaList` by name |
 | Find its parent | area row `_links.details` -> `ParentAreaList` |
+| Summarise all indicators against England | area row `_links.summaryVsEngland` |
+| Summarise all indicators against a parent | area row `_links.details` -> parent `_links.summaryForSubject` |
 | Compare indicators with England or a parent | each area row `_links.indicatorList` -> match `IndicatorCode` -> `_links.data` |
 | Compare with geographic peers | Persons category `_links.geographicPeers` |
 | Rank one ICB against all ICBs | matched indicator `_links.rawPersonsDataAtSystemLevel` |
@@ -127,7 +129,7 @@ For a London ICB, `compare with London` normally means its parent Region row (`S
       "EndDate": "Tue, 31 Mar 2026 00:00:00 GMT",
       "IndicatorTypeName": "Standard",
       "_links": {
-        "navigation": "https://cvdprevent-explorer.app/api/cvdprevent/period/33?agentVersion=3"
+        "navigation": "https://cvdprevent-explorer.app/api/cvdprevent/period/33?agentVersion=4"
       }
     }
   ]
@@ -149,14 +151,14 @@ Follow `navigation` to get only the system levels published for that period and 
       {
         "systemLevelID": 7,
         "systemLevelName": "ICB",
-        "href": "https://cvdprevent-explorer.app/api/cvdprevent/area?agentVersion=3&timePeriodID=33&systemLevelID=7"
+        "href": "https://cvdprevent-explorer.app/api/cvdprevent/area?agentVersion=4&timePeriodID=33&systemLevelID=7"
       }
     ],
     "indicatorLists": [
       {
         "systemLevelID": 7,
         "systemLevelName": "ICB",
-        "href": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/list?agentVersion=3&timePeriodID=33&systemLevelID=7"
+        "href": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/list?agentVersion=4&timePeriodID=33&systemLevelID=7"
       }
     ]
   }
@@ -179,9 +181,10 @@ Follow `navigation` to get only the system levels published for that period and 
       "SystemLevelName": "ICB",
       "Parents": [7669],
       "_links": {
-        "details": "https://cvdprevent-explorer.app/api/cvdprevent/area/8038/details?agentVersion=3&timePeriodID=33",
-        "indicatorList": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/list?agentVersion=3&timePeriodID=33&systemLevelID=7&areaID=8038",
-        "allIndicatorsLarge": "https://cvdprevent-explorer.app/api/cvdprevent/indicator?agentVersion=3&timePeriodID=33&areaID=8038"
+        "details": "https://cvdprevent-explorer.app/api/cvdprevent/area/8038/details?agentVersion=4&timePeriodID=33",
+        "summaryVsEngland": "https://cvdprevent-explorer.app/api/cvdprevent/summary?agentVersion=4&timePeriodID=33&areaID=8038&comparisonAreaID=1",
+        "indicatorList": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/list?agentVersion=4&timePeriodID=33&systemLevelID=7&areaID=8038",
+        "allIndicatorsLarge": "https://cvdprevent-explorer.app/api/cvdprevent/indicator?agentVersion=4&timePeriodID=33&areaID=8038"
       }
     }
   ]
@@ -204,15 +207,33 @@ Resolve names case-insensitively against `AreaName`. NHS prefixes and organisati
   "AxisCharacter": "%",
   "IndicatorTypeName": "Standard",
   "_links": {
-    "details": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/details?agentVersion=3",
-    "data": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/data?agentVersion=3&timePeriodID=33&areaID=8038",
-    "rawPersonsDataAtSystemLevel": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/rawDataJSON?agentVersion=3&timePeriodID=33&systemLevelID=7&metricCategoryTypeName=Sex&metricCategoryName=Persons",
-    "dataAvailability": "https://cvdprevent-explorer.app/api/cvdprevent/dataAvailability?agentVersion=3&timePeriodID=33&systemLevelID=7&indicatorID=58"
+    "details": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/details?agentVersion=4",
+    "data": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/data?agentVersion=4&timePeriodID=33&areaID=8038",
+    "rawPersonsDataAtSystemLevel": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/rawDataJSON?agentVersion=4&timePeriodID=33&systemLevelID=7&metricCategoryTypeName=Sex&metricCategoryName=Persons",
+    "dataAvailability": "https://cvdprevent-explorer.app/api/cvdprevent/dataAvailability?agentVersion=4&timePeriodID=33&systemLevelID=7&indicatorID=58"
   }
 }
 ```
 
 Use `IndicatorShortName` in prose, `IndicatorName` when the user asks for the definition, and `FormatDisplayName` or `AxisCharacter` to format the value. Some short names already end with the indicator code in parentheses; remove that duplicate when also displaying `IndicatorCode`. Do not assume every indicator is a percentage.
+
+### Organisation summary
+
+Use the compact summary when the user asks where an organisation stands across all indicators. Follow the area row's `_links.summaryVsEngland`, or follow `_links.details` and then the chosen parent row's `_links.summaryForSubject`.
+
+The summary returns one Sex / Persons row per indicator. `Counts` separates directional performance from recorded prevalence. `Indicators[]` contains the full indicator descriptor, the subject and comparison metric data, `Difference`, neutral `Relation` (`higher`, `lower`, or `similar`), and polarity-aware `Assessment` (`favourable`, `unfavourable`, `similar`, or null). Recorded prevalence has a null assessment and is counted under `Counts.recordedPrevalence`; describe it as higher or lower recording.
+
+For a useful overview:
+
+1. Resolve the latest Standard period and follow the summary link for the requested comparison.
+2. Report the comparable, missing-comparison, and unclassified counts.
+3. Summarise favourable, similar, and unfavourable directional indicators.
+4. Show the largest unfavourable percentage-point gaps. Do not rank percentage gaps with rates or counts on one scale.
+5. Report recorded prevalence separately as higher, similar, or lower recording.
+6. Resolve the latest Outcomes period separately and repeat when the user asks for all CVDPREVENT indicators. Label each period; do not merge their counts as though they were one release.
+7. Use each result's focused `_links` when the user asks for a trend, breakdown, definition, or validation.
+
+The linked summary covers England and named parents. For an unrelated comparison organisation, resolve both areas and use the `Any two organisations` recipe below.
 
 ### All indicators for one organisation
 
@@ -243,9 +264,9 @@ Use `IndicatorShortName` in prose, `IndicatorName` when the user asks for the de
       },
       "TimeSeries": [],
       "_links": {
-        "trend": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/timeSeriesByMetric/1493?agentVersion=3&areaID=8038",
-        "geographicPeers": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/siblingData?agentVersion=3&timePeriodID=33&areaID=8038&metricID=1493",
-        "areaBreakdown": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricAreaBreakdown/1493?agentVersion=3&timePeriodID=33&areaID=8038"
+        "trend": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/timeSeriesByMetric/1493?agentVersion=4&areaID=8038",
+        "geographicPeers": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/siblingData?agentVersion=4&timePeriodID=33&areaID=8038&metricID=1493",
+        "areaBreakdown": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricAreaBreakdown/1493?agentVersion=4&timePeriodID=33&areaID=8038"
       }
     }
   ]
@@ -338,12 +359,12 @@ Focused indicator data:
           "ValueNote": null
         },
         "_links": {
-          "trend": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/timeSeriesByMetric/1493?agentVersion=3&areaID=8038",
-          "geographicPeers": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/siblingData?agentVersion=3&timePeriodID=33&areaID=8038&metricID=1493",
-          "immediateChildren": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/childData?agentVersion=3&timePeriodID=33&areaID=8038&metricID=1493",
-          "areaBreakdown": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricAreaBreakdown/1493?agentVersion=3&timePeriodID=33&areaID=8038",
-          "systemLevelComparison": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricSystemLevelComparison/1493?agentVersion=3&timePeriodID=33&areaID=8038",
-          "nationalAndArea": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/nationalVsAreaMetricData/1493?agentVersion=3&timePeriodID=33&areaID=8038"
+          "trend": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/timeSeriesByMetric/1493?agentVersion=4&areaID=8038",
+          "geographicPeers": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/siblingData?agentVersion=4&timePeriodID=33&areaID=8038&metricID=1493",
+          "immediateChildren": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/childData?agentVersion=4&timePeriodID=33&areaID=8038&metricID=1493",
+          "areaBreakdown": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricAreaBreakdown/1493?agentVersion=4&timePeriodID=33&areaID=8038",
+          "systemLevelComparison": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricSystemLevelComparison/1493?agentVersion=4&timePeriodID=33&areaID=8038",
+          "nationalAndArea": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/nationalVsAreaMetricData/1493?agentVersion=4&timePeriodID=33&areaID=8038"
         }
       }
     ]
@@ -488,6 +509,10 @@ For "Compare North West London's four-pillar heart failure treatment with London
 Follow the returned URLs exactly. Do not substitute IDs copied from this example or from an earlier answer.
 
 ## Comparison recipes
+
+### Organisation performance overview
+
+Use the `Organisation summary` workflow above. Lead with the comparison basis and period, then the split between favourable, similar, and unfavourable directional indicators. List the largest unfavourable gaps within the same unit, and keep recorded prevalence in a separate higher/lower-recording section. Treat `ValueNote`, null values, and `Counts.missingComparison` as data gaps rather than zeroes.
 
 ### Parent organisation
 
