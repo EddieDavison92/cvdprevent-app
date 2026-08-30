@@ -6,8 +6,15 @@ import { DemographicChart } from '@/components/charts/demographic-chart';
 import { BarChart } from '@/components/charts/bar-chart';
 import { ChartTableToggle, useChartTableActions, type TableColumn } from '@/components/charts';
 import type { Indicator, IndicatorRawData } from '@/lib/api/types';
-import { getIndicatorCategories, DEPRIVATION_LABELS } from '@/lib/api/indicators';
+import { DEPRIVATION_LABELS } from '@/lib/api/indicators';
 import { formatValue, formatAbsDiff } from '@/lib/utils/format';
+import {
+  findDemographicItem,
+  formatDemographicCategoryLabel,
+  getAvailableDemographics,
+  getDemographicCategoryNames,
+  type DemographicDefinition,
+} from '@/lib/utils/demographics';
 interface DemographicsGridProps {
   indicator: Indicator;
   areaData: IndicatorRawData[];
@@ -21,17 +28,10 @@ interface DemographicsGridProps {
   lowerIsBetter: boolean;
 }
 
-const DEMOGRAPHICS = [
-  { type: 'Sex', label: 'By Sex', excludeCategories: ['Persons'] },
-  { type: 'Age group', label: 'By Age Group', excludeCategories: [] },
-  { type: 'Deprivation quintile', label: 'By Deprivation Quintile', excludeCategories: [] },
-  { type: 'Ethnicity', label: 'By Ethnicity', excludeCategories: [] },
-];
-
 // Find the single biggest gap to baseline across all demographics
 function findBiggestGap(
   demographicsWithData: {
-    demo: typeof DEMOGRAPHICS[0];
+    demo: DemographicDefinition;
     chartData: { name: string; orgValue: number | null; baselineValue: number | null }[];
   }[],
   baselineName: string,
@@ -80,26 +80,25 @@ function findBiggestGap(
 
 export function DemographicsGrid({ indicator, areaData, baselineData, baselineName = 'England', areaName, areaCode, timePeriod, isEngland, isLoading, lowerIsBetter }: DemographicsGridProps) {
   const formatFn = useCallback((v: number) => formatValue(v, indicator.FormatDisplayName), [indicator.FormatDisplayName]);
-  const categories = getIndicatorCategories();
   const displayAreaName = areaName || 'Selected Area';
+  const demographics = useMemo(
+    () => getAvailableDemographics(areaData, baselineData),
+    [areaData, baselineData]
+  );
 
   const demographicsWithData = useMemo(() => {
-    return DEMOGRAPHICS.map((demo) => {
-      const category = categories.find((c) => c.type === demo.type);
-      if (!category) return null;
-
-      const relevantCategories = category.categories.filter(
-        (name) => !demo.excludeCategories.includes(name)
+    return demographics.map((demo) => {
+      const relevantCategories = getDemographicCategoryNames(
+        demo.type,
+        areaData,
+        baselineData,
+        demo.excludeCategories,
       );
 
       const chartData = relevantCategories
         .map((name) => {
-          const item = areaData.find(
-            (d) => d.MetricCategoryTypeName === demo.type && d.MetricCategoryName === name
-          );
-          const baseItem = baselineData.find(
-            (d) => d.MetricCategoryTypeName === demo.type && d.MetricCategoryName === name
-          );
+          const item = findDemographicItem(areaData, demo.type, name);
+          const baseItem = findDemographicItem(baselineData, demo.type, name);
           return {
             name,
             orgValue: item?.Value ?? null,
@@ -115,8 +114,8 @@ export function DemographicsGrid({ indicator, areaData, baselineData, baselineNa
       const hasAreaData = chartData.some((d) => d.orgValue !== null);
 
       return { demo, chartData, hasAreaData };
-    }).filter(Boolean) as { demo: typeof DEMOGRAPHICS[0]; chartData: { name: string; orgValue: number | null; baselineValue: number | null; orgNumerator: number | null; orgDenominator: number | null; baselineNumerator: number | null; baselineDenominator: number | null }[]; hasAreaData: boolean }[];
-  }, [categories, areaData, baselineData]);
+    }).filter(Boolean) as { demo: DemographicDefinition; chartData: { name: string; orgValue: number | null; baselineValue: number | null; orgNumerator: number | null; orgDenominator: number | null; baselineNumerator: number | null; baselineDenominator: number | null }[]; hasAreaData: boolean }[];
+  }, [demographics, areaData, baselineData]);
 
   const visibleDemographics = useMemo(() => {
     if (isEngland) {
@@ -134,7 +133,7 @@ export function DemographicsGrid({ indicator, areaData, baselineData, baselineNa
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2">
-        {DEMOGRAPHICS.slice(0, 4).map((demo) => (
+        {demographics.slice(0, 4).map((demo) => (
           <Card key={demo.type} className="gap-2 py-4">
             <CardHeader className="gap-1">
               <CardTitle className="text-base">{demo.label}</CardTitle>
@@ -203,7 +202,7 @@ function DemographicCard({
   isEngland,
   formatFn,
 }: {
-  demo: typeof DEMOGRAPHICS[0];
+  demo: DemographicDefinition;
   chartData: { name: string; orgValue: number | null; baselineValue: number | null; orgNumerator: number | null; orgDenominator: number | null; baselineNumerator: number | null; baselineDenominator: number | null }[];
   indicator: Indicator;
   displayAreaName: string;
@@ -214,7 +213,7 @@ function DemographicCard({
   formatFn: (v: number) => string;
 }) {
   const simpleChartData = useMemo(() => chartData.map((d) => ({
-    name: DEPRIVATION_LABELS[d.name]?.short ?? d.name,
+    name: DEPRIVATION_LABELS[d.name]?.short ?? formatDemographicCategoryLabel(d.name),
     tooltipName: DEPRIVATION_LABELS[d.name]?.full,
     value: d.orgValue,
     numerator: d.orgNumerator,
@@ -222,11 +221,16 @@ function DemographicCard({
   })), [chartData]);
 
   const tableData = useMemo(() => chartData.map((d) => ({
-    category: DEPRIVATION_LABELS[d.name]?.full ?? d.name,
+    category: DEPRIVATION_LABELS[d.name]?.full ?? formatDemographicCategoryLabel(d.name),
     value: d.orgValue,
     numerator: d.orgNumerator,
     denominator: d.orgDenominator,
     baselineValue: d.baselineValue,
+  })), [chartData]);
+
+  const comparisonChartData = useMemo(() => chartData.map((d) => ({
+    ...d,
+    name: DEPRIVATION_LABELS[d.name]?.short ?? formatDemographicCategoryLabel(d.name),
   })), [chartData]);
 
   const tableColumns: TableColumn[] = useMemo(() => {
@@ -287,7 +291,7 @@ function DemographicCard({
                 />
               ) : (
                 <DemographicChart
-                  data={chartData}
+                  data={comparisonChartData}
                   orgName={displayAreaName}
                   baselineName={baselineName}
                   formatValue={formatFn}

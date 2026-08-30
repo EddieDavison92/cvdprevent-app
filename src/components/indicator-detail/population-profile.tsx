@@ -8,19 +8,16 @@ import { nhsEChartsTheme, defaultChartOptions } from '@/components/charts/chart-
 import { NHS_COLORS } from '@/lib/constants/colors';
 import { DEPRIVATION_LABELS } from '@/lib/api/indicators';
 import type { IndicatorRawData } from '@/lib/api/types';
-import { getIndicatorCategories } from '@/lib/api/indicators';
 import {
   computePopulationShares,
   type CategoryShare,
-  type DemographicDefinition,
 } from '@/lib/utils/population-profile';
-
-const DEMOGRAPHICS: DemographicDefinition[] = [
-  { type: 'Sex', label: 'By Sex', excludeCategories: ['Persons'] },
-  { type: 'Age group', label: 'By Age Group', excludeCategories: [] },
-  { type: 'Deprivation quintile', label: 'By Deprivation Quintile', excludeCategories: [] },
-  { type: 'Ethnicity', label: 'By Ethnicity', excludeCategories: [] },
-];
+import {
+  formatDemographicCategoryLabel,
+  getAvailableDemographics,
+  getDemographicCategoryNames,
+  type DemographicDefinition,
+} from '@/lib/utils/demographics';
 
 interface PopulationProfileProps {
   areaData: IndicatorRawData[];
@@ -46,7 +43,7 @@ function ProfileChart({
   baselineName: string;
   isEngland?: boolean;
 }) {
-  const categories = data.map((d) => DEPRIVATION_LABELS[d.name]?.short ?? d.name);
+  const categories = data.map((d) => DEPRIVATION_LABELS[d.name]?.short ?? formatDemographicCategoryLabel(d.name));
   const hasAreaSuppression = data.some((d) => d.areaSuppressed);
   const hasBaselineSuppression = data.some((d) => d.baselineSuppressed);
 
@@ -59,7 +56,7 @@ function ProfileChart({
         const items = params as { dataIndex: number; seriesId: string; seriesName: string; value: number | null; color: string }[];
         if (!items.length) return '';
         const d = data[items[0].dataIndex];
-        const fullName = DEPRIVATION_LABELS[d.name]?.full ?? d.name;
+        const fullName = DEPRIVATION_LABELS[d.name]?.full ?? formatDemographicCategoryLabel(d.name);
         let html = `<strong>${fullName}</strong><br/>`;
         for (const item of items) {
           if (item.value == null) continue;
@@ -204,7 +201,7 @@ function ProfileCard({
   );
 
   const tableData = useMemo(() => shares.map((d) => ({
-    category: DEPRIVATION_LABELS[d.name]?.full ?? d.name,
+    category: DEPRIVATION_LABELS[d.name]?.full ?? formatDemographicCategoryLabel(d.name),
     areaShare: d.areaSuppressed ? 'Suppressed' : d.areaShare,
     areaDenominator: d.areaSuppressed ? 'Suppressed' : d.areaDenominator,
     ...(isEngland ? {} : {
@@ -288,22 +285,31 @@ export function PopulationProfile({
   areaCode,
   timePeriod,
 }: PopulationProfileProps) {
-  const categories = getIndicatorCategories();
+  const demographics = useMemo(
+    () => getAvailableDemographics(areaData, baselineData, true),
+    [areaData, baselineData]
+  );
 
   const profiles = useMemo(() => {
-    return DEMOGRAPHICS
+    return demographics
       .map((demo) => {
-        const shares = computePopulationShares(demo, areaData, baselineData, categories);
+        const names = getDemographicCategoryNames(
+          demo.type,
+          areaData,
+          baselineData,
+          demo.excludeCategories,
+        );
+        const shares = computePopulationShares(demo, areaData, baselineData, names);
         if (!shares) return null;
         return { demo, shares };
       })
       .filter(Boolean) as { demo: DemographicDefinition; shares: CategoryShare[] }[];
-  }, [areaData, baselineData, categories]);
+  }, [areaData, baselineData, demographics]);
 
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2">
-        {DEMOGRAPHICS.slice(0, 4).map((demo) => (
+        {demographics.slice(0, 4).map((demo) => (
           <Card key={demo.type} className="gap-2 py-4">
             <CardHeader className="gap-1">
               <CardTitle className="text-base">{demo.label}</CardTitle>

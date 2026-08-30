@@ -1,10 +1,5 @@
 import type { IndicatorRawData } from '@/lib/api/types';
-
-export interface DemographicDefinition {
-  type: string;
-  label: string;
-  excludeCategories: string[];
-}
+import type { DemographicDefinition } from '@/lib/utils/demographics';
 
 export interface CategoryShare {
   name: string;
@@ -70,14 +65,8 @@ export function computePopulationShares(
   demo: DemographicDefinition,
   areaData: IndicatorRawData[],
   baselineData: IndicatorRawData[],
-  categories: { type: string; categories: string[] }[],
+  names: string[],
 ): CategoryShare[] | null {
-  const category = categories.find((item) => item.type === demo.type);
-  if (!category) return null;
-
-  const names = category.categories.filter(
-    (name) => !demo.excludeCategories.includes(name)
-  );
   const areaTotal = getEligiblePopulation(areaData);
   const baselineTotal = getEligiblePopulation(baselineData);
 

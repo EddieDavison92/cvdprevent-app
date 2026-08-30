@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { IndicatorRawData } from '@/lib/api/types';
 import { computePopulationShares } from '@/lib/utils/population-profile';
 
-const categories = [{ type: 'Ethnicity', categories: ['Asian', 'Unknown', 'White'] }];
+const categories = ['Asian', 'Unknown', 'White'];
 const demo = { type: 'Ethnicity', label: 'By Ethnicity', excludeCategories: [] };
 
 function row(

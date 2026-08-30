@@ -6,7 +6,7 @@ import { Header } from '@/components/layout/header';
 import {
   OrganisationHeader,
   QuickStats,
-  AllIndicatorsExplorer,
+  QualityImprovementExplorer,
   ConditionFilter,
   BaselineSelector,
   SectionView,
@@ -147,7 +147,7 @@ export default function DashboardPage() {
   }, [baselineStandardIndicators, baselineOutcomeIndicators]);
 
   // Build data maps for the grid (All Indicators tab)
-  const { dataByIndicator, previousDataByIndicator, baselineDataByIndicator, quickStats, indicators, conditions } = useMemo(() => {
+  const { quickStats, indicators, conditions } = useMemo(() => {
     const dataMap = new Map();
     const prevMap = new Map();
     const baselineMap = new Map();
@@ -270,6 +270,12 @@ export default function DashboardPage() {
     return indicators.filter((ind) => ind.condition === selectedCondition);
   }, [indicators, selectedCondition]);
 
+  const filteredAreaIndicators = useMemo(() => {
+    if (!areaIndicators) return undefined;
+    const visibleIds = new Set(filteredIndicators.map((indicator) => indicator.IndicatorID));
+    return areaIndicators.filter((indicator) => visibleIds.has(indicator.IndicatorID));
+  }, [areaIndicators, filteredIndicators]);
+
   // Don't render if redirecting
   if (!organisation && !isLoadingOrg) {
     return null;
@@ -285,25 +291,27 @@ export default function DashboardPage() {
           <div className="rounded-lg border border-gray-200 bg-white px-4 py-4 sm:px-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <OrganisationHeader />
-              {isEngland ? (
+              {isEngland || currentTab === 'indicators' ? (
                 <AreaChangeDialog className="hidden sm:inline-flex" />
               ) : (
                 <BaselineSelector />
               )}
             </div>
-            <div className="mt-4 border-t border-gray-100 pt-4">
-              <QuickStats
-                favourableCount={quickStats.favourable}
-                atCount={quickStats.at}
-                unfavourableCount={quickStats.unfavourable}
-                baselineName={baselineName}
-                isEngland={isEngland}
-                improvingCount={quickStats.improving}
-                stableCount={quickStats.stable}
-                decliningCount={quickStats.declining}
-                isLoading={isLoadingOrg || isLoadingData || isLoadingBaseline}
-              />
-            </div>
+            {currentTab !== 'indicators' && (
+              <div className="mt-4 border-t border-gray-100 pt-4">
+                <QuickStats
+                  favourableCount={quickStats.favourable}
+                  atCount={quickStats.at}
+                  unfavourableCount={quickStats.unfavourable}
+                  baselineName={baselineName}
+                  isEngland={isEngland}
+                  improvingCount={quickStats.improving}
+                  stableCount={quickStats.stable}
+                  decliningCount={quickStats.declining}
+                  isLoading={isLoadingOrg || isLoadingData || isLoadingBaseline}
+                />
+              </div>
+            )}
           </div>
 
           {isDataError && <ApiUnavailable />}
@@ -314,7 +322,7 @@ export default function DashboardPage() {
               {!isEngland && <TabsTrigger value="overview" className="flex-none px-3">Overview</TabsTrigger>}
               <TabsTrigger value="trends" className="flex-none px-3">Trends</TabsTrigger>
               {!isEngland && <TabsTrigger value="pathways" className="flex-none px-3">Pathways</TabsTrigger>}
-              <TabsTrigger value="indicators" className="flex-none px-3">All Indicators</TabsTrigger>
+              <TabsTrigger value="indicators" className="flex-none px-3">{isEngland ? 'Indicators' : 'Improvement'}</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab - Sections (non-England only) */}
@@ -394,7 +402,7 @@ export default function DashboardPage() {
               </TabsContent>
             )}
 
-            {/* All Indicators Tab */}
+            {/* Quality Improvement Tab */}
             <TabsContent value="indicators" className="mt-4">
               <ConditionFilter
                 conditions={conditions}
@@ -402,15 +410,12 @@ export default function DashboardPage() {
                 onSelectCondition={setSelectedCondition}
               />
 
-              <AllIndicatorsExplorer
-                indicators={filteredIndicators}
-                dataByIndicator={dataByIndicator}
-                previousDataByIndicator={previousDataByIndicator}
-                baselineDataByIndicator={baselineDataByIndicator}
-                baselineName={baselineName}
-                isLoadingIndicators={isLoadingOrg || isLoadingData}
+              <QualityImprovementExplorer
+                indicators={filteredAreaIndicators}
+                areaName={organisation?.AreaName ?? 'Selected area'}
+                systemLevelName={organisation?.SystemLevelName ? `${organisation.SystemLevelName}s` : undefined}
+                isLoading={isLoadingOrg || isLoadingData}
                 isEngland={isEngland}
-                selectedCondition={selectedCondition}
               />
             </TabsContent>
           </Tabs>
