@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, Bot } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { CopySkillUrl } from '@/components/skills/copy-skill-url';
@@ -8,20 +8,12 @@ import { CopySkillUrl } from '@/components/skills/copy-skill-url';
 const SKILL_URL = 'https://www.cvdprevent-explorer.app/skill.md';
 const SKILL_SOURCE_URL = '/skills/cvdprevent/SKILL.md';
 const API_REFERENCE_URL = '/api-reference.md';
-const STARTER_PROMPT = `Read the instructions at ${SKILL_URL} and use them to answer my questions about CVDPREVENT data.`;
 
 export const metadata: Metadata = {
   title: 'Use CVDPREVENT data with an AI assistant',
   description: 'Copy one URL and give it to ChatGPT, Claude, or another web-enabled assistant to query public aggregate CVDPREVENT data.',
   alternates: { canonical: '/skills' },
 };
-
-const EXAMPLE_QUESTIONS = [
-  'How does hypertension treated to target in North West London compare with London and England?',
-  'Which heart failure indicators in my ICB are furthest from the England value?',
-  'Show CVD mortality for Greater Manchester over the last three years.',
-  'Where are the largest deprivation gaps for AF anticoagulation in Birmingham and Solihull?',
-];
 
 export default function SkillsPage() {
   return (
@@ -44,46 +36,23 @@ export default function SkillsPage() {
             </div>
           </header>
 
-          <section aria-labelledby="copy-heading" className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-            <div className="border-b border-gray-100 p-5 sm:p-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-nhs-blue">Start here</p>
-              <h2 id="copy-heading" className="mt-1 text-lg font-semibold text-nhs-dark-blue">Copy the skill URL</h2>
-              <p className="mt-1 text-sm text-gray-600">Paste it into a new chat and ask the assistant to read it.</p>
+          <section aria-labelledby="copy-heading" className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-nhs-blue">Start here</p>
+            <h2 id="copy-heading" className="mt-1 text-lg font-semibold text-nhs-dark-blue">Copy the skill URL</h2>
+            <p className="mt-1 text-sm text-gray-600">Paste it into a new chat and ask the assistant to read it.</p>
 
-              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <code aria-label="Skill URL" className="min-w-0 flex-1 break-all rounded-lg bg-nhs-pale-grey/50 px-3 py-3 font-mono text-sm text-gray-800">
-                  {SKILL_URL}
-                </code>
-                <CopySkillUrl text={SKILL_URL} label="Copy URL" />
-              </div>
-            </div>
-
-            <div className="bg-gray-50/70 p-5 sm:p-6">
-              <p className="text-sm font-medium text-gray-900">Or copy this ready-made prompt</p>
-              <blockquote className="mt-3 border-l-2 border-nhs-blue pl-4 text-sm leading-6 text-gray-700">
-                {STARTER_PROMPT}
-              </blockquote>
-              <div className="mt-4">
-                <CopySkillUrl text={STARTER_PROMPT} label="Copy prompt" variant="outline" />
-              </div>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <code aria-label="Skill URL" className="min-w-0 flex-1 break-all rounded-lg bg-nhs-pale-grey/50 px-3 py-3 font-mono text-sm text-gray-800">
+                {SKILL_URL}
+              </code>
+              <CopySkillUrl text={SKILL_URL} label="Copy URL" />
             </div>
           </section>
 
           <section aria-labelledby="questions-heading">
             <h2 id="questions-heading" className="text-lg font-semibold text-nhs-dark-blue">What you can ask</h2>
-            <p className="mt-1 text-sm leading-6 text-gray-600">
-              Name an organisation, indicator or condition and say what you want to compare it with.
-            </p>
-            <ul className="mt-4 divide-y divide-gray-200 border-y border-gray-200">
-              {EXAMPLE_QUESTIONS.map((question) => (
-                <li key={question} className="flex gap-3 py-3.5 text-sm leading-6 text-gray-800">
-                  <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-nhs-blue" aria-hidden="true" />
-                  <span>“{question}”</span>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-4 text-sm leading-6 text-gray-600">
-              Answers can include the indicator code, reporting period and comparison value, with a link back to the explorer so you can check the figures.
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-600">
+              Ask about an NHS organisation, indicator or condition. The assistant can compare areas, identify gaps, explain trends and explore demographic breakdowns. Answers include the reporting period and source links so you can check the figures in the explorer.
             </p>
           </section>
 
