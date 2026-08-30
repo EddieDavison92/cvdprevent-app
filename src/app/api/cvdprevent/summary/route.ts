@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { classifyIndicator } from '@/lib/constants/indicator-sections';
+import { findSectionForIndicator, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
 
 const API_ORIGIN = 'https://api.cvdprevent.nhs.uk';
 const CACHE_CONTROL = 'public, s-maxage=21600, stale-while-revalidate=86400';
@@ -173,15 +173,11 @@ export async function GET(request: Request) {
             ? 'higher'
             : 'lower';
 
-      const descriptor = {
-        IndicatorCode: String(indicator.IndicatorCode ?? ''),
-        IndicatorName: String(indicator.IndicatorName ?? ''),
-        IndicatorShortName: String(indicator.IndicatorShortName ?? ''),
-      };
-      const classification = classifyIndicator(descriptor);
-      const section = classification.section;
-      const lowerIsBetter = classification.lowerIsBetter;
-      const isRecordedPrevalence = section.id === 'prevalence';
+      const indicatorCode = String(indicator.IndicatorCode ?? '');
+      const section = findSectionForIndicator(indicatorCode);
+      const lowerIsBetter = isLowerBetterIndicator(indicatorCode);
+      const isRecordedPrevalence = section?.id === 'prevalence';
+      const classificationSource = section ? 'mapped' : 'unclassified';
       let assessment: 'favourable' | 'similar' | 'unfavourable' | null = null;
 
       if (difference === null) {
@@ -190,7 +186,7 @@ export async function GET(request: Request) {
         counts.comparable++;
         if (isRecordedPrevalence) {
           counts.recordedPrevalence[relation as 'higher' | 'similar' | 'lower']++;
-        } else if (classification.source === 'unclassified') {
+        } else if (classificationSource === 'unclassified') {
           counts.unclassified++;
         } else if (relation === 'similar') {
           assessment = 'similar';
@@ -207,14 +203,14 @@ export async function GET(request: Request) {
 
       return [{
         ...metadata,
-        Section: section.name,
+        Section: section?.name ?? 'Unclassified',
         Polarity: isRecordedPrevalence
           ? 'recording measure'
-          : classification.source === 'unclassified'
+          : classificationSource === 'unclassified'
             ? 'unclassified'
             : lowerIsBetter ? 'lower is better' : 'higher is better',
-        ClassificationSource: classification.source,
-        ClassificationReason: classification.reason,
+        ClassificationSource: classificationSource,
+        ClassificationReason: section ? 'Maintained indicator mapping' : 'No maintained indicator mapping',
         Subject: subjectCategory.Data,
         Comparison: comparisonData ?? null,
         Difference: difference,

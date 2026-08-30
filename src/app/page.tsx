@@ -378,7 +378,7 @@ export default function LandingPage() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-nhs-dark-blue">{label}</span>
-                    <span className="block truncate text-xs text-gray-500">{description}</span>
+                    <span className="block text-xs leading-4 text-gray-500">{description}</span>
                   </span>
                   <ArrowRight
                     className="h-4 w-4 flex-shrink-0 text-nhs-blue opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100 group-focus-visible:opacity-100"
