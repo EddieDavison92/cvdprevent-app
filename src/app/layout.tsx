@@ -17,8 +17,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://cvdprevent-explorer.app'),
   title: 'CVDPREVENT Data Explorer',
   description: 'Explore cardiovascular disease prevention indicators across NHS geographies',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: 'CVDPREVENT Data Explorer',
+    description: 'Explore cardiovascular disease prevention indicators across NHS geographies',
+    url: '/',
+    siteName: 'CVDPREVENT Explorer',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({

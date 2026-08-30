@@ -1,136 +1,144 @@
 # CVDPREVENT Explorer
 
-Unofficial data explorer for the [CVDPREVENT](https://www.cvdprevent.nhs.uk) cardiovascular disease prevention audit.
+An unofficial interface for exploring the [CVDPREVENT](https://www.cvdprevent.nhs.uk) cardiovascular disease prevention audit.
 
-**Live at [cvdprevent.vercel.app](https://cvdprevent.vercel.app)**
+[Open the explorer](https://cvdprevent-explorer.app) · [View the public data source](https://www.cvdprevent.nhs.uk)
 
-## Why This Exists
+## What the app does
 
-CVDPREVENT publishes valuable data through a public API, but exploring it in day-to-day work can be slow and fragmented. This project provides a faster way to review CVD prevention performance across NHS geographies.
+CVDPREVENT contains a large set of indicators across several NHS geographies. This app starts with an organisation and keeps it in context while the user moves between its overview, trends, clinical pathways and indicator pages.
 
-It is built around the workflows analysts, commissioners, and improvement teams actually use: start with an organisation, compare it to England or its parent geography, see where performance is lagging, then drill into trends, peers, pathways, and demographic breakdowns — all without jumping between pages.
+The interface is designed for analysts, commissioners and improvement teams who need to answer a few recurring questions:
 
-The focus is on fast organisation-level dashboards, clear baseline comparisons, polarity-aware benchmarking, and dense views that make variation easy to spot. It is not a replacement for the official CVDPREVENT platform — it is a quicker, more practical tool for repeated analytical use.
+- Which measures need attention?
+- Is the result favourable once the indicator's polarity is considered?
+- How does the organisation compare with England or its parent geography?
+- Where does a gap sit within a clinical pathway?
+- Is the gap changing over time or concentrated in a demographic group?
 
-## Features
+## Main views
 
-- Search and explore data for ICBs, Sub-ICBs, PCNs, and Regions
-- Overview dashboard with comparison against England or parent organisations
-- Sparkline trend charts across all indicators
-- Indicator detail pages with time series, peer comparison, and breakdowns by sex, age, ethnicity, and deprivation
-- Pathway funnel views for AF, hypertension, and cholesterol management
-- Benchmarking page — rank and compare areas across indicators with composite scoring, parent scoping (e.g. ICBs within a Region), and polarity-aware heatmap colouring
-- National (England) view with trend analysis
-- CSV export on all charts and tables
+| View | Purpose |
+| --- | --- |
+| Organisation search | Find an ICB, Sub-ICB, PCN or Region and retain it across the app |
+| Dashboard | Review priorities and scan all measures by pathway stage |
+| Trends | Compare recent movement across indicators |
+| Clinical pathways | Follow detection, diagnosis, monitoring, treatment, control and outcomes by condition |
+| Indicator detail | Inspect time series, peers, population breakdowns and a national map |
+| Indicators | Browse the indicator catalogue by clinical domain and condition |
+| Benchmarks | Compare and rank organisations across a selected indicator set |
 
-## Tech Stack
+Search is available from the header or with <kbd>Ctrl</kbd>+<kbd>K</kbd>. Dashboard state and benchmark filters are stored in the URL where possible, so views can be bookmarked and shared.
 
-- [Next.js](https://nextjs.org) 16 with App Router
-- [React Query](https://tanstack.com/query) for data fetching and caching
-- [ECharts](https://echarts.apache.org) for interactive charts
-- [Tailwind CSS](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com) components
-- Deployed on [Vercel](https://vercel.com)
+## How comparisons are presented
 
-## Architecture
+The app separates a numerical difference from whether that difference is favourable:
 
+- Detection gaps, mortality, admissions and potential overtreatment are treated as lower-is-better measures.
+- Recorded prevalence is described as higher or lower rather than making an unqualified claim that higher disease prevalence is better.
+- Values within 0.5 display units are shown as similar or in line.
+- The comparison can be changed from England to an available parent geography, such as a Region or ICB.
+- Standard and outcome indicators use their latest available reporting periods independently.
+
+These rules are presentation logic, not statistical significance tests. The official CVDPREVENT definitions remain the source of truth.
+
+## Data source and coverage
+
+The app reads the public API at `https://api.cvdprevent.nhs.uk`. It covers England, Regions, ICBs, Sub-ICBs and PCNs. Indicator metadata, organisation lists and results come from the API; pathway and polarity mappings are maintained in this repository.
+
+Run the data profile to check current indicator and organisation coverage:
+
+```bash
+bun run profile:data
 ```
+
+The profile is useful after an API release because new indicator codes may need to be assigned to a dashboard section or clinical pathway.
+
+## Project structure
+
+```text
 src/
-├── app/              # Next.js App Router pages
-│   ├── dashboard/    # Org-centric: dashboard + indicator detail
-│   ├── indicators/   # Indicator-centric: index + explorer
-│   └── benchmarks/   # Cross-area heatmap with composite scoring
+├── app/
+│   ├── api/feedback/       # Server-side feedback delivery
+│   ├── dashboard/          # Organisation overview and detail pages
+│   ├── indicators/         # Indicator catalogue and cross-area explorer
+│   └── benchmarks/         # Cross-area comparison matrix
 ├── components/
-│   ├── charts/       # ECharts wrappers (bar, line, sparkline, demographic, map)
-│   ├── indicator-detail/  # Reusable sections (hero, trend, peers, demographics)
-│   ├── dashboard/    # Pathway funnels
-│   ├── layout/       # Header, footer, command search (Ctrl+K)
-│   └── ui/           # shadcn/ui primitives
+│   ├── charts/             # ECharts and Leaflet views
+│   ├── dashboard/          # Priorities, sections, trends and area controls
+│   ├── indicator-detail/   # Trend, peer and demographic sections
+│   ├── pathways/           # Condition pathway views
+│   ├── layout/             # Header, search, footer and feedback dialog
+│   └── ui/                 # Shared interface primitives
 ├── lib/
-│   ├── api/          # API client + TypeScript types
-│   ├── hooks/        # React Query hooks (areas, indicators, time periods)
-│   ├── constants/    # Indicator sections, colours, geography hierarchy
-│   └── utils/        # Formatting, CSV export, URL helpers
-└── providers/        # Organisation context (URL params + localStorage)
+│   ├── api/                # CVDPREVENT client and response types
+│   ├── constants/          # Indicator sections, pathways and comparison rules
+│   ├── hooks/              # React Query data hooks
+│   └── utils/              # Formatting, geography, URLs and CSV export
+└── providers/              # Query and organisation state
 ```
 
-### Data flow
+The dashboard fetches the latest standard and outcome datasets for the selected organisation. React Query caches these responses, so changing tabs or indicators usually reuses data already loaded. Organisation and period metadata are cached for longer because they change less often.
 
-1. **Org dashboard** (`/dashboard`): `useAreaIndicators(periodId, areaId)` fetches ALL indicators with time series for one area in a single API call. Indicator switching is instant — data is already cached.
+## Local development
 
-2. **Indicator detail** (`/dashboard/[id]`): Uses cached area data from step 1. Peer data via `useSiblingData`, child areas via `useChildData`. National comparison via `useIndicatorData` at the selected level.
-
-3. **Indicator explorer** (`/indicators/[id]`): Fetches England data for all indicators (nav values + benchmarks), then area-level data for the selected indicator. Selecting an area triggers `useAreaIndicators` for that area's trend.
-
-4. **Benchmarks** (`/benchmarks`): Fetches raw data per indicator per level, builds a cross-area matrix with composite percentile scoring.
-
-### Key patterns
-
-- **React Query** caches all API responses for 10 minutes — navigating between pages reuses cached data
-- **Single-call API** — `useAreaIndicators(periodId, areaId)` fetches all indicators for one area in one request, so switching between indicators is instant with no additional fetches
-- **URL-driven state** — benchmarks and indicator explorer persist filter/scope settings in URL params for shareable links and browser history navigation
-
-## Geography Hierarchy
-
-The NHS geography model used throughout the app:
-
-```
-England → Region → ICB → Sub-ICB → PCN
-```
-
-Each level can be scoped by its parent (e.g. ICBs within a Region, PCNs within an ICB). Benchmarks and the indicator explorer support parent scoping at every level.
-
-## Data Source
-
-All data is fetched from the public CVDPREVENT API (`api.cvdprevent.nhs.uk`). This project is not affiliated with or endorsed by NHS England, OHID, or the NHS Benchmarking Network.
-
-## Known Limitations
-
-- Practice-level data is not available via the public API — PCN is the lowest granularity, with no grouping by borough, local authority, or neighbourhood
-- Depends on the public CVDPREVENT API — if the API is down or changes, the app will break
-- Deprivation breakdowns are not available at PCN level (API limitation)
-- Peer comparison (sibling data) returns empty for PCNs
-- Some views are optimised for desktop/analyst workflows and may feel dense on mobile
-- No authentication or user accounts — most state is shared via URL params; selected organisation and baseline are also persisted locally in the browser
-
-## Development
-
-### Prerequisites
-
-- Node.js 20+ (tested on 25.x)
-- npm 10+
-
-### Setup
+Requirements: Node.js 20 or later, with Bun or npm.
 
 ```bash
 git clone https://github.com/EddieDavison92/cvdprevent-app.git
 cd cvdprevent-app
+bun install
+bun run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). The data explorer itself needs no API key.
+
+Equivalent npm commands also work:
+
+```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). No environment variables or API keys are needed — all data comes from the public CVDPREVENT API.
-
-### Scripts
+### Commands
 
 | Command | Description |
-|---------|-------------|
-| `npm run dev` | Start dev server (Turbopack) |
-| `npm run build` | Run tests + production build |
-| `npm test` | Run API contract tests (hits real API) |
-| `npm run lint` | ESLint |
+| --- | --- |
+| `bun run dev` | Start the Next.js development server |
+| `bun run build` | Create a production build |
+| `bun run lint` | Run ESLint |
+| `bun test` | Run the Vitest suite |
+| `bun run profile:data` | Profile live API coverage and mappings |
 
-### Testing
+Some tests and the data profile call the live CVDPREVENT API and require an internet connection.
 
-Tests are in `src/__tests__/api-contracts.test.ts` and validate that TypeScript types match actual API responses. They hit the live CVDPREVENT API, so require internet access.
+## Feedback email
 
-```bash
-npm test              # run all tests
-npx vitest run --reporter=verbose  # verbose output
+The footer form sends feedback through the [Resend email API](https://resend.com/docs/api-reference/emails/send-email). Copy `.env.example` to `.env.local` and set:
+
+```dotenv
+RESEND_API_KEY=re_your_api_key
+FEEDBACK_FROM_EMAIL=CVDPREVENT feedback <feedback@your-domain.example>
+FEEDBACK_TO_EMAIL=eddie.davison@nhs.net
 ```
 
-## Deployment
+Only `RESEND_API_KEY` is required. The configured account can use Resend's test sender because the footer address is also the account's permitted test recipient. `FEEDBACK_FROM_EMAIL` can be set to an address on a verified domain later. `FEEDBACK_TO_EMAIL` defaults to the address shown in the footer. Add the server-side key in Vercel before deploying the form.
 
-Deploys to Vercel with zero configuration and no environment variables. Anywhere that runs Next.js should also work.
+The endpoint validates input, checks same-origin browser requests and includes a hidden spam field. It sends the feedback type, message, optional reply address, current page and submission time.
+
+## Limitations
+
+- This project is not affiliated with or endorsed by NHS England, OHID or the NHS Benchmarking Network.
+- Practice-level data is not exposed by the public API; PCN is the lowest supported level.
+- Deprivation breakdowns are not available at PCN level.
+- Peer data for PCNs may be absent.
+- Pathway and polarity mappings must be reviewed when the API adds indicators.
+- Some dense comparison views are best used on a desktop display.
+- The app depends on the availability and response shape of the public API.
+
+## Technology
+
+[Next.js](https://nextjs.org) 16, React 19, TypeScript, [TanStack Query](https://tanstack.com/query), [ECharts](https://echarts.apache.org), [Leaflet](https://leafletjs.com), Tailwind CSS and Radix UI. The live app is deployed on Vercel.
 
 ## License
 
