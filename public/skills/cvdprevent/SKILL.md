@@ -28,7 +28,41 @@ curl -fsSLG "https://api.cvdprevent.nhs.uk/area/search" \
 
 If direct requests are blocked or a web fetcher refuses constructed URLs, read the relay fallback guide and follow its returned `_links` exactly. Do not use the relay merely for convenience.
 
-Read the response examples before the first query; they show the period, organisation, indicator, demographic, summary, and trend nesting used below. Read the API reference when a question needs another field or route; it lists all fields observed in the live responses and the other documented routes.
+Read the response examples before the first query. At minimum, read the period, organisation search, indicator catalogue, and focused indicator sections. When the question needs parents, peers, child areas, ranks, metadata, or organisation-wide data, read the matching example before calling that route. The examples show object nesting; the API reference lists every observed field and the other documented routes.
+
+## Response shape map
+
+The main response containers are:
+
+| Route | Read from |
+|---|---|
+| `/timePeriod` | `timePeriodList[]` |
+| `/area/systemLevel` | `systemLevels[]` |
+| `/area/search` | `foundAreaList[]` |
+| `/area/{areaId}/details` | `areaDetails`, including `ParentAreaList[]` and `ChildAreaList[]` |
+| `/indicator/list` | `indicatorList[]` |
+| `/indicator` | `indicatorList[].Categories[].Data` and `.TimeSeries[]` |
+| `/indicator/{indicatorId}/data` | `indicatorData.Categories[].AreaData` and `.NationalData` |
+| `/indicator/{indicatorId}/details` | `indicatorDetails.MetaData`, grouped by section name |
+| `/indicator/siblingData` | `siblingData.Data[]` |
+| `/indicator/childData` | `childData.Data[]` |
+| `/indicator/timeSeriesByMetric/{metricId}` | `Data.Areas[].TimeSeriesData[]` |
+| `/indicator/metricSystemLevelComparison/{metricId}` | `Data.SystemLevels[].ComparisonData[]` |
+| `/indicator/metricAreaBreakdown/{metricId}` | `Data.SystemLevels[].ComparisonData[]` |
+| `/indicator/{indicatorId}/rawDataJSON` | `indicatorRawData[]` |
+
+Do not assume similarly named routes use the same wrapper. In particular, the all-indicator route uses `Categories[].Data`, while the focused route uses `Categories[].AreaData` and `Categories[].NationalData`.
+
+Common route sequence:
+
+```text
+/timePeriod
+  -> /area/search?partialAreaName=...&timePeriodID=...
+  -> /indicator/list?timePeriodID=...&systemLevelID=...
+  -> /indicator/{indicatorId}/data?timePeriodID=...&areaID=...
+```
+
+Use the focused route for one indicator and all its demographic rows. Use `/indicator` for every indicator in one organisation. Use the metric routes only after resolving the required `MetricID` from a category row.
 
 ## IDs and matching
 
