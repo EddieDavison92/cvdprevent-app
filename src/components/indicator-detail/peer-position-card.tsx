@@ -1,8 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { PeerRangeBar, STATUS_META } from '@/components/dashboard/peer-range-bar';
 import type { IndicatorWithData } from '@/lib/api/types';
@@ -20,7 +18,6 @@ interface PeerPositionCardProps {
   peerValues: Array<number | null | undefined>;
   /** e.g. "ICBs in England" or "ICBs in London". */
   scopeLabel: string;
-  improvementHref: string;
 }
 
 function percentile(sorted: number[], p: number): number {
@@ -37,7 +34,7 @@ function ordinal(n: number) {
 }
 
 /** Where the area sits within the selected comparison set, using the same rules as the Improvement tab. */
-export function PeerPositionCard({ indicator, areaName, areaValue, peerValues, scopeLabel, improvementHref }: PeerPositionCardProps) {
+export function PeerPositionCard({ indicator, areaName, areaValue, peerValues, scopeLabel }: PeerPositionCardProps) {
   const stats = useMemo(() => {
     const values = peerValues
       .filter((v): v is number => v != null && Number.isFinite(v))
@@ -128,11 +125,6 @@ export function PeerPositionCard({ indicator, areaName, areaValue, peerValues, s
             <span>Highest {fmt(stats.max)}</span>
           </div>
         </div>
-
-        <Link href={improvementHref} className="inline-flex items-center gap-1 text-xs font-medium text-nhs-blue hover:underline">
-          All indicators
-          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-        </Link>
       </CardContent>
     </Card>
   );

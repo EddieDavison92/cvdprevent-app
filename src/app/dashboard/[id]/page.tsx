@@ -634,7 +634,6 @@ export default function IndicatorDetailPage() {
                 areaValue={areaData?.Value}
                 peerValues={peerScope.values}
                 scopeLabel={peerScope.label}
-                improvementHref={buildUrl('/dashboard', new URLSearchParams({ ...Object.fromEntries(searchParams), tab: 'indicators' }))}
               />
             )}
 
