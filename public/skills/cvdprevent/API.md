@@ -6,15 +6,26 @@ Official API origin: `https://api.cvdprevent.nhs.uk`
 
 Official documentation: https://bmchealthdocs.atlassian.net/wiki/spaces/CP/pages/317882369/CVDPREVENT+API+Documentation
 
-All routes use `GET`. The API needs no authentication. The Agent API base is a read-only relay for the documented JSON routes and returns the official response body unchanged. Use it when an assistant cannot access constructed paths on the official host. Most JSON responses also contain a top-level `copyright` string. Field names are case-sensitive. Routes and fields were checked against the live API on 30 August 2026; the upstream API and documentation can change.
+All routes use `GET`. The API needs no authentication. The Agent API base is a read-only relay for the documented JSON routes. It retains official response fields and adds `_links` with absolute URLs for related requests. Follow those exact URLs when an assistant blocks URLs that did not appear in an earlier response. Most JSON responses also contain a top-level `copyright` string. Field names are case-sensitive. Routes and fields were checked against the live API on 30 August 2026; the upstream API and documentation can change.
 
-Append every route in this reference to one base URL. For example:
+Start at the API base and follow `_links.timePeriods`. Direct clients can also append routes to the base. For example:
 
 ```text
 https://cvdprevent-explorer.app/api/cvdprevent/area/search?partialAreaName=North%20Central%20London&timePeriodID=33
 ```
 
 The relay excludes the CSV and XLSX download routes. Use the official API origin for those files.
+
+## Relay links
+
+Every relayed response has top-level links for `self`, `apiIndex`, `skill`, and `apiReference`. Other `_links` are placed beside the IDs they use:
+
+- period rows: `systemLevels`, plus arrays for `areas`, `indicatorLists`, and `dataAvailability` by system level;
+- area rows: `details`, `indicators`, and `indicatorList`;
+- indicator rows: `details`, `data`, `rawDataAtSystemLevel`, and `dataAvailability` when their parameters are known;
+- metric category rows: `trend`, `geographicPeers`, `immediateChildren`, `areaBreakdown`, `systemLevelComparison`, and `nationalAndArea`.
+
+The all-indicator route adds metric links only to the Sex / Persons category to keep its response below hosting limits. Follow the indicator row's `data` link to get links on every demographic category.
 
 ## Shared field sets
 
@@ -233,10 +244,6 @@ Response: `indicatorData` with `AxisCharacter`, `FormatDisplayName`, `HighestPri
 Every category has all `MetricDescriptor` fields plus `AreaData` and `NationalData`. Both use `MetricData`; the live response includes `AreaCode`, `AreaID`, `AreaName`, `Count`, `DataID`, `Denominator`, `Factor`, `HighestPriorityNotificationType`, `LowerConfidenceLimit`, `Max`, `Median`, `Min`, `NotificationCount`, `Numerator`, `Q20`, `Q40`, `Q60`, `Q80`, `TimePeriodID`, `TimePeriodName` on area data, `UpperConfidenceLimit`, `Value`, and `ValueNote`.
 
 This endpoint supplies an England comparison in `NationalData`; it does not substitute another parent comparison requested by the user.
-
-### `/indicator/metric/{metricId}/data`
-
-The official documentation labels this route proposed. It is intended to accept required `timePeriodID` and `areaID` and return one metric with area and national data. A live request on 30 August 2026 returned HTTP 500, so test it before relying on it and use `/indicator/{indicatorId}/data` as the fallback.
 
 ### `/indicator/siblingData`
 

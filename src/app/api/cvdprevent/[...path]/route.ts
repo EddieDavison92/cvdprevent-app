@@ -2,6 +2,16 @@ import { NextResponse } from 'next/server';
 
 const API_ORIGIN = 'https://api.cvdprevent.nhs.uk';
 const CACHE_CONTROL = 'public, s-maxage=21600, stale-while-revalidate=86400';
+const SYSTEM_LEVELS = [
+  { id: 1, name: 'England' },
+  { id: 2, name: 'STP (historic)' },
+  { id: 3, name: 'CCG (historic)' },
+  { id: 4, name: 'PCN' },
+  { id: 5, name: 'Practice' },
+  { id: 6, name: 'Region' },
+  { id: 7, name: 'ICB' },
+  { id: 8, name: 'Sub-ICB' },
+] as const;
 
 const JSON_PATHS = [
   /^timePeriod(?:\/systemLevels)?$/,
@@ -12,15 +22,13 @@ const JSON_PATHS = [
   /^indicator\/(?:list|metricList|tags|priorityGroups|siblingData|childData)$/,
   /^indicator\/(?:pathwayGroup|indicatorGroup)\/\d+$/,
   /^indicator\/\d+\/(?:details|data|rawDataJSON)$/,
-  /^indicator\/metric\/\d+\/data$/,
   /^indicator\/(?:nationalVsAreaMetricData|timeSeriesByMetric|personsTimeSeriesByIndicator|metricSystemLevelComparison|metricAreaBreakdown)\/\d+$/,
   /^externalResource$/,
   /^dataAvailability$/,
 ];
 
-type RouteContext = {
-  params: Promise<{ path: string[] }>;
-};
+type JsonObject = Record<string, unknown>;
+type RouteContext = { params: Promise<{ path: string[] }> };
 
 export const maxDuration = 30;
 
@@ -30,6 +38,175 @@ function corsHeaders() {
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Accept',
   };
+}
+
+function isObject(value: unknown): value is JsonObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function numberField(object: JsonObject, key: string) {
+  const value = object[key];
+  return typeof value === 'number' ? value : undefined;
+}
+
+function relayUrl(origin: string, path: string, params: Record<string, string | number | undefined> = {}) {
+  const url = new URL(`/api/cvdprevent/${path}`, origin);
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) url.searchParams.set(key, String(value));
+  }
+  return url.toString();
+}
+
+function areaLinks(origin: string, area: JsonObject, timePeriodID?: number) {
+  const areaID = numberField(area, 'AreaID');
+  const systemLevelID = numberField(area, 'SystemLevelID');
+  if (areaID === undefined || timePeriodID === undefined) return;
+
+  area._links = {
+    details: relayUrl(origin, `area/${areaID}/details`, { timePeriodID }),
+    indicators: relayUrl(origin, 'indicator', { timePeriodID, areaID }),
+    indicatorList: systemLevelID === undefined
+      ? undefined
+      : relayUrl(origin, 'indicator/list', { timePeriodID, systemLevelID }),
+  };
+}
+
+function metricLinks(origin: string, category: JsonObject, timePeriodID?: number, areaID?: number) {
+  const metricID = numberField(category, 'MetricID');
+  if (metricID === undefined || timePeriodID === undefined || areaID === undefined) return;
+
+  category._links = {
+    trend: relayUrl(origin, `indicator/timeSeriesByMetric/${metricID}`, { areaID }),
+    geographicPeers: relayUrl(origin, 'indicator/siblingData', { timePeriodID, areaID, metricID }),
+    immediateChildren: relayUrl(origin, 'indicator/childData', { timePeriodID, areaID, metricID }),
+    areaBreakdown: relayUrl(origin, `indicator/metricAreaBreakdown/${metricID}`, { timePeriodID, areaID }),
+    systemLevelComparison: relayUrl(origin, `indicator/metricSystemLevelComparison/${metricID}`, { timePeriodID, areaID }),
+    nationalAndArea: relayUrl(origin, `indicator/nationalVsAreaMetricData/${metricID}`, { timePeriodID, areaID }),
+  };
+}
+
+function indicatorLinks(
+  origin: string,
+  indicator: JsonObject,
+  timePeriodID?: number,
+  systemLevelID?: number,
+  areaID?: number,
+  includeAllMetricLinks = false,
+) {
+  const indicatorID = numberField(indicator, 'IndicatorID');
+  if (indicatorID === undefined) return;
+
+  indicator._links = {
+    details: relayUrl(origin, `indicator/${indicatorID}/details`),
+    data: timePeriodID === undefined || areaID === undefined
+      ? undefined
+      : relayUrl(origin, `indicator/${indicatorID}/data`, { timePeriodID, areaID }),
+    rawDataAtSystemLevel: timePeriodID === undefined || systemLevelID === undefined
+      ? undefined
+      : relayUrl(origin, `indicator/${indicatorID}/rawDataJSON`, { timePeriodID, systemLevelID }),
+    dataAvailability: timePeriodID === undefined || systemLevelID === undefined
+      ? undefined
+      : relayUrl(origin, 'dataAvailability', { timePeriodID, systemLevelID, indicatorID }),
+  };
+
+  const categories = indicator.Categories;
+  if (Array.isArray(categories)) {
+    for (const category of categories) {
+      if (!isObject(category)) continue;
+      const isPersons = category.MetricCategoryTypeName === 'Sex'
+        && category.MetricCategoryName === 'Persons';
+      if (includeAllMetricLinks || isPersons) metricLinks(origin, category, timePeriodID, areaID);
+    }
+  }
+}
+
+function decorateAreaRows(value: unknown, origin: string, timePeriodID?: number) {
+  if (!Array.isArray(value)) return;
+  for (const row of value) {
+    if (isObject(row)) areaLinks(origin, row, timePeriodID);
+  }
+}
+
+function decorateComparisonLevels(value: unknown, origin: string, timePeriodID?: number) {
+  if (!Array.isArray(value)) return;
+  for (const level of value) {
+    if (!isObject(level)) continue;
+    decorateAreaRows(level.ComparisonData, origin, timePeriodID);
+  }
+}
+
+function enrichResponse(payload: unknown, requestUrl: URL, apiPath: string) {
+  if (!isObject(payload)) return payload;
+
+  const origin = requestUrl.origin;
+  const timePeriodID = Number(requestUrl.searchParams.get('timePeriodID')) || undefined;
+  const areaID = Number(requestUrl.searchParams.get('areaID')) || undefined;
+  const systemLevelID = Number(requestUrl.searchParams.get('systemLevelID')) || undefined;
+
+  payload._links = {
+    self: requestUrl.toString(),
+    apiIndex: new URL('/api/cvdprevent', origin).toString(),
+    skill: new URL('/skill.md', origin).toString(),
+    apiReference: new URL('/api-reference.md', origin).toString(),
+  };
+
+  if (apiPath === 'timePeriod' && Array.isArray(payload.timePeriodList)) {
+    for (const period of payload.timePeriodList) {
+      if (!isObject(period)) continue;
+      const periodID = numberField(period, 'TimePeriodID');
+      if (periodID === undefined) continue;
+      period._links = {
+        systemLevels: relayUrl(origin, 'area/systemLevel', { timePeriodID: periodID }),
+        areas: SYSTEM_LEVELS.map(level => ({
+          systemLevelID: level.id,
+          systemLevelName: level.name,
+          href: relayUrl(origin, 'area', { timePeriodID: periodID, systemLevelID: level.id }),
+        })),
+        indicatorLists: SYSTEM_LEVELS.map(level => ({
+          systemLevelID: level.id,
+          systemLevelName: level.name,
+          href: relayUrl(origin, 'indicator/list', { timePeriodID: periodID, systemLevelID: level.id }),
+        })),
+        dataAvailability: SYSTEM_LEVELS.map(level => ({
+          systemLevelID: level.id,
+          systemLevelName: level.name,
+          href: relayUrl(origin, 'dataAvailability', { timePeriodID: periodID, systemLevelID: level.id }),
+        })),
+      };
+    }
+  }
+
+  decorateAreaRows(payload.areaList, origin, timePeriodID);
+  decorateAreaRows(payload.foundAreaList, origin, timePeriodID);
+  decorateAreaRows(payload.unassignedAreaList, origin, timePeriodID);
+
+  if (isObject(payload.areaDetails)) {
+    areaLinks(origin, payload.areaDetails, timePeriodID);
+    decorateAreaRows(payload.areaDetails.ParentAreaList, origin, timePeriodID);
+    decorateAreaRows(payload.areaDetails.ChildAreaList, origin, timePeriodID);
+  }
+
+  if (Array.isArray(payload.indicatorList)) {
+    for (const indicator of payload.indicatorList) {
+      if (isObject(indicator)) indicatorLinks(origin, indicator, timePeriodID, systemLevelID, areaID);
+    }
+  }
+
+  if (isObject(payload.indicatorData)) {
+    indicatorLinks(origin, payload.indicatorData, timePeriodID, systemLevelID, areaID, true);
+  }
+
+  for (const key of ['siblingData', 'childData']) {
+    const comparison = payload[key];
+    if (isObject(comparison)) decorateAreaRows(comparison.Data, origin, timePeriodID);
+  }
+
+  if (isObject(payload.Data)) {
+    decorateAreaRows(payload.Data.Areas, origin, timePeriodID);
+    decorateComparisonLevels(payload.Data.SystemLevels, origin, timePeriodID);
+  }
+
+  return payload;
 }
 
 export async function GET(request: Request, context: RouteContext) {
@@ -54,14 +231,21 @@ export async function GET(request: Request, context: RouteContext) {
       signal: AbortSignal.timeout(25_000),
     });
 
-    const headers = new Headers(corsHeaders());
-    headers.set('Cache-Control', CACHE_CONTROL);
-    headers.set('Content-Type', upstream.headers.get('content-type') ?? 'application/json; charset=utf-8');
+    if (!upstream.ok) {
+      return new Response(upstream.body, {
+        status: upstream.status,
+        statusText: upstream.statusText,
+        headers: {
+          ...corsHeaders(),
+          'Cache-Control': CACHE_CONTROL,
+          'Content-Type': upstream.headers.get('content-type') ?? 'application/json; charset=utf-8',
+        },
+      });
+    }
 
-    return new Response(upstream.body, {
-      status: upstream.status,
-      statusText: upstream.statusText,
-      headers,
+    const payload: unknown = await upstream.json();
+    return NextResponse.json(enrichResponse(payload, requestUrl, apiPath), {
+      headers: { ...corsHeaders(), 'Cache-Control': CACHE_CONTROL },
     });
   } catch (error) {
     console.error('CVDPREVENT API relay failed', error);
