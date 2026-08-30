@@ -15,13 +15,14 @@ interface SparklineCardProps {
   indicator: IndicatorWithData;
   sectionColor: string;
   lowerIsBetter: boolean;
+  recordedPrevalence?: boolean;
 }
 
 function cleanName(name: string) {
   return name.replace(/\s*\(CVDP\d+[A-Z]+\)/, '').trim();
 }
 
-export function SparklineCard({ indicator, sectionColor, lowerIsBetter }: SparklineCardProps) {
+export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recordedPrevalence = false }: SparklineCardProps) {
   const searchParams = useSearchParams();
 
   const { chartData, value, pctChange, trendDirection, trendGood } = useMemo(() => {
@@ -68,54 +69,35 @@ export function SparklineCard({ indicator, sectionColor, lowerIsBetter }: Sparkl
   return (
     <Link
       href={buildUrl(`/dashboard/${indicator.IndicatorID}`, searchParams)}
-      className="block group"
+      className="group grid min-h-16 grid-cols-[minmax(0,1fr)_88px_auto] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-nhs-pale-grey/40 focus-visible:bg-nhs-pale-grey/40 focus-visible:outline-none"
     >
-      <div className={cn(
-        'rounded-lg border bg-white p-3 transition-all',
-        'hover:shadow-sm hover:border-nhs-blue/30',
-      )}>
-        {/* Name + trend icon */}
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <span className="text-xs font-medium text-gray-700 truncate group-hover:text-nhs-blue">
-            {cleanName(indicator.IndicatorShortName)}
+      <div className="min-w-0">
+        <p className="truncate text-sm text-gray-800 group-hover:text-nhs-blue" title={cleanName(indicator.IndicatorShortName)}>
+          {cleanName(indicator.IndicatorShortName)}
+        </p>
+        <div className="mt-1 flex items-center gap-1.5 text-xs">
+          {trendDirection === 'up' && <TrendingUp className={cn('h-3.5 w-3.5', recordedPrevalence ? 'text-nhs-blue' : trendGood ? 'text-nhs-green' : 'text-nhs-red')} />}
+          {trendDirection === 'down' && <TrendingDown className={cn('h-3.5 w-3.5', recordedPrevalence ? 'text-nhs-blue' : trendGood ? 'text-nhs-green' : 'text-nhs-red')} />}
+          {trendDirection === 'flat' && <Minus className="h-3.5 w-3.5 text-gray-400" />}
+          <span className={cn(trendDirection === 'flat' ? 'text-gray-500' : recordedPrevalence ? 'text-nhs-blue' : trendGood ? 'text-nhs-green' : 'text-nhs-red')}>
+            {trendDirection === 'flat' ? 'Stable' : recordedPrevalence ? (trendDirection === 'up' ? 'Rising' : 'Falling') : trendGood ? 'Improving' : 'Deteriorating'}
+            {pctChange !== null && trendDirection !== 'flat' ? ` · ${pctChange > 0 ? '+' : ''}${pctChange.toFixed(1)}%` : ''}
           </span>
-          {trendDirection === 'up' && (
-            <TrendingUp className={cn('w-3.5 h-3.5 flex-shrink-0', trendGood ? 'text-green-500' : 'text-red-500')} />
-          )}
-          {trendDirection === 'down' && (
-            <TrendingDown className={cn('w-3.5 h-3.5 flex-shrink-0', trendGood ? 'text-green-500' : 'text-red-500')} />
-          )}
-          {trendDirection === 'flat' && (
-            <Minus className="w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
-          )}
         </div>
+      </div>
 
-        {/* Sparkline */}
+      <div className="opacity-80 transition-opacity group-hover:opacity-100">
         <Sparkline
           data={chartData}
           color={sectionColor}
-          height={56}
+          height={34}
           className="w-full"
         />
-
-        {/* Value + % change */}
-        <div className="flex items-baseline justify-between mt-1.5">
-          <span className="text-sm font-semibold tabular-nums text-gray-900">
-            {value !== null ? formatValue(value, indicator.FormatDisplayName) : '—'}
-          </span>
-          {pctChange !== null && trendDirection !== 'flat' && (
-            <span className={cn(
-              'text-[11px] tabular-nums',
-              trendGood ? 'text-green-600' : 'text-red-600',
-            )}>
-              {pctChange > 0 ? '+' : ''}{pctChange.toFixed(1)}%
-            </span>
-          )}
-          {trendDirection === 'flat' && (
-            <span className="text-[11px] text-gray-400">Stable</span>
-          )}
-        </div>
       </div>
+
+      <span className="text-sm font-semibold tabular-nums text-gray-900">
+        {value !== null ? formatValue(value, indicator.FormatDisplayName) : '—'}
+      </span>
     </Link>
   );
 }

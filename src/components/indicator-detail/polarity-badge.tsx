@@ -1,13 +1,16 @@
 import { Badge } from '@/components/ui/badge';
-import { TrendingDown, TrendingUp } from 'lucide-react';
+import { Search, TrendingDown, TrendingUp } from 'lucide-react';
 
 interface PolarityBadgeProps {
   lowerIsBetter: boolean;
+  recordedPrevalence?: boolean;
 }
 
-export function PolarityBadge({ lowerIsBetter }: PolarityBadgeProps) {
-  const Icon = lowerIsBetter ? TrendingDown : TrendingUp;
-  const label = lowerIsBetter ? 'Lower is better' : 'Higher is better';
+export function PolarityBadge({ lowerIsBetter, recordedPrevalence = false }: PolarityBadgeProps) {
+  const Icon = recordedPrevalence ? Search : lowerIsBetter ? TrendingDown : TrendingUp;
+  const label = recordedPrevalence
+    ? 'Higher recording may indicate better detection'
+    : lowerIsBetter ? 'Lower is better' : 'Higher is better';
   return (
     <Badge variant="outline" className="gap-1">
       <Icon className="h-3 w-3" />

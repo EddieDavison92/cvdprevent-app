@@ -15,7 +15,9 @@ import {
 } from '@/components/dashboard';
 import { OverviewSkeleton, TrendsSkeleton, PathwaysSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { Footer } from '@/components/layout/footer';
-import { cn } from '@/lib/utils';
+import Link from 'next/link';
+import { RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { PathwayOverview } from '@/components/pathways';
@@ -50,7 +52,7 @@ function convertToRawDataFormat(category: IndicatorCategoryData, indicator: Indi
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { organisation, isEngland, isLoading: isLoadingOrg, baseline } = useOrganisation();
+  const { organisation, isEngland, isLoading: isLoadingOrg, baseline, clearOrganisation } = useOrganisation();
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
@@ -268,40 +270,47 @@ export default function DashboardPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex-1 bg-nhs-pale-grey/30 p-6">
-        <div className="mx-auto max-w-7xl">
-          <OrganisationHeader />
-
-          {!isEngland && (
-            <div className="mb-4 flex items-center justify-between">
-              <BaselineSelector />
+      <main className="flex-1 bg-nhs-pale-grey/30 p-4 sm:p-6">
+        <div className="mx-auto max-w-7xl space-y-4">
+          {/* Page header: organisation, comparison controls, summary strip */}
+          <div className="rounded-lg border border-gray-200 bg-white px-4 py-4 sm:px-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <OrganisationHeader />
+              {isEngland ? (
+                <Link href="/" onClick={() => clearOrganisation()} className="hidden sm:block">
+                  <Button variant="outline" size="sm" className="h-8 gap-2">
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Change area
+                  </Button>
+                </Link>
+              ) : (
+                <BaselineSelector />
+              )}
             </div>
-          )}
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <QuickStats
+                aboveCount={quickStats.above}
+                atCount={quickStats.at}
+                belowCount={quickStats.below}
+                baselineName={baselineName}
+                isEngland={isEngland}
+                improvingCount={quickStats.improving}
+                stableCount={quickStats.stable}
+                decliningCount={quickStats.declining}
+                isLoading={isLoadingData}
+              />
+            </div>
+          </div>
 
-          {isDataError && <ApiUnavailable className="mb-4" />}
-
-          <QuickStats
-            aboveCount={quickStats.above}
-            atCount={quickStats.at}
-            belowCount={quickStats.below}
-            baselineName={baselineName}
-            isEngland={isEngland}
-            improvingCount={quickStats.improving}
-            stableCount={quickStats.stable}
-            decliningCount={quickStats.declining}
-            isLoading={isLoadingData}
-          />
+          {isDataError && <ApiUnavailable />}
 
           {/* Tabbed Interface */}
-          <Tabs value={currentTab} onValueChange={setCurrentTab} className="mt-6">
-            <TabsList className={cn(
-              'grid w-full max-w-md',
-              isEngland ? 'grid-cols-2' : 'grid-cols-4',
-            )}>
-              {!isEngland && <TabsTrigger value="overview">Overview</TabsTrigger>}
-              <TabsTrigger value="trends">Trends</TabsTrigger>
-              {!isEngland && <TabsTrigger value="pathways">Pathways</TabsTrigger>}
-              <TabsTrigger value="indicators">All Indicators</TabsTrigger>
+          <Tabs value={currentTab} onValueChange={setCurrentTab}>
+            <TabsList variant="line" className="w-full justify-start border-b border-gray-200">
+              {!isEngland && <TabsTrigger value="overview" className="flex-none px-3">Overview</TabsTrigger>}
+              <TabsTrigger value="trends" className="flex-none px-3">Trends</TabsTrigger>
+              {!isEngland && <TabsTrigger value="pathways" className="flex-none px-3">Pathways</TabsTrigger>}
+              <TabsTrigger value="indicators" className="flex-none px-3">All Indicators</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab - Sections (non-England only) */}
@@ -318,29 +327,37 @@ export default function DashboardPage() {
                       isLoadingBaseline={isLoadingBaseline}
                     />
 
-                    <div className="flex items-center justify-end gap-2">
-                      <Switch
-                        id="below-only"
-                        checked={showBelowOnly}
-                        onCheckedChange={setShowBelowOnly}
-                      />
-                      <Label htmlFor="below-only" className="text-sm text-gray-600 cursor-pointer">
-                        Show below {baselineName} only
-                      </Label>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <h2 className="text-base font-semibold text-gray-900">
+                        By pathway stage
+                        <span className="ml-2 text-sm font-normal text-gray-500">largest gaps first</span>
+                      </h2>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="below-only"
+                          checked={showBelowOnly}
+                          onCheckedChange={setShowBelowOnly}
+                        />
+                        <Label htmlFor="below-only" className="cursor-pointer text-sm text-gray-600">
+                          Behind {baselineName} only
+                        </Label>
+                      </div>
                     </div>
 
-                    {DASHBOARD_SECTIONS.map(section => (
-                      <SectionView
-                        key={section.id}
-                        section={section}
-                        indicators={areaIndicators}
-                        baselineIndicators={baselineIndicators ?? []}
-                        baselineName={baselineName}
-                        showBelowOnly={showBelowOnly}
-                        isLoadingBaseline={isLoadingBaseline}
-                        isEngland={isEngland}
-                      />
-                    ))}
+                    <div className="grid items-stretch gap-4 lg:grid-cols-2">
+                      {DASHBOARD_SECTIONS.map(section => (
+                        <SectionView
+                          key={section.id}
+                          section={section}
+                          indicators={areaIndicators}
+                          baselineIndicators={baselineIndicators ?? []}
+                          baselineName={baselineName}
+                          showBelowOnly={showBelowOnly}
+                          isLoadingBaseline={isLoadingBaseline}
+                          isEngland={isEngland}
+                        />
+                      ))}
+                    </div>
                   </>
                 )}
               </TabsContent>

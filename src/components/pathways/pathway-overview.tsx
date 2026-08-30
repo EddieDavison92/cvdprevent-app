@@ -1,16 +1,14 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { AlertTriangle, ArrowRight } from 'lucide-react';
 import { CONDITION_PATHWAYS, type ConditionPathway, type PathwayStage } from '@/lib/constants/pathways';
 import type { IndicatorWithData } from '@/lib/api/types';
 import { formatValue, formatAbsDiff } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
-import { ChevronRight, AlertTriangle, CheckCircle2, Route } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 
 interface PathwayOverviewProps {
   indicators: IndicatorWithData[];
@@ -31,17 +29,25 @@ interface StageData {
 
 function getPersonsValue(indicator: IndicatorWithData): number | null {
   const persons = indicator.Categories.find(
-    c => c.MetricCategoryTypeName === 'Sex' && c.MetricCategoryName === 'Persons'
+    (category) => category.MetricCategoryTypeName === 'Sex' && category.MetricCategoryName === 'Persons'
   );
   return persons?.Data.Value ?? null;
 }
 
 function getGapDirection(gap: number | null, higherIsBetter: boolean) {
   if (gap === null) return null;
-  if (higherIsBetter) {
-    return gap > 0.5 ? 'above' : gap < -0.5 ? 'below' : 'at';
+  if (higherIsBetter) return gap > 0.5 ? 'ahead' : gap < -0.5 ? 'behind' : 'in line';
+  return gap < -0.5 ? 'ahead' : gap > 0.5 ? 'behind' : 'in line';
+}
+
+function getGapLabel(item: StageData, baselineName: string) {
+  if (item.gap === null) return 'No comparison';
+  const direction = getGapDirection(item.gap, item.stage.higherIsBetter);
+  if (direction === 'in line') return `In line with ${baselineName}`;
+  if (item.stage.type === 'prevalence') {
+    return `${formatAbsDiff(item.gap, item.formatDisplayName)} ${item.gap < 0 ? 'lower than' : 'higher than'} ${baselineName}`;
   }
-  return gap < -0.5 ? 'above' : gap > 0.5 ? 'below' : 'at';
+  return `${formatAbsDiff(item.gap, item.formatDisplayName)} ${direction === 'ahead' ? 'ahead of' : 'behind'} ${baselineName}`;
 }
 
 function PathwayCard({
@@ -57,228 +63,135 @@ function PathwayCard({
 }) {
   const searchParams = useSearchParams();
 
-  const stageData: StageData[] = useMemo(() => {
-    return pathway.stages.map(stage => {
-      let value: number | null = null;
-      let baselineValue: number | null = null;
-      let indicatorName = stage.name;
-      let indicatorId: number | null = null;
-      let indicatorCode: string | null = null;
-      let formatDisplayName = '%';
+  const stageData = useMemo<StageData[]>(() => pathway.stages.map((stage) => {
+    for (const code of stage.indicatorCodes) {
+      const indicator = indicatorMap.get(code);
+      if (!indicator) continue;
+      const value = getPersonsValue(indicator);
+      if (value === null) continue;
 
-      for (const code of stage.indicatorCodes) {
-        const ind = indicatorMap.get(code);
-        if (ind) {
-          const v = getPersonsValue(ind);
-          if (v !== null) {
-            value = v;
-            indicatorName = ind.IndicatorShortName
-              .replace(/\s*\(CVDP\d+[A-Z]+\)/, '').trim();
-            indicatorId = ind.IndicatorID;
-            indicatorCode = code;
-            formatDisplayName = ind.FormatDisplayName;
+      const baselineIndicator = baselineMap.get(code);
+      const baselineValue = baselineIndicator ? getPersonsValue(baselineIndicator) : null;
+      return {
+        stage,
+        value,
+        baselineValue,
+        gap: baselineValue === null ? null : value - baselineValue,
+        indicatorName: indicator.IndicatorShortName.replace(/\s*\(CVDP\d+[A-Z]+\)/, '').trim(),
+        indicatorId: indicator.IndicatorID,
+        indicatorCode: code,
+        formatDisplayName: indicator.FormatDisplayName,
+      };
+    }
 
-            const baseInd = baselineMap.get(code);
-            if (baseInd) {
-              baselineValue = getPersonsValue(baseInd);
-            }
-            break;
-          }
-        }
-      }
+    return {
+      stage,
+      value: null,
+      baselineValue: null,
+      gap: null,
+      indicatorName: stage.name,
+      indicatorId: null,
+      indicatorCode: null,
+      formatDisplayName: '%',
+    };
+  }), [pathway.stages, indicatorMap, baselineMap]);
 
-      const gap = value !== null && baselineValue !== null ? value - baselineValue : null;
-      return { stage, value, baselineValue, gap, indicatorName, indicatorId, indicatorCode, formatDisplayName };
-    });
-  }, [pathway.stages, indicatorMap, baselineMap]);
-
-  // Find worst performing stage
   const worstStage = useMemo(() => {
     let worst: StageData | null = null;
-    let worstGap = 0;
-
-    for (const sd of stageData) {
-      if (sd.gap === null) continue;
-      const effectiveGap = sd.stage.higherIsBetter ? sd.gap : -sd.gap;
-      if (effectiveGap < worstGap) {
-        worstGap = effectiveGap;
-        worst = sd;
+    let worstScore = 0;
+    for (const item of stageData) {
+      if (item.gap === null) continue;
+      const score = item.stage.higherIsBetter ? item.gap : -item.gap;
+      if (score < worstScore) {
+        worst = item;
+        worstScore = score;
       }
     }
     return worst;
   }, [stageData]);
 
-  const hasData = stageData.some(sd => sd.value !== null);
-  if (!hasData) return null;
-
-  const stageCount = stageData.length;
-  const populatedStages = stageData.filter(sd => sd.value !== null).length;
-
-  // Build grid template: stage columns separated by narrow arrow columns
-  // e.g. for 4 stages: "1fr 20px 1fr 20px 1fr 20px 1fr"
-  const gridCols = stageData
-    .map(() => 'minmax(0, 1fr)')
-    .join(' 20px ');
+  const populatedStages = stageData.filter((item) => item.value !== null).length;
+  if (populatedStages === 0) return null;
 
   return (
-    <Card className="overflow-hidden border-gray-200 shadow-sm">
-      <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-white to-nhs-pale-grey/30 pb-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-              <Route className="h-3.5 w-3.5" />
-              Pathway view
-            </div>
-            <CardTitle className="text-base flex items-center gap-2">
-              <span
-                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: pathway.color }}
-              />
-              {pathway.name}
-            </CardTitle>
-            <CardDescription className="mt-1 max-w-2xl text-sm">
-              {pathway.description}
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="outline" className="border-gray-200 bg-white text-gray-600">
-              {populatedStages} of {stageCount} stages populated
-            </Badge>
-            {worstStage && (
-              <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 flex-shrink-0">
-                <AlertTriangle className="w-3 h-3 mr-1" />
-                Focus on {worstStage.stage.type}
-              </Badge>
-            )}
-          </div>
+    <section aria-labelledby={`pathway-${pathway.id}`} className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 px-4 py-3">
+        <div>
+          <h3 id={`pathway-${pathway.id}`} className="flex items-center gap-2 text-base font-semibold text-gray-900">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: pathway.color }} aria-hidden />
+            {pathway.name}
+          </h3>
+          <p className="mt-0.5 text-xs text-gray-500">{pathway.description}</p>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4 pt-5">
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border bg-white p-4">
-            <div className="text-[11px] uppercase tracking-wide text-gray-400">Stages with data</div>
-            <div className="mt-2 text-2xl font-semibold text-nhs-dark-blue">{populatedStages}</div>
-          </div>
-          <div className="rounded-2xl border bg-white p-4">
-            <div className="text-[11px] uppercase tracking-wide text-gray-400">Key bottleneck</div>
-            <div className="mt-2 text-sm font-semibold text-gray-900">
-              {worstStage ? worstStage.stage.name : 'No gap identified'}
-            </div>
-          </div>
-          <div className="rounded-2xl border bg-white p-4">
-            <div className="text-[11px] uppercase tracking-wide text-gray-400">Comparison point</div>
-            <div className="mt-2 text-sm font-semibold text-gray-900">{baselineName}</div>
-          </div>
-        </div>
-
-        {/* Grid: equal-width stage cards with arrows between */}
-        <div
-          className="grid items-stretch"
-          style={{ gridTemplateColumns: gridCols }}
-        >
-          {stageData.flatMap((sd, idx) => {
-            const isWorst = sd === worstStage;
-            const gapDirection = getGapDirection(sd.gap, sd.stage.higherIsBetter);
-
-            const cardContent = (
-              <>
-                {/* Row 1: Type label + indicator code */}
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                    {sd.stage.type}
-                  </span>
-                  {sd.indicatorCode && (
-                    <span className="text-[10px] text-gray-300 font-mono">
-                      {sd.indicatorCode}
-                    </span>
-                  )}
-                </div>
-
-                {/* Row 2: Stage name */}
-                <div className="font-medium text-sm text-gray-900">
-                  {sd.stage.name}
-                </div>
-
-                {/* Row 3: Value (always reserves space) */}
-                <div className={cn(
-                  'text-xl font-bold tabular-nums mt-1',
-                  sd.value === null ? 'text-gray-300' :
-                  gapDirection === 'below' ? 'text-red-600' :
-                  gapDirection === 'above' ? 'text-green-700' : 'text-gray-900'
-                )}>
-                  {sd.value !== null ? formatValue(sd.value, sd.formatDisplayName) : '—'}
-                </div>
-
-                {/* Row 4: Gap vs baseline (always reserves space) */}
-                <div className={cn(
-                  'text-xs tabular-nums h-4',
-                  gapDirection === 'above' ? 'text-green-600' :
-                  gapDirection === 'below' ? 'text-red-600' : 'text-gray-400'
-                )}>
-                  {sd.gap !== null
-                    ? `${formatAbsDiff(sd.gap, sd.formatDisplayName)} ${gapDirection === 'above' ? 'above' : gapDirection === 'below' ? 'below' : 'at'} avg`
-                    : '\u00A0'}
-                </div>
-
-                {/* Row 5: Description (pushed to bottom) */}
-                <div className="text-[11px] text-gray-500 mt-auto pt-2 line-clamp-2 leading-tight">
-                  {sd.stage.description}
-                </div>
-              </>
-            );
-
-            const cardClasses = cn(
-              'flex h-full flex-col rounded-2xl border p-4 transition-all',
-              isWorst ? 'border-amber-300 bg-amber-50/60 shadow-sm' : 'border-gray-200 bg-white',
-              sd.indicatorId && 'cursor-pointer hover:border-nhs-blue/35 hover:shadow-md',
-            );
-
-            const elements = [
-              sd.indicatorId ? (
-                <Link
-                  key={sd.stage.id}
-                  href={buildUrl(`/dashboard/${sd.indicatorId}`, searchParams)}
-                  className={cardClasses}
-                >
-                  {cardContent}
-                </Link>
-              ) : (
-                <div key={sd.stage.id} className={cardClasses}>
-                  {cardContent}
-                </div>
-              ),
-            ];
-
-            // Arrow between stages
-            if (idx < stageCount - 1) {
-              elements.push(
-                <div key={`arrow-${idx}`} className="flex items-center justify-center">
-                  <ChevronRight className="w-4 h-4 text-gray-300" />
-                </div>
-              );
-            }
-
-            return elements;
-          })}
-        </div>
-
-        {/* Insight for worst stage */}
-        {worstStage && worstStage.gap !== null && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-amber-700">
-              <span className="font-medium">{worstStage.indicatorName}</span> is{' '}
-              {formatAbsDiff(worstStage.gap, worstStage.formatDisplayName)}{' '}
-              {worstStage.stage.higherIsBetter
-                ? (worstStage.gap < 0 ? 'below' : 'above')
-                : (worstStage.gap > 0 ? 'above' : 'below')
-              }{' '}
-              {baselineName}. This is the biggest opportunity in the pathway right now.
+        {worstStage && (
+          <div className="max-w-sm text-right">
+            <p className="flex items-center justify-end gap-1.5 text-xs font-medium text-amber-700">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Priority stage: {worstStage.stage.name}
+            </p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              {worstStage.indicatorName} is {getGapLabel(worstStage, baselineName)}
             </p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </header>
+
+      <div className="overflow-x-auto">
+        <div
+          className="grid min-w-max"
+          style={{ gridTemplateColumns: `repeat(${stageData.length}, minmax(170px, 1fr))` }}
+        >
+          {stageData.map((item, index) => {
+            const direction = getGapDirection(item.gap, item.stage.higherIsBetter);
+            const isWorst = item === worstStage;
+            const content = (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{item.stage.type}</span>
+                  <span className="font-mono text-[10px] text-gray-400">{item.indicatorCode ?? 'No data'}</span>
+                </div>
+                <p className="mt-2 min-h-10 text-sm font-medium leading-5 text-gray-800">{item.stage.name}</p>
+                <div className="mt-2 flex items-baseline gap-1.5">
+                  <span className="text-lg font-semibold tabular-nums text-gray-900">
+                    {item.value === null ? '—' : formatValue(item.value, item.formatDisplayName)}
+                  </span>
+                  {item.baselineValue !== null && (
+                    <span className="text-xs tabular-nums text-gray-400">vs {formatValue(item.baselineValue, item.formatDisplayName)}</span>
+                  )}
+                </div>
+                <p className={cn(
+                  'mt-1 text-xs font-medium tabular-nums',
+                  direction === 'ahead' ? 'text-nhs-green' : direction === 'behind' ? 'text-nhs-red' : 'text-gray-500'
+                )}>
+                  {getGapLabel(item, baselineName)}
+                </p>
+                {item.indicatorId && (
+                  <span className="mt-auto flex items-center gap-1 pt-3 text-xs text-gray-400 group-hover:text-nhs-blue">
+                    View indicator <ArrowRight className="h-3 w-3" />
+                  </span>
+                )}
+              </>
+            );
+
+            const className = cn(
+              'group flex min-h-40 flex-col border-t-2 px-4 py-3 transition-colors',
+              index > 0 && 'border-l border-l-gray-100',
+              isWorst ? 'border-t-amber-400 bg-amber-50/50' : 'border-t-transparent',
+              item.indicatorId && 'hover:bg-nhs-pale-grey/40 focus-visible:bg-nhs-pale-grey/40 focus-visible:outline-none'
+            );
+
+            return item.indicatorId ? (
+              <Link key={item.stage.id} href={buildUrl(`/dashboard/${item.indicatorId}`, searchParams)} className={className}>
+                {content}
+              </Link>
+            ) : (
+              <div key={item.stage.id} className={className}>{content}</div>
+            );
+          })}
+        </div>
+      </div>
+
+    </section>
   );
 }
 
@@ -287,59 +200,26 @@ export function PathwayOverview({
   baselineIndicators = [],
   baselineName = 'England',
 }: PathwayOverviewProps) {
-  const indicatorMap = useMemo(() => {
-    const map = new Map<string, IndicatorWithData>();
-    for (const ind of indicators) {
-      map.set(ind.IndicatorCode, ind);
-    }
-    return map;
-  }, [indicators]);
-
-  const baselineMap = useMemo(() => {
-    const map = new Map<string, IndicatorWithData>();
-    for (const ind of baselineIndicators) {
-      map.set(ind.IndicatorCode, ind);
-    }
-    return map;
-  }, [baselineIndicators]);
+  const indicatorMap = useMemo(
+    () => new Map(indicators.map((indicator) => [indicator.IndicatorCode, indicator])),
+    [indicators]
+  );
+  const baselineMap = useMemo(
+    () => new Map(baselineIndicators.map((indicator) => [indicator.IndicatorCode, indicator])),
+    [baselineIndicators]
+  );
 
   return (
     <div className="space-y-4">
-      <Card className="border-nhs-blue/10 bg-gradient-to-r from-white via-white to-nhs-pale-grey/40">
-        <CardContent className="grid gap-4 p-5 md:grid-cols-[1.5fr_1fr]">
-          <div>
-            <div className="mb-1 text-sm font-medium text-nhs-blue">
-              Pathways
-            </div>
-            <h2 className="text-lg font-semibold text-nhs-dark-blue">From prevalence to outcomes</h2>
-            <p className="mt-2 text-sm leading-6 text-gray-600">
-              Each pathway follows the logical clinical journey and highlights where performance drops furthest away from {baselineName}.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-1">
-            <div className="rounded-2xl border bg-white p-4">
-              <div className="text-[11px] uppercase tracking-wide text-gray-400">Pathways shown</div>
-              <div className="mt-2 text-2xl font-semibold text-nhs-dark-blue">{CONDITION_PATHWAYS.length}</div>
-            </div>
-            <div className="rounded-2xl border bg-white p-4">
-              <div className="text-[11px] uppercase tracking-wide text-gray-400">Focus logic</div>
-              <div className="mt-2 flex items-center gap-2 text-sm font-medium text-gray-800">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                Largest gap first
-              </div>
-            </div>
-            <div className="rounded-2xl border bg-white p-4">
-              <div className="text-[11px] uppercase tracking-wide text-gray-400">Interpretation</div>
-              <div className="mt-2 flex items-center gap-2 text-sm font-medium text-gray-800">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                Bottlenecks made visible
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">Clinical pathways</h2>
+          <p className="mt-0.5 text-sm text-gray-500">Follow each condition from detection to outcomes and find its largest gap.</p>
+        </div>
+        <p className="text-xs text-gray-500">Compared with {baselineName}</p>
+      </div>
 
-      {CONDITION_PATHWAYS.map(pathway => (
+      {CONDITION_PATHWAYS.map((pathway) => (
         <PathwayCard
           key={pathway.id}
           pathway={pathway}

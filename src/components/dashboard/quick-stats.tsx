@@ -1,7 +1,7 @@
 'use client';
 
-import { TrendingUp, Minus, TrendingDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 interface QuickStatsProps {
   aboveCount: number;
@@ -15,22 +15,14 @@ interface QuickStatsProps {
   isLoading?: boolean;
 }
 
-function QuickStatsSkeleton() {
-  return (
-    <div className="mb-6 grid grid-cols-3 gap-4">
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="flex items-center gap-3 rounded-lg border bg-white p-4">
-          <Skeleton className="h-10 w-10 rounded-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-7 w-10" />
-            <Skeleton className="h-3 w-20" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+interface Segment {
+  label: string;
+  count: number;
+  bar: string;
+  text: string;
 }
 
+/** Compact strip: stacked bar of indicator counts with a legend. */
 export function QuickStats({
   aboveCount, atCount, belowCount,
   baselineName = 'average',
@@ -39,75 +31,54 @@ export function QuickStats({
   isLoading,
 }: QuickStatsProps) {
   if (isLoading) {
-    return <QuickStatsSkeleton />;
-  }
-
-  if (isEngland) {
     return (
-      <div className="mb-6 grid grid-cols-3 gap-4">
-        <div className="flex items-center gap-3 rounded-lg border bg-white p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-            <TrendingUp className="h-5 w-5 text-green-600" />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-green-600">{improvingCount}</div>
-            <div className="text-xs text-gray-500">Improving</div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 rounded-lg border bg-white p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
-            <Minus className="h-5 w-5 text-yellow-600" />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-yellow-600">{stableCount}</div>
-            <div className="text-xs text-gray-500">Stable</div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 rounded-lg border bg-white p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-            <TrendingDown className="h-5 w-5 text-red-600" />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-red-600">{decliningCount}</div>
-            <div className="text-xs text-gray-500">Declining</div>
-          </div>
-        </div>
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-48" />
+        <Skeleton className="h-2 w-full" />
       </div>
     );
   }
 
+  const segments: Segment[] = isEngland
+    ? [
+        { label: 'Improving', count: improvingCount, bar: 'bg-nhs-green', text: 'text-nhs-green' },
+        { label: 'Stable', count: stableCount, bar: 'bg-gray-300', text: 'text-gray-600' },
+        { label: 'Declining', count: decliningCount, bar: 'bg-nhs-red', text: 'text-nhs-red' },
+      ]
+    : [
+        { label: `Above ${baselineName}`, count: aboveCount, bar: 'bg-nhs-green', text: 'text-nhs-green' },
+        { label: `In line with ${baselineName}`, count: atCount, bar: 'bg-gray-300', text: 'text-gray-600' },
+        { label: `Below ${baselineName}`, count: belowCount, bar: 'bg-nhs-red', text: 'text-nhs-red' },
+      ];
+
+  const total = segments.reduce((sum, s) => sum + s.count, 0);
+  const summary = segments.map(s => `${s.count} ${s.label.toLowerCase()}`).join(', ');
+
   return (
-    <div className="mb-6 grid grid-cols-3 gap-4">
-      <div className="flex items-center gap-3 rounded-lg border bg-white p-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-          <TrendingUp className="h-5 w-5 text-green-600" />
-        </div>
-        <div>
-          <div className="text-2xl font-bold text-green-600">{aboveCount}</div>
-          <div className="text-xs text-gray-500">Above {baselineName}</div>
-        </div>
+    <div>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <p className="text-sm text-gray-600">
+          <span className="font-semibold text-gray-900">{total}</span> indicators
+          {isEngland ? ' compared with the previous period' : ' with a comparison value'}
+        </p>
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          {segments.map(s => (
+            <li key={s.label} className="flex items-center gap-1.5">
+              <span className={cn('h-2.5 w-2.5 rounded-sm', s.bar)} aria-hidden />
+              <span className={cn('font-semibold tabular-nums', s.text)}>{s.count}</span>
+              <span className="text-gray-600">{s.label}</span>
+            </li>
+          ))}
+        </ul>
       </div>
-
-      <div className="flex items-center gap-3 rounded-lg border bg-white p-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
-          <Minus className="h-5 w-5 text-yellow-600" />
-        </div>
-        <div>
-          <div className="text-2xl font-bold text-yellow-600">{atCount}</div>
-          <div className="text-xs text-gray-500">At {baselineName}</div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3 rounded-lg border bg-white p-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-          <TrendingDown className="h-5 w-5 text-red-600" />
-        </div>
-        <div>
-          <div className="text-2xl font-bold text-red-600">{belowCount}</div>
-          <div className="text-xs text-gray-500">Below {baselineName}</div>
-        </div>
+      <div
+        className="mt-2 flex h-2 overflow-hidden rounded-full bg-gray-100"
+        role="img"
+        aria-label={summary}
+      >
+        {total > 0 && segments.map(s => (
+          <span key={s.label} className={s.bar} style={{ width: `${(s.count / total) * 100}%` }} />
+        ))}
       </div>
     </div>
   );

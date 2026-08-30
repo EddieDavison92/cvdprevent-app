@@ -174,10 +174,6 @@ export function ChoroplethMap({
         minZoom: 5,
       });
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-      }).addTo(map);
-
       mapInstanceRef.current = map;
 
       const layer = L.geoJSON(geojson, {
@@ -306,7 +302,7 @@ export function ChoroplethMap({
           <span className="text-sm text-gray-400">Loading map...</span>
         </div>
       )}
-      <div ref={mapRef} style={{ height, width: '100%', borderRadius: 8 }} />
+      <div ref={mapRef} style={{ height, width: '100%', borderRadius: 8, background: '#dfe6e8' }} />
     </div>
   );
 }

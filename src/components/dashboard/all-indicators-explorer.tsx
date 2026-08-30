@@ -3,12 +3,9 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowRight, ArrowUpDown, Filter, Minus, TrendingDown, TrendingUp } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { ArrowRight, ArrowUpDown, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ComparisonBadge } from './comparison-badge';
 import { buildUrl } from '@/lib/utils/url';
 import { cn } from '@/lib/utils';
 import { DASHBOARD_SECTIONS, findSectionForIndicator, type DashboardSection } from '@/lib/constants/indicator-sections';
@@ -39,45 +36,22 @@ interface AllIndicatorsExplorerProps {
   selectedCondition?: string | null;
 }
 
-function SummarySkeleton() {
-  return (
-    <Card className="border-none shadow-none">
-      <CardContent className="px-0">
-        <div className="grid gap-3 md:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border bg-white p-4">
-              <Skeleton className="mb-3 h-4 w-24" />
-              <Skeleton className="h-8 w-16" />
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function cleanIndicatorName(name: string) {
   return name.replace(/\s*\(CVDP\d+[A-Z]+\)/, '').trim();
 }
 
 function getComparisonState(indicator: IndicatorPerformance, isEngland: boolean) {
   if (isEngland || indicator.gap === null) return 'neutral' as const;
-
-  const section = indicator.section;
-  const effectiveGap = section?.lowerIsBetter ? -indicator.gap : indicator.gap;
-  if (effectiveGap > 0.5) return 'above' as const;
-  if (effectiveGap < -0.5) return 'below' as const;
+  const effectiveGap = indicator.section?.lowerIsBetter ? -indicator.gap : indicator.gap;
+  if (effectiveGap > 0.5) return 'ahead' as const;
+  if (effectiveGap < -0.5) return 'behind' as const;
   return 'neutral' as const;
 }
 
 function getTrendState(indicator: IndicatorPerformance) {
-  if (indicator.trend === null) return 'flat' as const;
-  if (Math.abs(indicator.trend) < 0.1) return 'flat' as const;
-
+  if (indicator.trend === null || Math.abs(indicator.trend) < 0.1) return 'stable' as const;
   const lowerIsBetter = indicator.section?.lowerIsBetter ?? false;
-  if (lowerIsBetter) {
-    return indicator.trend < 0 ? 'improving' as const : 'declining' as const;
-  }
+  if (lowerIsBetter) return indicator.trend < 0 ? 'improving' as const : 'declining' as const;
   return indicator.trend > 0 ? 'improving' as const : 'declining' as const;
 }
 
@@ -94,17 +68,27 @@ function sortIndicators(items: IndicatorPerformance[], sortMode: SortMode, isEng
       return cleanIndicatorName(a.IndicatorShortName).localeCompare(cleanIndicatorName(b.IndicatorShortName));
     }
 
-    const getGapSeverity = (item: IndicatorPerformance) => {
+    const severity = (item: IndicatorPerformance) => {
       if (item.gap === null) return Number.NEGATIVE_INFINITY;
-      const lowerIsBetter = item.section?.lowerIsBetter ?? false;
-      return lowerIsBetter ? item.gap : -item.gap;
+      return item.section?.lowerIsBetter ? item.gap : -item.gap;
     };
-
-    const aScore = getGapSeverity(a);
-    const bScore = getGapSeverity(b);
-    if (bScore !== aScore) return bScore - aScore;
+    const difference = severity(b) - severity(a);
+    if (difference !== 0) return difference;
     return cleanIndicatorName(a.IndicatorShortName).localeCompare(cleanIndicatorName(b.IndicatorShortName));
   });
+}
+
+function ExplorerSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-20 w-full rounded-lg" />
+      <div className="grid gap-4 lg:grid-cols-2">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <Skeleton key={index} className="h-72 w-full rounded-lg" />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function AllIndicatorsExplorer({
@@ -120,341 +104,159 @@ export function AllIndicatorsExplorer({
   const searchParams = useSearchParams();
   const [sortMode, setSortMode] = useState<SortMode>(isEngland ? 'trend' : 'gap');
 
-  const performanceItems = useMemo(() => {
-    return (indicators ?? []).map((indicator) => {
-      const data = dataByIndicator.get(indicator.IndicatorID);
-      const previousData = previousDataByIndicator.get(indicator.IndicatorID);
-      const baselineData = baselineDataByIndicator?.get(indicator.IndicatorID);
+  const performanceItems = useMemo(() => (indicators ?? []).map((indicator) => {
+    const data = dataByIndicator.get(indicator.IndicatorID);
+    const previousData = previousDataByIndicator.get(indicator.IndicatorID);
+    const baselineData = baselineDataByIndicator?.get(indicator.IndicatorID);
+    const gap = !isEngland && data?.Value != null && baselineData?.Value != null ? data.Value - baselineData.Value : null;
+    const trend = data?.Value != null && previousData?.Value != null ? data.Value - previousData.Value : null;
+    const section = findSectionForIndicator(indicator.IndicatorCode) ?? null;
+    const effectiveGap = gap === null ? null : section?.lowerIsBetter ? -gap : gap;
 
-      const gap = !isEngland && data?.Value != null && baselineData?.Value != null
-        ? data.Value - baselineData.Value
-        : null;
-      const trend = data?.Value != null && previousData?.Value != null
-        ? data.Value - previousData.Value
-        : null;
-
-      const section = findSectionForIndicator(indicator.IndicatorCode) ?? null;
-      const lowerIsBetter = section?.lowerIsBetter ?? false;
-      const effectiveGap = gap === null ? null : (lowerIsBetter ? -gap : gap);
-
-      return {
-        ...indicator,
-        section,
-        data,
-        previousData,
-        baselineData,
-        gap,
-        trend,
-        isBelowBaseline: effectiveGap !== null && effectiveGap < -0.5,
-        isAboveBaseline: effectiveGap !== null && effectiveGap > 0.5,
-      };
-    });
-  }, [indicators, dataByIndicator, previousDataByIndicator, baselineDataByIndicator, isEngland]);
+    return {
+      ...indicator,
+      section,
+      data,
+      previousData,
+      baselineData,
+      gap,
+      trend,
+      isBelowBaseline: effectiveGap !== null && effectiveGap < -0.5,
+      isAboveBaseline: effectiveGap !== null && effectiveGap > 0.5,
+    };
+  }), [indicators, dataByIndicator, previousDataByIndicator, baselineDataByIndicator, isEngland]);
 
   const summary = useMemo(() => {
     const withValues = performanceItems.filter((item) => item.data?.Value != null);
-    const belowBaseline = withValues.filter((item) => item.isBelowBaseline).length;
-    const improving = withValues.filter((item) => getTrendState(item) === 'improving').length;
-    const groupedSectionCount = new Set(
-      withValues
-        .filter((item) => item.section !== null)
-        .map((item) => item.section!.id)
-    ).size;
-
     return {
       visible: withValues.length,
-      belowBaseline,
-      improving,
-      grouped: groupedSectionCount,
+      below: withValues.filter((item) => item.isBelowBaseline).length,
+      improving: withValues.filter((item) => getTrendState(item) === 'improving').length,
     };
   }, [performanceItems]);
 
   const sections = useMemo(() => {
     const groups = new Map<string, { section: DashboardSection | null; items: IndicatorPerformance[] }>();
-
     for (const item of performanceItems) {
       const key = item.section?.id ?? 'other';
-      const group = groups.get(key);
-      if (group) {
-        group.items.push(item);
-      } else {
-        groups.set(key, { section: item.section, items: [item] });
-      }
+      const current = groups.get(key);
+      if (current) current.items.push(item);
+      else groups.set(key, { section: item.section, items: [item] });
     }
 
     return [...groups.values()]
-      .map((group) => ({
-        section: group.section,
-        items: sortIndicators(group.items, sortMode, isEngland),
-      }))
+      .map((group) => ({ ...group, items: sortIndicators(group.items, sortMode, isEngland) }))
       .sort((a, b) => {
         if (a.section && b.section) {
           return DASHBOARD_SECTIONS.findIndex((section) => section.id === a.section!.id)
             - DASHBOARD_SECTIONS.findIndex((section) => section.id === b.section!.id);
         }
-        if (a.section) return -1;
-        if (b.section) return 1;
-        return 0;
+        return a.section ? -1 : b.section ? 1 : 0;
       });
   }, [performanceItems, sortMode, isEngland]);
 
-  if (isLoadingIndicators) {
-    return (
-      <div className="space-y-4">
-        <SummarySkeleton />
-        <div className="space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-5 w-40" />
-                <Skeleton className="h-4 w-64" />
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {Array.from({ length: 4 }).map((__, j) => (
-                  <Skeleton key={j} className="h-16 w-full rounded-xl" />
-                ))}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (isLoadingIndicators) return <ExplorerSkeleton />;
 
   if (!indicators || indicators.length === 0) {
-    return (
-      <div className="flex h-64 items-center justify-center rounded-lg border border-dashed">
-        <p className="text-gray-500">No indicators available</p>
-      </div>
-    );
+    return <div className="flex h-64 items-center justify-center rounded-lg border border-dashed text-gray-500">No indicators available</div>;
   }
 
   return (
-    <div className="space-y-5">
-      <Card className="overflow-hidden border-nhs-blue/10 bg-gradient-to-r from-white via-white to-nhs-pale-grey/40">
-        <CardContent className="p-0">
-          <div className="grid gap-0 md:grid-cols-[1.5fr_1fr]">
-            <div className="border-b border-nhs-blue/10 p-5 md:border-b-0 md:border-r">
-              <div className="mb-1 flex items-center gap-2 text-sm font-medium text-nhs-blue">
-                <Filter className="h-4 w-4" />
-                All indicators
-              </div>
-              <p className="mb-4 max-w-2xl text-sm text-gray-500">
-                Browse every indicator in one place, grouped into the same clinical sections used across the dashboard.
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-2xl border bg-white/85 p-4">
-                  <div className="text-xs text-gray-500">Indicators in scope</div>
-                  <div className="mt-2 text-3xl font-semibold text-nhs-dark-blue">{summary.visible}</div>
-                </div>
-                <div className="rounded-2xl border bg-white/85 p-4">
-                  <div className="text-xs text-gray-500">Grouped into sections</div>
-                  <div className="mt-2 text-3xl font-semibold text-nhs-dark-blue">{summary.grouped}</div>
-                </div>
-                <div className="rounded-2xl border bg-white/85 p-4">
-                  <div className="text-xs text-gray-500">
-                    {isEngland ? 'Indicators improving' : `Below ${baselineName}`}
-                  </div>
-                  <div className={cn(
-                    'mt-2 text-3xl font-semibold',
-                    isEngland ? 'text-green-700' : 'text-red-700'
-                  )}>
-                    {isEngland ? summary.improving : summary.belowBaseline}
-                  </div>
-                </div>
-                <div className="rounded-2xl border bg-white/85 p-4">
-                  <div className="text-xs text-gray-500">Condition filter</div>
-                  <div className="mt-2 text-sm font-medium text-gray-800">
-                    {selectedCondition ?? 'All conditions'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-5">
-              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                <ArrowUpDown className="h-4 w-4 text-gray-500" />
-                Sort indicators
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant={sortMode === (isEngland ? 'trend' : 'gap') ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSortMode(isEngland ? 'trend' : 'gap')}
-                >
-                  {isEngland ? 'Largest change' : 'Largest gap'}
-                </Button>
-                <Button
-                  type="button"
-                  variant={sortMode === 'trend' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSortMode('trend')}
-                >
-                  Trend
-                </Button>
-                <Button
-                  type="button"
-                  variant={sortMode === 'name' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSortMode('name')}
-                >
-                  Name
-                </Button>
-              </div>
-              <p className="mt-4 text-sm leading-6 text-gray-600">
-                Start with the biggest gaps, switch to trend when you want movement over time, or sort alphabetically for a full scan.
-              </p>
-            </div>
+    <div className="space-y-4">
+      <section aria-labelledby="all-indicators-heading" className="rounded-lg border border-gray-200 bg-white px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 id="all-indicators-heading" className="text-base font-semibold text-gray-900">All indicators</h2>
+            <p className="mt-0.5 text-xs text-gray-500">
+              {summary.visible} with data · {isEngland ? `${summary.improving} improving` : `${summary.below} priority gaps vs ${baselineName}`}
+              {selectedCondition ? ` · ${selectedCondition}` : ''}
+            </p>
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1.5 text-xs text-gray-500"><ArrowUpDown className="h-3.5 w-3.5" />Sort by</span>
+            <Button type="button" variant={sortMode === (isEngland ? 'trend' : 'gap') ? 'default' : 'outline'} size="sm" onClick={() => setSortMode(isEngland ? 'trend' : 'gap')}>
+              {isEngland ? 'Largest change' : 'Largest gap'}
+            </Button>
+            <Button type="button" variant={sortMode === 'trend' ? 'default' : 'outline'} size="sm" onClick={() => setSortMode('trend')}>Trend</Button>
+            <Button type="button" variant={sortMode === 'name' ? 'default' : 'outline'} size="sm" onClick={() => setSortMode('name')}>Name</Button>
+          </div>
+        </div>
+      </section>
 
-      <div className="space-y-4">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         {sections.map(({ section, items }) => {
           const title = section?.name ?? 'Other indicators';
-          const description = section?.description ?? 'Indicators not yet grouped into a dashboard section.';
-          const belowCount = items.filter((item) => item.isBelowBaseline).length;
-          const improvingCount = items.filter((item) => getTrendState(item) === 'improving').length;
+          const description = section?.description ?? 'Indicators not grouped into a pathway stage.';
+          const behind = items.filter((item) => item.isBelowBaseline).length;
+          const improving = items.filter((item) => getTrendState(item) === 'improving').length;
+          const isRecordedPrevalence = section?.id === 'prevalence';
 
           return (
-            <Card key={section?.id ?? 'other'} className="overflow-hidden border-gray-200">
-              <CardHeader className="border-b border-gray-100 bg-white pb-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <div className="mb-2 flex items-center gap-2">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: section?.color ?? '#768692' }}
-                      />
-                      <CardTitle className="text-base text-gray-900">{title}</CardTitle>
-                      <Badge variant="outline" className="text-xs">
-                        {items.length} indicators
-                      </Badge>
-                    </div>
-                    <CardDescription className="max-w-2xl text-sm">{description}</CardDescription>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {!isEngland && (
-                      <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700">
-                        {belowCount} below {baselineName}
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700">
-                      {improvingCount} improving
-                    </Badge>
-                  </div>
+            <section key={section?.id ?? 'other'} aria-labelledby={`all-${section?.id ?? 'other'}`} className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+              <header className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-3">
+                <div>
+                  <h3 id={`all-${section?.id ?? 'other'}`} className="flex items-center gap-2 text-base font-semibold text-gray-900">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: section?.color ?? '#768692' }} aria-hidden />
+                    {title}
+                    <span className="text-sm font-normal text-gray-500">{items.length}</span>
+                  </h3>
+                  <p className="mt-0.5 text-xs text-gray-500">{description}</p>
                 </div>
-              </CardHeader>
-              <CardContent className="p-3">
-                <div className="space-y-2">
-                  {items.map((indicator) => {
-                    const comparisonState = getComparisonState(indicator, isEngland);
-                    const trendState = getTrendState(indicator);
-                    const TrendIcon =
-                      trendState === 'improving' ? TrendingUp :
-                      trendState === 'declining' ? TrendingDown :
-                      Minus;
+                <p className="shrink-0 text-xs text-gray-500">
+                  {!isEngland && <><span className={behind > 0 ? 'font-semibold text-nhs-red' : ''}>{behind}</span> {isRecordedPrevalence ? 'lower' : 'behind'} · </>}
+                  <span className={isRecordedPrevalence ? 'font-semibold text-nhs-blue' : 'font-semibold text-nhs-green'}>{improving}</span> {isRecordedPrevalence ? 'rising' : 'improving'}
+                </p>
+              </header>
 
-                    return (
+              <ul className="divide-y divide-gray-100">
+                {items.map((indicator) => {
+                  const comparison = getComparisonState(indicator, isEngland);
+                  const trend = getTrendState(indicator);
+                  const TrendIcon = trend === 'improving' ? TrendingUp : trend === 'declining' ? TrendingDown : Minus;
+                  const comparisonLabel = indicator.gap === null ? '—'
+                    : comparison === 'neutral' ? 'In line'
+                    : `${formatAbsDiff(indicator.gap, indicator.FormatDisplayName)} ${isRecordedPrevalence
+                      ? (indicator.gap > 0 ? 'higher' : 'lower')
+                      : comparison}`;
+
+                  return (
+                    <li key={indicator.IndicatorID}>
                       <Link
-                        key={indicator.IndicatorID}
                         href={buildUrl(`/dashboard/${indicator.IndicatorID}`, searchParams)}
-                        className="group block"
+                        className="group grid min-h-14 items-center gap-x-3 gap-y-1 px-4 py-2.5 transition-colors hover:bg-nhs-pale-grey/40 focus-visible:bg-nhs-pale-grey/40 focus-visible:outline-none sm:grid-cols-[minmax(0,1fr)_auto_5.5rem_4.5rem_1rem]"
                       >
-                        <div className={cn(
-                          'grid gap-3 rounded-xl border p-4 transition-all hover:border-nhs-blue/40 hover:bg-nhs-blue/[0.02] hover:shadow-sm',
-                          'md:grid-cols-[minmax(0,1.8fr)_auto_auto_auto_auto]',
-                          comparisonState === 'below' && 'border-l-4 border-l-red-400',
-                          comparisonState === 'above' && 'border-l-4 border-l-green-400',
-                          comparisonState === 'neutral' && 'border-l-4 border-l-gray-200'
-                        )}>
-                          <div className="min-w-0">
-                            <div className="mb-1 text-sm font-medium text-gray-900 group-hover:text-nhs-blue">
-                              {cleanIndicatorName(indicator.IndicatorShortName)}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                              <span className="font-mono text-[11px] text-gray-400">{indicator.IndicatorCode}</span>
-                              <span className="text-gray-300">•</span>
-                              <span>{indicator.FormatDisplayName}</span>
-                            </div>
-                          </div>
-
-                          <div className="min-w-[5.5rem]">
-                            <div className="text-[11px] uppercase tracking-wide text-gray-400">Current</div>
-                            <div className="mt-1 text-lg font-semibold tabular-nums text-nhs-dark-blue">
-                              {indicator.data?.Value != null ? formatValue(indicator.data.Value, indicator.FormatDisplayName) : '—'}
-                            </div>
-                          </div>
-
-                          <div className="min-w-[8rem]">
-                            <div className="text-[11px] uppercase tracking-wide text-gray-400">
-                              {isEngland ? 'Direction' : 'Comparison'}
-                            </div>
-                            <div className="mt-1">
-                              {isEngland ? (
-                                <Badge
-                                  variant="outline"
-                                  className={cn(
-                                    'gap-1 whitespace-nowrap',
-                                    trendState === 'improving' && 'border-green-200 bg-green-50 text-green-700',
-                                    trendState === 'declining' && 'border-red-200 bg-red-50 text-red-700',
-                                    trendState === 'flat' && 'border-gray-200 text-gray-500'
-                                  )}
-                                >
-                                  <TrendIcon className="h-3 w-3" />
-                                  {trendState === 'flat' ? 'Stable' : trendState}
-                                </Badge>
-                              ) : (
-                                <ComparisonBadge
-                                  orgValue={indicator.data?.Value}
-                                  baselineValue={indicator.baselineData?.Value}
-                                  baselineName={baselineName}
-                                  size="sm"
-                                />
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="min-w-[6rem]">
-                            <div className="text-[11px] uppercase tracking-wide text-gray-400">Trend</div>
-                            <div className="mt-1 flex items-center gap-1 text-sm font-medium tabular-nums text-gray-700">
-                              <TrendIcon
-                                className={cn(
-                                  'h-3.5 w-3.5',
-                                  trendState === 'improving' && 'text-green-600',
-                                  trendState === 'declining' && 'text-red-600',
-                                  trendState === 'flat' && 'text-gray-400'
-                                )}
-                              />
-                              {indicator.trend === null ? '—' : formatDiff(indicator.trend, indicator.FormatDisplayName)}
-                            </div>
-                          </div>
-
-                          <div className="flex min-w-[5rem] items-center justify-between gap-3 md:justify-end">
-                            {!isEngland && indicator.gap !== null ? (
-                              <div className={cn(
-                                'text-sm font-medium tabular-nums',
-                                comparisonState === 'above' && 'text-green-700',
-                                comparisonState === 'below' && 'text-red-700',
-                                comparisonState === 'neutral' && 'text-gray-500'
-                              )}>
-                                {formatDiff(indicator.gap, indicator.FormatDisplayName)}
-                              </div>
-                            ) : (
-                              <div className="text-sm text-gray-400">
-                                {indicator.previousData?.Value != null ? 'vs prev' : 'No prior'}
-                              </div>
-                            )}
-                            <ArrowRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-nhs-blue" />
-                          </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm text-gray-800 group-hover:text-nhs-blue" title={cleanIndicatorName(indicator.IndicatorShortName)}>
+                            {cleanIndicatorName(indicator.IndicatorShortName)}
+                          </p>
+                          <p className="mt-0.5 font-mono text-[10px] text-gray-400">{indicator.IndicatorCode}</p>
                         </div>
+                        <p className="text-sm font-semibold tabular-nums text-gray-900">
+                          {indicator.data?.Value != null ? formatValue(indicator.data.Value, indicator.FormatDisplayName) : '—'}
+                        </p>
+                        {!isEngland ? (
+                          <p className={cn(
+                            'text-xs font-medium tabular-nums sm:text-right',
+                            comparison === 'ahead' ? 'text-nhs-green' : comparison === 'behind' ? 'text-nhs-red' : 'text-gray-500'
+                          )}>{comparisonLabel}</p>
+                        ) : <span />}
+                        <p className={cn(
+                          'flex items-center justify-end gap-1 text-xs font-medium tabular-nums',
+                          isRecordedPrevalence && trend !== 'stable' ? 'text-nhs-blue'
+                            : trend === 'improving' ? 'text-nhs-green'
+                            : trend === 'declining' ? 'text-nhs-red'
+                            : 'text-gray-500'
+                        )}>
+                          <TrendIcon className="h-3.5 w-3.5" />
+                          {indicator.trend === null ? '—' : trend === 'stable' ? 'Stable' : formatDiff(indicator.trend, indicator.FormatDisplayName)}
+                        </p>
+                        <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-nhs-blue" />
                       </Link>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           );
         })}
       </div>

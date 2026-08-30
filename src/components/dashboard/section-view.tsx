@@ -1,17 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { DashboardSection } from '@/lib/constants/indicator-sections';
 import type { IndicatorWithData } from '@/lib/api/types';
 import { formatValue, formatAbsDiff, formatDiff } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
-import { TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SectionViewProps {
@@ -19,7 +16,6 @@ interface SectionViewProps {
   indicators: IndicatorWithData[];
   baselineIndicators: IndicatorWithData[];
   baselineName: string;
-  collapsedCount?: number;
   showBelowOnly?: boolean;
   isLoadingBaseline?: boolean;
   isEngland?: boolean;
@@ -33,6 +29,11 @@ interface IndicatorRow {
   gap: number | null;
   trend: number | null;
 }
+
+/** Gap (pp) within which an indicator counts as in line with the baseline. */
+const AT_THRESHOLD = 0.5;
+/** Change (pp) within which a trend counts as stable. */
+const FLAT_THRESHOLD = 0.1;
 
 function getPersonsData(indicator: IndicatorWithData) {
   return indicator.Categories.find(
@@ -49,15 +50,13 @@ export function SectionView({
   indicators,
   baselineIndicators,
   baselineName,
-  collapsedCount = 3,
   showBelowOnly = false,
   isLoadingBaseline = false,
   isEngland = false,
 }: SectionViewProps) {
   const searchParams = useSearchParams();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const isRecordedPrevalence = section.id === 'prevalence';
 
-  // Build indicator map
   const baselineMap = useMemo(() => {
     const map = new Map<string, IndicatorWithData>();
     for (const ind of baselineIndicators) {
@@ -66,7 +65,6 @@ export function SectionView({
     return map;
   }, [baselineIndicators]);
 
-  // Get indicators for this section
   const sectionIndicators: IndicatorRow[] = useMemo(() => {
     const rows = section.indicatorCodes
       .map(code => {
@@ -76,13 +74,11 @@ export function SectionView({
         const persons = getPersonsData(indicator);
         const value = persons?.Data.Value ?? null;
 
-        // Get previous value from time series
         let previousValue: number | null = null;
         if (persons?.TimeSeries && persons.TimeSeries.length >= 2) {
           previousValue = persons.TimeSeries[persons.TimeSeries.length - 2]?.Value ?? null;
         }
 
-        // Get baseline
         const baselineInd = baselineMap.get(code);
         const baselinePersons = baselineInd ? getPersonsData(baselineInd) : null;
         const baselineValue = baselinePersons?.Data.Value ?? null;
@@ -94,13 +90,12 @@ export function SectionView({
       })
       .filter((row): row is IndicatorRow => row !== null && row.value !== null);
 
-    // Sort by gap (worst first) or by trend for England
+    // Worst first: by trend for England, by gap otherwise
     if (isEngland) {
       rows.sort((a, b) => {
         if (a.trend === null && b.trend === null) return 0;
         if (a.trend === null) return 1;
         if (b.trend === null) return -1;
-        // Worst trend first: for lowerIsBetter, increasing = bad; otherwise decreasing = bad
         return section.lowerIsBetter ? b.trend - a.trend : a.trend - b.trend;
       });
     } else {
@@ -115,236 +110,152 @@ export function SectionView({
     return rows;
   }, [section.indicatorCodes, section.lowerIsBetter, indicators, baselineMap, isEngland]);
 
-  // Filter to below average only if requested
   const filteredIndicators = useMemo(() => {
     if (!showBelowOnly) return sectionIndicators;
-
     return sectionIndicators.filter(row => {
       if (row.gap === null) return false;
-      return section.lowerIsBetter ? row.gap > 0.5 : row.gap < -0.5;
+      return section.lowerIsBetter ? row.gap > AT_THRESHOLD : row.gap < -AT_THRESHOLD;
     });
   }, [sectionIndicators, showBelowOnly, section.lowerIsBetter]);
 
-  // Determine what to show
-  const displayIndicators = isExpanded
-    ? filteredIndicators
-    : filteredIndicators.slice(0, collapsedCount);
-
-  const hasMore = filteredIndicators.length > collapsedCount;
-
-  // Calculate section summary
   const summary = useMemo(() => {
     if (isEngland) {
       const withTrends = sectionIndicators.filter(r => r.trend !== null);
       if (withTrends.length === 0) return null;
-      const improving = withTrends.filter(r => {
-        const good = section.lowerIsBetter ? r.trend! < -0.1 : r.trend! > 0.1;
-        return good;
-      }).length;
-      const declining = withTrends.filter(r => {
-        const bad = section.lowerIsBetter ? r.trend! > 0.1 : r.trend! < -0.1;
-        return bad;
-      }).length;
-      const stable = withTrends.length - improving - declining;
-      return { isEngland: true as const, improving, declining, stable, total: withTrends.length };
+      const improving = withTrends.filter(r => section.lowerIsBetter ? r.trend! < -FLAT_THRESHOLD : r.trend! > FLAT_THRESHOLD).length;
+      const declining = withTrends.filter(r => section.lowerIsBetter ? r.trend! > FLAT_THRESHOLD : r.trend! < -FLAT_THRESHOLD).length;
+      return { good: improving, bad: declining, total: withTrends.length, goodLabel: 'improving', badLabel: 'declining' };
     }
 
     const withGaps = sectionIndicators.filter(r => r.gap !== null);
     if (withGaps.length === 0) return null;
-
-    const avgGap = withGaps.reduce((sum, r) => sum + r.gap!, 0) / withGaps.length;
-    const effectiveGap = section.lowerIsBetter ? -avgGap : avgGap;
-    const aboveCount = withGaps.filter(r => section.lowerIsBetter ? r.gap! < -0.5 : r.gap! > 0.5).length;
-    const belowCount = withGaps.filter(r => section.lowerIsBetter ? r.gap! > 0.5 : r.gap! < -0.5).length;
-
-    return { isEngland: false as const, effectiveGap, aboveCount, belowCount, total: withGaps.length };
-  }, [sectionIndicators, section.lowerIsBetter, isEngland]);
+    const ahead = withGaps.filter(r => section.lowerIsBetter ? r.gap! < -AT_THRESHOLD : r.gap! > AT_THRESHOLD).length;
+    const behind = withGaps.filter(r => section.lowerIsBetter ? r.gap! > AT_THRESHOLD : r.gap! < -AT_THRESHOLD).length;
+    return {
+      good: ahead,
+      bad: behind,
+      total: withGaps.length,
+      goodLabel: isRecordedPrevalence ? 'higher' : 'ahead',
+      badLabel: isRecordedPrevalence ? 'lower' : 'behind',
+    };
+  }, [sectionIndicators, section.lowerIsBetter, isEngland, isRecordedPrevalence]);
 
   if (filteredIndicators.length === 0) {
     return null;
   }
 
+  const headingId = `section-${section.id}`;
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: section.color }}
-            />
-            <CardTitle className="text-base">{section.name}</CardTitle>
-            <Badge variant="outline" className="text-xs">
-              {filteredIndicators.length} indicators
-            </Badge>
+    <section aria-labelledby={headingId} className="flex flex-col rounded-lg border border-gray-200 bg-white">
+      <header className="border-b border-gray-100 px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 id={headingId} className="flex items-center gap-2 text-base font-semibold text-gray-900">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: section.color }} aria-hidden />
+              {section.name}
+              <span className="text-sm font-normal text-gray-500">{filteredIndicators.length}</span>
+            </h3>
+            <p className="mt-0.5 text-xs text-gray-500">{section.description}</p>
           </div>
+
           {isLoadingBaseline && !isEngland ? (
-            <Skeleton className="h-5 w-40" />
-          ) : summary && summary.isEngland ? (
-            <div className="text-xs text-gray-500 flex items-center gap-2">
-              {summary.improving > 0 && <span className="text-green-600">{summary.improving} improving</span>}
-              {summary.stable > 0 && <span>{summary.stable} stable</span>}
-              {summary.declining > 0 && <span className="text-red-600">{summary.declining} declining</span>}
-            </div>
-          ) : summary && !summary.isEngland ? (
-            <div className={cn(
-              'text-sm font-medium flex items-center gap-1',
-              summary.effectiveGap > 1 ? 'text-green-600' :
-              summary.effectiveGap < -1 ? 'text-red-600' : 'text-gray-500'
-            )}>
-              {summary.effectiveGap > 1 ? <CheckCircle2 className="w-4 h-4" /> :
-               summary.effectiveGap < -1 ? <AlertTriangle className="w-4 h-4" /> :
-               <Minus className="w-4 h-4" />}
-              {summary.aboveCount} above, {summary.belowCount} below {baselineName}
-            </div>
-          ) : null}
-        </div>
-        <CardDescription className="text-xs">
-          {section.description}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="space-y-2">
-          {displayIndicators.map((row) => {
-            const { indicator, value, baselineValue, gap, trend } = row;
-            const fmt = indicator.FormatDisplayName;
-
-            // For lowerIsBetter, invert the color logic
-            const effectiveGap = section.lowerIsBetter && gap !== null ? -gap : gap;
-            const gapDirection = effectiveGap !== null
-              ? (effectiveGap > 0.5 ? 'above' : effectiveGap < -0.5 ? 'below' : 'at')
-              : null;
-
-            const trendDirection = trend !== null
-              ? (Math.abs(trend) < 0.1 ? 'flat' : trend > 0 ? 'up' : 'down')
-              : null;
-
-            const trendGood = section.lowerIsBetter
-              ? trendDirection === 'down'
-              : trendDirection === 'up';
-
-            return (
-              <Link
-                key={indicator.IndicatorID}
-                href={buildUrl(`/dashboard/${indicator.IndicatorID}`, searchParams)}
-                className="block group"
-              >
-                <div
-                  className={cn(
-                    'flex items-center gap-3 p-3 rounded-lg border transition-all',
-                    'hover:shadow-sm hover:border-nhs-blue/30',
-                    !isEngland && gapDirection === 'below' && 'border-l-red-400 border-l-[3px]',
-                    !isEngland && gapDirection === 'above' && 'border-l-green-400 border-l-[3px]',
-                    !isEngland && gapDirection === 'at' && 'border-l-gray-300 border-l-[3px]',
-                    isEngland && trendGood && 'border-l-green-400 border-l-[3px]',
-                    isEngland && trendDirection !== null && !trendGood && trendDirection !== 'flat' && 'border-l-red-400 border-l-[3px]',
-                    isEngland && trendDirection === 'flat' && 'border-l-gray-300 border-l-[3px]',
-                  )}
-                >
-                  {/* Indicator name */}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900 truncate group-hover:text-nhs-blue">
-                      {cleanName(indicator.IndicatorShortName)}
-                    </div>
-                  </div>
-
-                  {/* Value */}
-                  <div className="flex items-baseline gap-1.5 flex-shrink-0">
-                    <span className="text-sm font-semibold tabular-nums text-gray-900">
-                      {value !== null ? formatValue(value, fmt) : '—'}
-                    </span>
-                    {!isEngland && baselineValue !== null && (
-                      <span className="text-xs text-gray-500 tabular-nums">
-                        / {formatValue(baselineValue, fmt)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Gap badge (non-England) or Trend badge (England) */}
-                  <div className="max-w-40 flex-shrink-0">
-                    {isEngland ? (
-                      trend !== null && trendDirection !== 'flat' ? (
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            'text-xs justify-center whitespace-nowrap',
-                            trendGood && 'border-green-300 bg-green-50 text-green-700',
-                            !trendGood && 'border-red-300 bg-red-50 text-red-700',
-                          )}
-                        >
-                          {formatDiff(trend, fmt)} {trendGood ? 'improving' : 'declining'}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs justify-center whitespace-nowrap border-gray-200 text-gray-500">
-                          Stable
-                        </Badge>
-                      )
-                    ) : (
-                      <>
-                        {isLoadingBaseline ? (
-                          <Skeleton className="h-5 w-full rounded-full" />
-                        ) : gap !== null && (
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              'text-xs justify-center whitespace-nowrap',
-                              gapDirection === 'above' && 'border-green-300 bg-green-50 text-green-700',
-                              gapDirection === 'below' && 'border-red-300 bg-red-50 text-red-700',
-                              gapDirection === 'at' && 'border-gray-200 text-gray-500',
-                            )}
-                          >
-                            {gapDirection === 'at'
-                              ? `At ${baselineName}`
-                              : `${formatAbsDiff(gap, fmt)} ${gapDirection}`}
-                          </Badge>
-                        )}
-                      </>
-                    )}
-                  </div>
-
-                  {/* Trend icon */}
-                  <div className="w-6 flex justify-center flex-shrink-0">
-                    {trendDirection === 'up' && (
-                      <TrendingUp className={cn('w-4 h-4', trendGood ? 'text-green-500' : 'text-red-500')} />
-                    )}
-                    {trendDirection === 'down' && (
-                      <TrendingDown className={cn('w-4 h-4', trendGood ? 'text-green-500' : 'text-red-500')} />
-                    )}
-                    {trendDirection === 'flat' && (
-                      <Minus className="w-4 h-4 text-gray-400" />
-                    )}
-                  </div>
-
-                  {/* Navigation arrow */}
-                  <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-nhs-blue transition-colors flex-shrink-0" />
-                </div>
-              </Link>
-            );
-          })}
+            <Skeleton className="h-5 w-28" />
+          ) : summary && (
+            <p className="shrink-0 whitespace-nowrap text-xs tabular-nums text-gray-500">
+              <span className={cn('font-semibold', summary.bad > 0 ? 'text-nhs-red' : 'text-gray-700')}>{summary.bad}</span> {summary.badLabel}
+              <span className="mx-1.5 text-gray-300">·</span>
+              <span className="font-semibold text-nhs-green">{summary.good}</span> {summary.goodLabel}
+            </p>
+          )}
         </div>
 
-        {/* Expand/Collapse button */}
-        {hasMore && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full mt-2 text-gray-500 hover:text-gray-700"
+        {summary && (
+          <div
+            className="mt-2 flex h-1 overflow-hidden rounded-full bg-gray-100"
+            role="img"
+            aria-label={`${summary.good} ${summary.goodLabel}, ${summary.bad} ${summary.badLabel} of ${summary.total}${isEngland ? '' : ` compared with ${baselineName}`}`}
           >
-            {isExpanded ? (
-              <>
-                <ChevronUp className="w-4 h-4 mr-1" />
-                Show less
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-4 h-4 mr-1" />
-                Show {filteredIndicators.length - collapsedCount} more
-              </>
-            )}
-          </Button>
+            <span className="bg-nhs-green" style={{ width: `${(summary.good / summary.total) * 100}%` }} />
+            <span className="bg-gray-300" style={{ width: `${((summary.total - summary.good - summary.bad) / summary.total) * 100}%` }} />
+            <span className="bg-nhs-red" style={{ width: `${(summary.bad / summary.total) * 100}%` }} />
+          </div>
         )}
-      </CardContent>
-    </Card>
+      </header>
+
+      <ul className="divide-y divide-gray-100">
+        {filteredIndicators.map((row) => {
+          const { indicator, value, baselineValue, gap, trend } = row;
+          const fmt = indicator.FormatDisplayName;
+
+          const effectiveGap = section.lowerIsBetter && gap !== null ? -gap : gap;
+          const gapDirection = effectiveGap !== null
+            ? (effectiveGap > AT_THRESHOLD ? 'ahead' : effectiveGap < -AT_THRESHOLD ? 'behind' : 'at')
+            : null;
+          const gapLabel = gapDirection === 'at'
+            ? 'In line'
+            : `${formatAbsDiff(gap!, fmt)} ${isRecordedPrevalence ? (gap! > 0 ? 'higher' : 'lower') : gapDirection}`;
+
+          const trendDirection = trend !== null
+            ? (Math.abs(trend) < FLAT_THRESHOLD ? 'flat' : trend > 0 ? 'up' : 'down')
+            : null;
+          const trendGood = section.lowerIsBetter ? trendDirection === 'down' : trendDirection === 'up';
+          const trendLabel = trend === null ? 'No previous period'
+            : trendDirection === 'flat' ? 'Stable'
+            : `${formatDiff(trend, fmt)} since last period`;
+          const TrendIcon = trendDirection === 'up' ? TrendingUp : trendDirection === 'down' ? TrendingDown : Minus;
+
+          return (
+            <li key={indicator.IndicatorID}>
+              <Link
+                href={buildUrl(`/dashboard/${indicator.IndicatorID}`, searchParams)}
+                className="group grid items-center gap-x-3 gap-y-1 px-4 py-2 hover:bg-nhs-pale-grey/40 focus-visible:bg-nhs-pale-grey/40 focus-visible:outline-none sm:grid-cols-[minmax(0,1fr)_auto_5.5rem_1.25rem]"
+              >
+                <p className="min-w-0 truncate text-sm text-gray-800 group-hover:text-nhs-blue" title={cleanName(indicator.IndicatorShortName)}>
+                  {cleanName(indicator.IndicatorShortName)}
+                </p>
+
+                <p className="text-sm tabular-nums sm:text-right">
+                  <span className="font-semibold text-gray-900">{value !== null ? formatValue(value, fmt) : '—'}</span>
+                  {!isEngland && baselineValue !== null && (
+                    <span className="text-gray-400"> vs {formatValue(baselineValue, fmt)}</span>
+                  )}
+                </p>
+
+                {isEngland ? (
+                  <span className={cn(
+                    'text-xs font-medium tabular-nums sm:text-right',
+                    trendDirection === 'flat' || trend === null ? 'text-gray-500' : trendGood ? 'text-nhs-green' : 'text-nhs-red',
+                  )}>
+                    {trend === null ? '—' : trendDirection === 'flat' ? 'Stable' : formatDiff(trend, fmt)}
+                  </span>
+                ) : isLoadingBaseline ? (
+                  <Skeleton className="h-4 w-full" />
+                ) : gap !== null ? (
+                  <span className={cn(
+                    'text-xs font-medium tabular-nums sm:text-right',
+                    gapDirection === 'ahead' && 'text-nhs-green',
+                    gapDirection === 'behind' && 'text-nhs-red',
+                    gapDirection === 'at' && 'text-gray-500',
+                  )}>
+                    {gapLabel}
+                  </span>
+                ) : <span />}
+
+                <TrendIcon
+                  className={cn(
+                    'h-4 w-4 justify-self-end',
+                    trend === null ? 'text-gray-200' : trendDirection === 'flat' ? 'text-gray-400' : trendGood ? 'text-nhs-green' : 'text-nhs-red',
+                  )}
+                  aria-label={trendLabel}
+                  role="img"
+                />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+
+    </section>
   );
 }

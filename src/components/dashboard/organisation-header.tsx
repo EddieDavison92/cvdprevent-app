@@ -18,22 +18,20 @@ export function OrganisationHeader() {
     .replace(/ Primary Care Network$/, '');
 
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-nhs-blue/10">
-          <Building2 className="h-6 w-6 text-nhs-blue" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-nhs-dark-blue">{displayName}</h1>
-          <p className="text-sm text-gray-500">
-            {isEngland ? 'National Overview' : SYSTEM_LEVEL_NAMES[organisation.SystemLevelID]}
-          </p>
-        </div>
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-nhs-blue/10">
+        <Building2 className="h-5 w-5 text-nhs-blue" />
       </div>
-      <Link href="/" onClick={() => clearOrganisation()}>
+      <div className="min-w-0">
+        <h1 className="truncate text-xl font-bold text-nhs-dark-blue sm:text-2xl">{displayName}</h1>
+        <p className="text-sm text-gray-500">
+          {isEngland ? 'National overview' : SYSTEM_LEVEL_NAMES[organisation.SystemLevelID]}
+        </p>
+      </div>
+      <Link href="/" onClick={() => clearOrganisation()} className="ml-auto sm:hidden">
         <Button variant="outline" size="sm" className="gap-2">
           <RefreshCw className="h-4 w-4" />
-          Change Organisation
+          Change
         </Button>
       </Link>
     </div>

@@ -171,9 +171,10 @@ export default function IndicatorDetailPage() {
     return baselineIndicators?.find((ind) => ind.IndicatorID === selectedIndicatorId);
   }, [baselineIndicators, selectedIndicatorId]);
 
-  const lowerIsBetter = indicator
-    ? findSectionForIndicator(indicator.IndicatorCode)?.lowerIsBetter ?? false
-    : false;
+  const indicatorSection = indicator
+    ? findSectionForIndicator(indicator.IndicatorCode)
+    : undefined;
+  const lowerIsBetter = indicatorSection?.lowerIsBetter ?? false;
 
 
   // Get the metricID for Persons (needed for siblingData)
@@ -586,7 +587,10 @@ export default function IndicatorDetailPage() {
               <Badge variant={indicator.IndicatorTypeName === 'Outcome' ? 'secondary' : 'default'}>
                 {indicator.IndicatorTypeName}
               </Badge>
-              <PolarityBadge lowerIsBetter={lowerIsBetter} />
+              <PolarityBadge
+                lowerIsBetter={lowerIsBetter}
+                recordedPrevalence={indicatorSection?.id === 'prevalence'}
+              />
             </div>
             <p className="text-sm text-gray-600">{indicator.IndicatorName}</p>
           </div>

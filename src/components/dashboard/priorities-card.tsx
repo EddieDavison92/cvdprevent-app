@@ -3,13 +3,11 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import type { IndicatorWithData } from '@/lib/api/types';
 import { DASHBOARD_SECTIONS } from '@/lib/constants/indicator-sections';
-import { formatValue, formatDiff, formatAbsDiff } from '@/lib/utils/format';
+import { formatValue, formatAbsDiff } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
-import { AlertTriangle, TrendingDown, Target, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PrioritiesCardProps {
@@ -30,10 +28,19 @@ interface PriorityItem {
   section: typeof DASHBOARD_SECTIONS[0] | undefined;
 }
 
+/** Gap beyond which an indicator counts as a priority (percentage points). */
+const GAP_THRESHOLD = 2;
+/** Period-on-period change beyond which a trend counts as deteriorating. */
+const TREND_THRESHOLD = 1;
+
 function getPersonsData(indicator: IndicatorWithData) {
   return indicator.Categories.find(
     c => c.MetricCategoryTypeName === 'Sex' && c.MetricCategoryName === 'Persons'
   );
+}
+
+function cleanName(name: string) {
+  return name.replace(/\s*\(CVDP\d+[A-Z]+\)/, '').trim();
 }
 
 export function PrioritiesCard({
@@ -45,7 +52,6 @@ export function PrioritiesCard({
 }: PrioritiesCardProps) {
   const searchParams = useSearchParams();
 
-  // Build baseline map
   const baselineMap = useMemo(() => {
     const map = new Map<string, IndicatorWithData>();
     for (const ind of baselineIndicators) {
@@ -54,7 +60,6 @@ export function PrioritiesCard({
     return map;
   }, [baselineIndicators]);
 
-  // Find priority indicators
   const priorities: PriorityItem[] = useMemo(() => {
     const items: PriorityItem[] = [];
 
@@ -63,16 +68,13 @@ export function PrioritiesCard({
       if (!persons || persons.Data.Value === null) continue;
 
       const value = persons.Data.Value;
-      
-      // Get baseline
       const baselineInd = baselineMap.get(indicator.IndicatorCode);
       const baselinePersons = baselineInd ? getPersonsData(baselineInd) : null;
       if (!baselinePersons || baselinePersons.Data.Value === null) continue;
-      
+
       const baselineValue = baselinePersons.Data.Value;
       const gap = value - baselineValue;
 
-      // Get trend
       let trend: number | null = null;
       if (persons.TimeSeries && persons.TimeSeries.length >= 2) {
         const prev = persons.TimeSeries[persons.TimeSeries.length - 2]?.Value;
@@ -81,23 +83,16 @@ export function PrioritiesCard({
         }
       }
 
-      // Find which section this belongs to
-      const section = DASHBOARD_SECTIONS.find(s => 
+      const section = DASHBOARD_SECTIONS.find(s =>
         s.indicatorCodes.includes(indicator.IndicatorCode)
       );
 
-      // Determine if this is a priority
-      // For "lowerIsBetter" sections, positive gap is bad
-      // For normal sections, negative gap is bad
+      // For lowerIsBetter sections a positive gap / rising trend is bad
       const lowerIsBetter = section?.lowerIsBetter ?? false;
       const effectiveGap = lowerIsBetter ? gap : -gap;
-      const isSignificantGap = effectiveGap > 2; // More than 2pp below average
-
-      // For trend, deteriorating means:
-      // - For lowerIsBetter: trend going UP is bad
-      // - For normal: trend going DOWN is bad  
+      const isSignificantGap = effectiveGap > GAP_THRESHOLD;
       const isDeteriorating = trend !== null && (
-        lowerIsBetter ? trend > 1 : trend < -1
+        lowerIsBetter ? trend > TREND_THRESHOLD : trend < -TREND_THRESHOLD
       );
 
       if (isSignificantGap || isDeteriorating) {
@@ -107,7 +102,7 @@ export function PrioritiesCard({
           baselineValue,
           gap,
           trend,
-          reason: isSignificantGap && isDeteriorating ? 'both' : 
+          reason: isSignificantGap && isDeteriorating ? 'both' :
                   isSignificantGap ? 'gap' : 'deteriorating',
           section,
         });
@@ -118,8 +113,6 @@ export function PrioritiesCard({
     items.sort((a, b) => {
       if (a.reason === 'both' && b.reason !== 'both') return -1;
       if (b.reason === 'both' && a.reason !== 'both') return 1;
-      
-      // Then by gap size
       const aEffective = (a.section?.lowerIsBetter ? a.gap : -a.gap);
       const bEffective = (b.section?.lowerIsBetter ? b.gap : -b.gap);
       return bEffective - aEffective;
@@ -128,116 +121,93 @@ export function PrioritiesCard({
     return items.slice(0, maxItems);
   }, [indicators, baselineMap, maxItems]);
 
-  if (isLoadingBaseline) {
-    return (
-      <Card>
-        <CardContent className="py-6">
-          <div className="flex items-center gap-3 text-gray-400">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span className="font-medium">Comparing to {baselineName}...</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (priorities.length === 0) {
-    return (
-      <Card className="border-green-200 bg-green-50/50">
-        <CardContent className="py-6">
-          <div className="flex items-center gap-3 text-green-700">
-            <Target className="w-5 h-5" />
-            <span className="font-medium">Looking good! No significant gaps or deteriorating trends.</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const criteria = `More than ${GAP_THRESHOLD}pp from ${baselineName} in an unfavourable direction, or worsened by more than ${TREND_THRESHOLD}pp since the previous period.`;
 
   return (
-    <Card className="border-amber-200 bg-gradient-to-br from-amber-50/80 to-white">
-      <CardHeader className="pb-2">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-amber-600" />
-          <CardTitle className="text-base">Priority Areas</CardTitle>
+    <section aria-labelledby="priorities-heading" className="rounded-lg border border-gray-200 bg-white">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-gray-100 px-4 py-3">
+        <div className="flex items-baseline gap-2">
+          <h2 id="priorities-heading" className="text-base font-semibold text-gray-900">Priorities</h2>
+          {!isLoadingBaseline && priorities.length > 0 && (
+            <span className="text-sm text-gray-500">{priorities.length} to review</span>
+          )}
         </div>
-        <CardDescription>
-          Indicators needing attention — biggest gaps and deteriorating trends
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          {priorities.map(({ indicator, value, baselineValue, gap, trend, reason, section }) => {
+        <p className="text-xs text-gray-500">{criteria}</p>
+      </div>
+
+      {isLoadingBaseline ? (
+        <div className="flex items-center gap-2 px-4 py-4 text-sm text-gray-500">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Comparing with {baselineName}…
+        </div>
+      ) : priorities.length === 0 ? (
+        <div className="flex items-center gap-2 px-4 py-4 text-sm text-nhs-green">
+          <CheckCircle2 className="h-4 w-4" />
+          No indicators meet the priority criteria.
+        </div>
+      ) : (
+        <ol className="divide-y divide-gray-100">
+          {priorities.map(({ indicator, value, baselineValue, gap, trend, reason, section }, i) => {
+            const fmt = indicator.FormatDisplayName;
             const lowerIsBetter = section?.lowerIsBetter ?? false;
-            
+            const isRecordedPrevalence = section?.id === 'prevalence';
+            const gapIsBad = lowerIsBetter ? gap > 0 : gap < 0;
+            const trendIsBad = trend !== null && (lowerIsBetter ? trend > 0 : trend < 0);
+            const showTrend = trend !== null && Math.abs(trend) >= 0.1;
+
             return (
-              <Link
-                key={indicator.IndicatorID}
-                href={buildUrl(`/dashboard/${indicator.IndicatorID}`, searchParams)}
-                className="block"
-              >
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-amber-200 bg-white hover:bg-amber-100/60 transition-colors">
-                  {/* Icon based on reason */}
-                  <div className={cn(
-                    'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
-                    reason === 'both' ? 'bg-red-100' :
-                    reason === 'gap' ? 'bg-amber-100' : 'bg-orange-100'
-                  )}>
-                    {reason === 'deteriorating' || reason === 'both' ? (
-                      <TrendingDown className={cn(
-                        'w-4 h-4',
-                        reason === 'both' ? 'text-red-600' : 'text-orange-600'
-                      )} />
-                    ) : (
-                      <AlertTriangle className="w-4 h-4 text-amber-600" />
-                    )}
-                  </div>
+              <li key={indicator.IndicatorID}>
+                <Link
+                  href={buildUrl(`/dashboard/${indicator.IndicatorID}`, searchParams)}
+                  className="group grid items-center gap-x-4 gap-y-1 px-4 py-2.5 hover:bg-nhs-pale-grey/40 focus-visible:bg-nhs-pale-grey/40 focus-visible:outline-none sm:grid-cols-[1.5rem_minmax(0,1fr)_auto_auto_1rem]"
+                >
+                  <span className="hidden text-sm font-semibold tabular-nums text-gray-400 sm:block">{i + 1}</span>
 
-                  {/* Indicator info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-900 truncate">
-                      {indicator.IndicatorShortName
-                        .replace(/\(CVDP\d+[A-Z]+\)/, '')
-                        .trim()}
-                    </div>
-                    <div className="text-xs text-gray-500 flex items-center gap-2">
-                      <span>{formatValue(value, indicator.FormatDisplayName)}</span>
-                      <span className="text-gray-300">•</span>
-                      <span className={lowerIsBetter ? (gap > 0 ? 'text-red-600' : 'text-green-600') : (gap < 0 ? 'text-red-600' : 'text-green-600')}>
-                        {formatDiff(gap, indicator.FormatDisplayName)} vs {baselineName}
-                      </span>
-                      {trend !== null && Math.abs(trend) > 0.5 && (
-                        <>
-                          <span className="text-gray-300">•</span>
-                          <span className={lowerIsBetter ? (trend > 0 ? 'text-red-600' : 'text-green-600') : (trend < 0 ? 'text-red-600' : 'text-green-600')}>
-                            {trend > 0 ? '↑' : '↓'} {formatAbsDiff(trend, indicator.FormatDisplayName)}
-                          </span>
-                        </>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-gray-900 group-hover:text-nhs-blue">
+                      {cleanName(indicator.IndicatorShortName)}
+                    </p>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-500">
+                      {section && (
+                        <span className="flex items-center gap-1">
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: section.color }} aria-hidden />
+                          {section.name}
+                        </span>
                       )}
-                    </div>
+                      <span className={cn(gapIsBad ? 'text-nhs-red' : 'text-nhs-green')}>
+                        {formatAbsDiff(gap, fmt)} {isRecordedPrevalence
+                          ? `${gap < 0 ? 'lower than' : 'higher than'} ${baselineName}`
+                          : `${gapIsBad ? 'behind' : 'ahead of'} ${baselineName}`}
+                      </span>
+                      {showTrend && (
+                        <span className={cn(trendIsBad ? 'text-nhs-red' : 'text-nhs-green')}>
+                          {trend! > 0 ? '↑' : '↓'} {formatAbsDiff(trend!, fmt)} since last period
+                        </span>
+                      )}
+                    </p>
                   </div>
 
-                  {/* Badges */}
-                  <div className="flex items-center gap-1">
-                    {(reason === 'gap' || reason === 'both') && (
-                      <Badge variant="outline" className="text-xs border-amber-300 bg-amber-50 text-amber-700">
-                        Gap
-                      </Badge>
-                    )}
-                    {(reason === 'deteriorating' || reason === 'both') && (
-                      <Badge variant="outline" className="text-xs border-orange-300 bg-orange-50 text-orange-700">
-                        Trending ↓
-                      </Badge>
-                    )}
+                  <div className="text-sm tabular-nums sm:text-right">
+                    <span className="font-semibold text-gray-900">{formatValue(value, fmt)}</span>
+                    <span className="text-gray-400"> vs {formatValue(baselineValue, fmt)}</span>
                   </div>
 
-                  <ArrowRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
-                </div>
-              </Link>
+                  <span className={cn(
+                    'w-fit rounded px-1.5 py-0.5 text-[11px] font-medium',
+                    reason === 'both' && 'bg-nhs-red/10 text-nhs-red',
+                    reason === 'gap' && 'bg-nhs-orange/15 text-amber-800',
+                    reason === 'deteriorating' && 'bg-nhs-orange/15 text-amber-800',
+                  )}>
+                    {reason === 'both' ? 'Gap + worsening' : reason === 'gap' ? 'Gap' : 'Worsening'}
+                  </span>
+
+                  <ArrowRight className="hidden h-4 w-4 text-gray-300 group-hover:text-nhs-blue sm:block" aria-hidden />
+                </Link>
+              </li>
             );
           })}
-        </div>
-      </CardContent>
-    </Card>
+        </ol>
+      )}
+    </section>
   );
 }

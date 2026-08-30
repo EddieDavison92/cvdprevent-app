@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -15,7 +16,8 @@ import { fetchApi } from '@/lib/api/client';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
 import type { Area } from '@/lib/api/types';
-import { Target, ChevronDown, RotateCcw } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Target, RotateCcw, RefreshCw } from 'lucide-react';
 
 interface AreaDetailsResponse {
   areaDetails: Area & { ParentAreaList?: Area[] };
@@ -52,7 +54,7 @@ const ENGLAND_AREA: Area = {
 };
 
 export function BaselineSelector() {
-  const { organisation, baseline, setBaseline, resetBaseline, isBaselineEngland } = useOrganisation();
+  const { organisation, baseline, setBaseline, resetBaseline, isBaselineEngland, clearOrganisation } = useOrganisation();
   const { data: latestPeriod } = useLatestTimePeriod('standard');
   const timePeriodId = latestPeriod?.TimePeriodID;
 
@@ -112,11 +114,13 @@ export function BaselineSelector() {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Target className="h-4 w-4 text-gray-500" />
-      <span className="text-sm text-gray-600">Compare to:</span>
+    <div className="flex flex-wrap items-center gap-2">
+      <Label htmlFor="baseline-select" className="flex items-center gap-1.5 text-sm text-gray-600">
+        <Target className="h-4 w-4 text-gray-500" />
+        Compare with
+      </Label>
       <Select value={baseline.AreaID.toString()} onValueChange={handleChange}>
-        <SelectTrigger className="w-[220px] h-8 text-sm bg-white">
+        <SelectTrigger id="baseline-select" className="h-8 w-[200px] bg-white text-sm">
           <SelectValue>{getDisplayName(baseline)}</SelectValue>
         </SelectTrigger>
         <SelectContent>
@@ -134,10 +138,17 @@ export function BaselineSelector() {
           onClick={resetBaseline}
           className="h-8 px-2 text-gray-500 hover:text-gray-700"
           title="Reset to England"
+          aria-label="Reset comparison to England"
         >
           <RotateCcw className="h-3.5 w-3.5" />
         </Button>
       )}
+      <Link href="/" onClick={() => clearOrganisation()} className="hidden sm:block">
+        <Button variant="outline" size="sm" className="h-8 gap-2">
+          <RefreshCw className="h-3.5 w-3.5" />
+          Change area
+        </Button>
+      </Link>
     </div>
   );
 }
