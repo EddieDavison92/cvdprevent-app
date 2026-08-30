@@ -2,15 +2,23 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Kbd,
+  LevelBadge,
+  SearchEmptyState,
+  SearchField,
+  SearchGroupLabel,
+  SearchResultRow,
+  SearchResultsSkeleton,
+  useActiveResultScroll,
+} from '@/components/ui/search-list';
 import { useOrganisation } from '@/providers/organisation-context';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAllAreas } from '@/lib/hooks/use-areas';
 import { getAreaDisplayName } from '@/lib/api';
 import { SYSTEM_LEVELS, type Area } from '@/lib/api/types';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
-import { Search, Globe, Heart, BarChart3, List, ArrowRight, Clock3, Bot, CornerDownLeft } from 'lucide-react';
+import { Globe, Heart, BarChart3, List, ArrowRight, Clock3, Bot, CornerDownLeft } from 'lucide-react';
 import { Footer } from '@/components/layout/footer';
 import { ApiUnavailable } from '@/components/api-status-banner';
 import { findKnownParentArea } from '@/lib/utils/geography';
@@ -86,6 +94,7 @@ export default function LandingPage() {
   }, [allOrgs, search, getParentName]);
 
   const visibleAreas = filteredAreas.slice(0, MAX_RESULTS);
+  const resultsRef = useActiveResultScroll<HTMLUListElement>(visibleAreas[activeIndex]?.AreaID);
 
   const hasQuery = search.length >= 2;
   const showSlowApiHint = hasQuery && (isLoadingPeriod || isLoadingAreas);
@@ -177,44 +186,37 @@ export default function LandingPage() {
               showResultsPanel ? 'border-nhs-blue/40' : 'border-gray-200'
             } focus-within:border-nhs-blue focus-within:ring-2 focus-within:ring-nhs-blue/20`}
           >
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-nhs-blue"
-                aria-hidden
-              />
-              <label htmlFor="organisation-search" className="sr-only">
-                Search for an organisation
-              </label>
-              <Input
-                id="organisation-search"
-                autoFocus
-                autoComplete="off"
-                role="combobox"
-                aria-expanded={showResultsPanel}
-                aria-controls={listboxId}
-                aria-activedescendant={visibleAreas[activeIndex] ? `${listboxId}-${visibleAreas[activeIndex].AreaCode}` : undefined}
-                placeholder="Search by region, ICB, sub-ICB or PCN name…"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setActiveIndex(0);
-                }}
-                onKeyDown={handleSearchKeyDown}
-                className="h-14 rounded-none border-0 bg-transparent pl-12 pr-24 text-base shadow-none focus-visible:ring-0"
-              />
-              <div className="pointer-events-none absolute right-4 top-1/2 hidden -translate-y-1/2 items-center gap-1 text-[11px] text-gray-400 sm:flex">
-                {visibleAreas.length > 0 ? (
+            <label htmlFor="organisation-search" className="sr-only">
+              Search for an organisation
+            </label>
+            <SearchField
+              id="organisation-search"
+              size="lg"
+              autoFocus
+              role="combobox"
+              aria-expanded={showResultsPanel}
+              aria-controls={listboxId}
+              aria-activedescendant={visibleAreas[activeIndex] ? `${listboxId}-${visibleAreas[activeIndex].AreaCode}` : undefined}
+              placeholder="Search by region, ICB, sub-ICB or PCN name…"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setActiveIndex(0);
+              }}
+              onKeyDown={handleSearchKeyDown}
+              trailing={
+                visibleAreas.length > 0 ? (
                   <>
-                    <kbd className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 font-sans">↑↓</kbd>
-                    <kbd className="inline-flex items-center rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 font-sans">
+                    <Kbd>↑↓</Kbd>
+                    <Kbd>
                       <CornerDownLeft className="h-3 w-3" aria-hidden />
-                    </kbd>
+                    </Kbd>
                   </>
                 ) : (
-                  <span>{LEVEL_HINTS.join(' · ')}</span>
-                )}
-              </div>
-            </div>
+                  <span className="text-[11px] text-gray-400">{LEVEL_HINTS.join(' · ')}</span>
+                )
+              }
+            />
 
             {/* Results */}
             {showResultsPanel && (
@@ -231,28 +233,19 @@ export default function LandingPage() {
                 )}
 
                 {isLoadingAreas ? (
-                  <ul className="divide-y divide-gray-100" aria-busy>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <li key={i} className="flex items-center gap-3 px-4 py-3">
-                        <Skeleton className="h-8 w-8 rounded-md" />
-                        <div className="flex-1 space-y-1.5">
-                          <Skeleton className="h-3.5 w-2/3" />
-                          <Skeleton className="h-3 w-1/3" />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  <SearchResultsSkeleton />
                 ) : visibleAreas.length > 0 ? (
                   <>
-                    <div className="flex items-center justify-between px-4 pb-1 pt-2.5 text-[11px] font-medium uppercase tracking-wider text-gray-400">
+                    <SearchGroupLabel>
                       <span>Organisations</span>
                       <span aria-live="polite">
                         {filteredAreas.length > MAX_RESULTS
                           ? `${MAX_RESULTS} of ${filteredAreas.length}`
                           : `${filteredAreas.length} result${filteredAreas.length === 1 ? '' : 's'}`}
                       </span>
-                    </div>
+                    </SearchGroupLabel>
                     <ul
+                      ref={resultsRef}
                       id={listboxId}
                       role="listbox"
                       aria-label="Matching organisations"
@@ -268,37 +261,20 @@ export default function LandingPage() {
                             role="option"
                             aria-selected={isActive}
                           >
-                            <button
-                              type="button"
+                            <SearchResultRow
+                              data-index={i}
                               tabIndex={-1}
+                              active={isActive}
                               onClick={() => handleSelectArea(area)}
                               onMouseEnter={() => setActiveIndex(i)}
-                              className={`group flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                                isActive ? 'bg-nhs-blue/[0.07]' : 'hover:bg-gray-50'
-                              }`}
-                            >
-                              <span
-                                className={`inline-flex h-8 w-14 flex-shrink-0 items-center justify-center rounded-md text-[10px] font-semibold uppercase tracking-wide ${
-                                  isActive ? 'bg-nhs-blue text-white' : 'bg-nhs-blue/10 text-nhs-blue'
-                                }`}
-                              >
-                                {SYSTEM_LEVEL_NAMES[area.SystemLevelID] ?? 'Area'}
-                              </span>
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-medium text-gray-900">
-                                  {shortAreaName(area.AreaName)}
-                                </span>
-                                {parentName && (
-                                  <span className="block truncate text-xs text-gray-500">{parentName}</span>
-                                )}
-                              </span>
-                              <ArrowRight
-                                className={`h-4 w-4 flex-shrink-0 text-nhs-blue transition-opacity ${
-                                  isActive ? 'opacity-100' : 'opacity-0'
-                                }`}
-                                aria-hidden
-                              />
-                            </button>
+                              leading={
+                                <LevelBadge active={isActive}>
+                                  {SYSTEM_LEVEL_NAMES[area.SystemLevelID] ?? 'Area'}
+                                </LevelBadge>
+                              }
+                              title={shortAreaName(area.AreaName)}
+                              subtitle={parentName}
+                            />
                           </li>
                         );
                       })}
@@ -310,9 +286,7 @@ export default function LandingPage() {
                     )}
                   </>
                 ) : !showApiError ? (
-                  <div className="px-4 py-8 text-center text-sm text-gray-500" role="status">
-                    No organisations found for &ldquo;{search}&rdquo;
-                  </div>
+                  <SearchEmptyState>No organisations found for &ldquo;{search}&rdquo;</SearchEmptyState>
                 ) : null}
               </div>
             )}
@@ -361,17 +335,17 @@ export default function LandingPage() {
               },
               {
                 label: 'Ask with AI',
-                description: 'Use the CVDPREVENT skill in ChatGPT or Claude',
+                description: 'Query data in ChatGPT or Claude',
                 icon: Bot,
                 iconClass: 'bg-nhs-blue/10 text-nhs-blue',
                 onClick: () => router.push('/skills'),
               },
             ].map(({ label, description, icon: Icon, iconClass, onClick }) => (
-              <li key={label}>
+              <li key={label} className="flex">
                 <button
                   type="button"
                   onClick={onClick}
-                  className="group flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-nhs-blue/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue/50"
+                  className="group flex min-h-[4.25rem] w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-nhs-blue/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue/50"
                 >
                   <span className={`inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${iconClass}`}>
                     <Icon className="h-4 w-4" aria-hidden />

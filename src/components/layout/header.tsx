@@ -45,11 +45,11 @@ export function Header() {
           <button
             onClick={() => setSearchOpen(true)}
             aria-label="Search organisations, indicators, and pages"
-            className="hidden sm:flex items-center gap-2 rounded-lg bg-white/10 px-4 py-1.5 text-sm text-white/70 transition-colors hover:bg-white/15 hover:text-white min-w-[280px] md:min-w-[360px]"
+            className="hidden h-9 min-w-[280px] items-center gap-2.5 rounded-lg border border-white/15 bg-white/10 px-3 text-sm text-white/70 transition-colors hover:border-white/25 hover:bg-white/15 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:flex md:min-w-[360px]"
           >
-            <Search className="h-3.5 w-3.5" />
-            <span>Search...</span>
-            <kbd className="ml-auto rounded border border-white/20 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-white/50">
+            <Search className="h-4 w-4" aria-hidden />
+            <span>Search organisations, indicators…</span>
+            <kbd className="ml-auto inline-flex h-5 items-center rounded border border-white/20 bg-white/5 px-1.5 font-sans text-[11px] text-white/60">
               {typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'}K
             </kbd>
           </button>
@@ -59,9 +59,9 @@ export function Header() {
             <button
               onClick={() => setSearchOpen(true)}
               aria-label="Search"
-              className="sm:hidden flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:hidden"
             >
-              <Search className="h-4 w-4" />
+              <Search className="h-4 w-4" aria-hidden />
             </button>
             <Link
               href="/dashboard"

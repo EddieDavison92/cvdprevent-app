@@ -1,10 +1,21 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback, type ComponentType } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Search, Building2, BarChart3, Bot, List, Globe, ArrowRight } from 'lucide-react';
+import {
+  Kbd,
+  LevelBadge,
+  RowIcon,
+  SearchEmptyState,
+  SearchField,
+  SearchFooterHints,
+  SearchGroupLabel,
+  SearchResultRow,
+  SearchResultsSkeleton,
+  useActiveResultScroll,
+} from '@/components/ui/search-list';
+import { BarChart3, Bot, List, Globe, LayoutDashboard, CornerDownLeft } from 'lucide-react';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useOrganisation } from '@/providers/organisation-context';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
@@ -13,7 +24,6 @@ import { useAreaIndicators } from '@/lib/hooks/use-area-indicators';
 import { getAreaDisplayName } from '@/lib/api';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
 import { buildUrl } from '@/lib/utils/url';
-import { cn } from '@/lib/utils';
 import type { Area } from '@/lib/api/types';
 import { findKnownParentArea } from '@/lib/utils/geography';
 
@@ -28,14 +38,15 @@ interface SearchResult {
   title: string;
   subtitle?: string;
   badge?: string;
+  icon?: ComponentType<{ className?: string }>;
   action: () => void;
 }
 
 const PAGES = [
-  { id: 'dashboard', title: 'Dashboard', subtitle: 'Overview of all indicators', path: '/dashboard', icon: BarChart3 },
+  { id: 'dashboard', title: 'Dashboard', subtitle: 'Overview of all indicators', path: '/dashboard', icon: LayoutDashboard },
   { id: 'indicators', title: 'Indicators', subtitle: 'Browse and explore all indicators', path: '/indicators', icon: List },
   { id: 'benchmarks', title: 'Benchmarks', subtitle: 'Rank and compare areas across indicators', path: '/benchmarks', icon: BarChart3 },
-  { id: 'skills', title: 'AI skill', subtitle: 'Ask CVDPREVENT data with ChatGPT or Claude', path: '/skills', icon: Bot },
+  { id: 'skills', title: 'Ask with AI', subtitle: 'Query data in ChatGPT or Claude', path: '/skills', icon: Bot },
   { id: 'england', title: 'England Overview', subtitle: 'National-level data', path: '/dashboard', isEngland: true, icon: Globe },
 ];
 
@@ -43,7 +54,6 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
   const [query, setQuery] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { organisation, setOrganisation } = useOrganisation();
@@ -103,6 +113,7 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
         type: 'page',
         title: page.title,
         subtitle: page.subtitle,
+        icon: page.icon,
         action: () => {
           if (page.isEngland) {
             setOrganisation({
@@ -186,15 +197,7 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
     return () => clearTimeout(timer);
   }, [open]);
 
-  // Scroll highlighted item into view
-  useEffect(() => {
-    const list = listRef.current;
-    if (!list) return;
-    const item = list.querySelector(`[data-index="${highlightedIndex}"]`);
-    if (item) {
-      item.scrollIntoView({ block: 'nearest' });
-    }
-  }, [highlightedIndex]);
+  const listRef = useActiveResultScroll<HTMLDivElement>(results[highlightedIndex]?.id);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -224,96 +227,73 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
     return grouped.pages.length + grouped.orgs.length + localIdx;
   };
 
-  const renderItem = (result: SearchResult, globalIdx: number) => (
-    <button
-      key={result.id}
-      data-index={globalIdx}
-      className={cn(
-        'flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors',
-        globalIdx === highlightedIndex ? 'bg-nhs-blue/5 text-nhs-blue' : 'text-gray-700 hover:bg-gray-50'
-      )}
-      onClick={result.action}
-      onMouseEnter={() => setHighlightedIndex(globalIdx)}
-    >
-      {result.type === 'org' && <Building2 className="h-4 w-4 shrink-0 text-gray-400" />}
-      {result.type === 'indicator' && <BarChart3 className="h-4 w-4 shrink-0 text-gray-400" />}
-      {result.type === 'page' && <ArrowRight className="h-4 w-4 shrink-0 text-gray-400" />}
-      <div className="min-w-0 flex-1">
-        <div className="truncate font-medium">{result.title}</div>
-        {result.subtitle && (
-          <div className="truncate text-xs text-gray-400">{result.subtitle}</div>
-        )}
-      </div>
-      {result.badge && (
-        <Badge variant="outline" className="shrink-0 text-[10px] font-medium">
-          {result.badge}
-        </Badge>
-      )}
-    </button>
-  );
+  const renderItem = (result: SearchResult, globalIdx: number) => {
+    const active = globalIdx === highlightedIndex;
+    return (
+      <SearchResultRow
+        key={result.id}
+        data-index={globalIdx}
+        tabIndex={-1}
+        active={active}
+        onClick={result.action}
+        onMouseEnter={() => setHighlightedIndex(globalIdx)}
+        leading={
+          result.type === 'org' ? (
+            <LevelBadge active={active}>{result.badge ?? 'Area'}</LevelBadge>
+          ) : (
+            <RowIcon active={active} icon={result.icon ?? BarChart3} />
+          )
+        }
+        title={result.title}
+        subtitle={result.subtitle}
+      />
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent hideClose className="!max-w-2xl overflow-hidden p-0 gap-0" onKeyDown={handleKeyDown}>
+      <DialogContent hideClose className="!max-w-2xl overflow-hidden rounded-2xl border-gray-200 p-0 gap-0" onKeyDown={handleKeyDown}>
         <VisuallyHidden><DialogTitle>Search</DialogTitle></VisuallyHidden>
 
-        {/* Search input */}
-        <div className="flex items-center border-b px-3">
-          <Search className="h-4 w-4 shrink-0 text-gray-400" />
-          <input
+        <div className="border-b border-gray-100">
+          <SearchField
             ref={inputRef}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
               setHighlightedIndex(0);
             }}
-            placeholder="Search organisations, indicators, pages..."
+            placeholder="Search organisations, indicators, pages…"
             aria-label="Search organisations, indicators, and pages"
-            className="flex-1 bg-transparent px-3 py-3 text-sm outline-none placeholder:text-gray-400"
+            trailing={<Kbd>esc</Kbd>}
           />
-          <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-gray-100 px-1.5 font-mono text-[10px] font-medium text-gray-500">
-            ESC
-          </kbd>
         </div>
 
         {/* Results */}
-        <div ref={listRef} className="max-h-[60vh] overflow-y-auto">
+        <div ref={listRef} className="max-h-[60vh] overflow-y-auto pb-1">
           {isLoadingAreas && query.length >= 2 ? (
-            <div className="flex items-center justify-center py-8 text-sm text-gray-500">
-              Loading organisations...
-            </div>
+            <SearchResultsSkeleton />
           ) : results.length === 0 && query.length >= 2 ? (
-            <div className="flex items-center justify-center py-8 text-sm text-gray-500">
-              No results for &ldquo;{query}&rdquo;
-            </div>
+            <SearchEmptyState>No results for &ldquo;{query}&rdquo;</SearchEmptyState>
           ) : (
             <>
-              {/* Pages */}
               {grouped.pages.length > 0 && (
                 <div>
-                  <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                    Pages
-                  </div>
+                  <SearchGroupLabel>Pages</SearchGroupLabel>
                   {grouped.pages.map((r, i) => renderItem(r, getGlobalIndex('page', i)))}
                 </div>
               )}
 
-              {/* Organisations */}
               {grouped.orgs.length > 0 && (
                 <div>
-                  <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                    Organisations
-                  </div>
+                  <SearchGroupLabel>Organisations</SearchGroupLabel>
                   {grouped.orgs.map((r, i) => renderItem(r, getGlobalIndex('org', i)))}
                 </div>
               )}
 
-              {/* Indicators */}
               {grouped.indicators.length > 0 && (
                 <div>
-                  <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                    Indicators
-                  </div>
+                  <SearchGroupLabel>Indicators</SearchGroupLabel>
                   {grouped.indicators.map((r, i) => renderItem(r, getGlobalIndex('indicator', i)))}
                 </div>
               )}
@@ -322,18 +302,19 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
 
           {/* Hint when no query */}
           {query.length < 2 && results.length <= PAGES.length && (
-            <div className="px-3 py-4 text-center text-xs text-gray-500">
+            <p className="px-4 py-3 text-center text-xs text-gray-500">
               Type at least 2 characters to search organisations and indicators
-            </div>
+            </p>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center gap-3 border-t px-3 py-2 text-[10px] text-gray-500">
-          <span><kbd className="rounded border bg-gray-100 px-1 py-0.5 font-mono">↑↓</kbd> navigate</span>
-          <span><kbd className="rounded border bg-gray-100 px-1 py-0.5 font-mono">↵</kbd> select</span>
-          <span><kbd className="rounded border bg-gray-100 px-1 py-0.5 font-mono">esc</kbd> close</span>
-        </div>
+        <SearchFooterHints
+          hints={[
+            { keys: '↑↓', label: 'navigate' },
+            { keys: <CornerDownLeft className="h-3 w-3" aria-hidden />, label: 'select' },
+            { keys: 'esc', label: 'close' },
+          ]}
+        />
       </DialogContent>
     </Dialog>
   );
