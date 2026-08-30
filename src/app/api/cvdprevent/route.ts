@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 
 const CACHE_CONTROL = 'public, s-maxage=21600, stale-while-revalidate=86400';
-const AGENT_VERSION = '4';
-const PUBLIC_ORIGIN = 'https://cvdprevent-explorer.app';
+const AGENT_VERSION = '5';
+const PUBLIC_ORIGIN = 'https://www.cvdprevent-explorer.app';
 
 export function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -19,7 +19,10 @@ export function GET(request: Request) {
     agentVersion: AGENT_VERSION,
     _links: {
       timePeriods: timePeriods.toString(),
+      polarity: new URL(`/api/cvdprevent/polarity?agentVersion=${AGENT_VERSION}`, origin).toString(),
       skill: new URL('/skill.md', origin).toString(),
+      responseExamples: new URL('/skill-examples.md', origin).toString(),
+      relayGuide: new URL('/skill-relay.md', origin).toString(),
       apiReference: new URL('/api-reference.md', origin).toString(),
     },
   }, {

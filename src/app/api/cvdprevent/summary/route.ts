@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
-import { findSectionForIndicator, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
+import { classifyIndicator } from '@/lib/constants/indicator-sections';
 
 const API_ORIGIN = 'https://api.cvdprevent.nhs.uk';
 const CACHE_CONTROL = 'public, s-maxage=21600, stale-while-revalidate=86400';
-const AGENT_VERSION = '4';
-const PUBLIC_ORIGIN = 'https://cvdprevent-explorer.app';
+const AGENT_VERSION = '5';
+const PUBLIC_ORIGIN = 'https://www.cvdprevent-explorer.app';
 
 type JsonObject = Record<string, unknown>;
 
@@ -79,6 +78,35 @@ function numericValue(data: JsonObject | undefined) {
   return typeof data?.Value === 'number' ? data.Value : null;
 }
 
+function isPercentageIndicator(indicator: JsonObject) {
+  return `${String(indicator.FormatDisplayName ?? '')} ${String(indicator.AxisCharacter ?? '')}`.includes('%');
+}
+
+function comparisonRule(indicator: JsonObject, subjectValue: number, comparisonValue: number) {
+  if (isPercentageIndicator(indicator)) {
+    return {
+      similar: Math.abs(subjectValue - comparisonValue) <= 0.5,
+      metadata: {
+        Type: 'absolute tolerance',
+        Tolerance: 0.5,
+        Unit: 'percentage points',
+        Note: 'Explorer display convention; not a statistical significance test.',
+      },
+    };
+  }
+
+  const decimalPlaces = Math.abs(subjectValue) < 1 || Math.abs(comparisonValue) < 1 ? 2 : 1;
+  return {
+    similar: subjectValue.toFixed(decimalPlaces) === comparisonValue.toFixed(decimalPlaces),
+    metadata: {
+      Type: 'published display equality',
+      DecimalPlaces: decimalPlaces,
+      Unit: 'value units',
+      Note: 'Values are similar only when equal at the explorer display precision; not a statistical significance test.',
+    },
+  };
+}
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const timePeriodID = positiveInteger(requestUrl.searchParams.get('timePeriodID'));
@@ -134,22 +162,26 @@ export async function GET(request: Request) {
       const difference = subjectValue !== null && comparisonValue !== null
         ? subjectValue - comparisonValue
         : null;
+      const rule = difference === null
+        ? null
+        : comparisonRule(indicator, subjectValue!, comparisonValue!);
       const relation = difference === null
         ? 'missing comparison'
-        : difference > COMPARISON_TOLERANCE
-          ? 'higher'
-          : difference < -COMPARISON_TOLERANCE
-            ? 'lower'
-            : 'similar';
+        : rule?.similar
+          ? 'similar'
+          : difference > 0
+            ? 'higher'
+            : 'lower';
 
       const descriptor = {
         IndicatorCode: String(indicator.IndicatorCode ?? ''),
         IndicatorName: String(indicator.IndicatorName ?? ''),
         IndicatorShortName: String(indicator.IndicatorShortName ?? ''),
       };
-      const section = findSectionForIndicator(descriptor.IndicatorCode);
-      const lowerIsBetter = isLowerBetterIndicator(descriptor.IndicatorCode);
-      const isRecordedPrevalence = section?.id === 'prevalence';
+      const classification = classifyIndicator(descriptor);
+      const section = classification.section;
+      const lowerIsBetter = classification.lowerIsBetter;
+      const isRecordedPrevalence = section.id === 'prevalence';
       let assessment: 'favourable' | 'similar' | 'unfavourable' | null = null;
 
       if (difference === null) {
@@ -158,7 +190,7 @@ export async function GET(request: Request) {
         counts.comparable++;
         if (isRecordedPrevalence) {
           counts.recordedPrevalence[relation as 'higher' | 'similar' | 'lower']++;
-        } else if (!section) {
+        } else if (classification.source === 'unclassified') {
           counts.unclassified++;
         } else if (relation === 'similar') {
           assessment = 'similar';
@@ -175,12 +207,19 @@ export async function GET(request: Request) {
 
       return [{
         ...metadata,
-        Section: section?.name ?? 'Needs review',
-        Polarity: isRecordedPrevalence ? 'recording measure' : section ? lowerIsBetter ? 'lower is better' : 'higher is better' : 'unclassified',
+        Section: section.name,
+        Polarity: isRecordedPrevalence
+          ? 'recording measure'
+          : classification.source === 'unclassified'
+            ? 'unclassified'
+            : lowerIsBetter ? 'lower is better' : 'higher is better',
+        ClassificationSource: classification.source,
+        ClassificationReason: classification.reason,
         Subject: subjectCategory.Data,
         Comparison: comparisonData ?? null,
         Difference: difference,
-        DifferenceUnit: String(indicator.AxisCharacter ?? '').includes('%') ? 'percentage points' : 'value units',
+        DifferenceUnit: isPercentageIndicator(indicator) ? 'percentage points' : 'value units',
+        SimilarityRule: rule?.metadata ?? null,
         Relation: relation,
         Assessment: assessment,
         _links: indicatorID === undefined ? undefined : {
@@ -195,8 +234,11 @@ export async function GET(request: Request) {
       TimePeriodID: timePeriodID,
       SubjectArea: areaDetails(subjectDetails),
       ComparisonArea: areaDetails(comparisonDetails),
-      ComparisonTolerance: COMPARISON_TOLERANCE,
-      ComparisonToleranceNote: 'Absolute differences at or below the tolerance are classified as similar.',
+      ComparisonRules: {
+        percentageMeasures: 'Absolute differences at or below 0.5 percentage points are similar.',
+        otherMeasures: 'Values are similar only when equal at the explorer display precision.',
+        note: 'These are display conventions, not statistical significance tests.',
+      },
       Counts: counts,
       Indicators: indicators,
       _links: {

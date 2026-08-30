@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://cvdprevent-explorer.app'),
+  metadataBase: new URL('https://www.cvdprevent-explorer.app'),
   title: 'CVDPREVENT Data Explorer',
   description: 'Explore cardiovascular disease prevention indicators across NHS geographies',
   alternates: {

@@ -1,0 +1,27 @@
+# CVDPREVENT Explorer
+
+> An independent interface for exploring public CVDPREVENT cardiovascular prevention data across NHS organisations in England.
+
+Use the agent skill before querying the data. It explains organisation resolution, release selection, indicator polarity, comparisons, demographic breakdowns and disclosure rules.
+
+## Agent resources
+
+- [CVDPREVENT agent skill](https://www.cvdprevent-explorer.app/skill.md): Start here for instructions and query recipes.
+- [Response examples](https://www.cvdprevent-explorer.app/skill-examples.md): Example API response shapes and joins.
+- [API reference](https://www.cvdprevent-explorer.app/api-reference.md): Route and field reference.
+- [Relay guide](https://www.cvdprevent-explorer.app/skill-relay.md): Optional same-origin relay instructions for constrained clients.
+- [Agent API index](https://www.cvdprevent-explorer.app/api/cvdprevent): Machine-readable resource links.
+- [Indicator polarity](https://www.cvdprevent-explorer.app/api/cvdprevent/polarity): Machine-readable indicator classification and polarity.
+
+## Explorer
+
+- [Organisation search](https://www.cvdprevent-explorer.app/): Find an ICB, Sub-ICB, PCN or region.
+- [Indicators](https://www.cvdprevent-explorer.app/indicators): Browse the indicator catalogue.
+- [Benchmarks](https://www.cvdprevent-explorer.app/benchmarks): Compare NHS organisations.
+- [Use with AI](https://www.cvdprevent-explorer.app/skills): Instructions for using the skill with an AI assistant.
+
+## Notes
+
+- CVDPREVENT Explorer is independent and is not the official CVDPREVENT Data and Improvement Tool.
+- Data come from the public CVDPREVENT API.
+- Results are aggregate audit data and should not be treated as clinical advice.

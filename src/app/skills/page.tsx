@@ -5,7 +5,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { CopySkillUrl } from '@/components/skills/copy-skill-url';
 
-const SKILL_URL = 'https://cvdprevent-explorer.app/skill.md';
+const SKILL_URL = 'https://www.cvdprevent-explorer.app/skill.md';
 const SKILL_SOURCE_URL = '/skills/cvdprevent/SKILL.md';
 const API_REFERENCE_URL = '/api-reference.md';
 const STARTER_PROMPT = `Read the instructions at ${SKILL_URL} and use them to answer my questions about CVDPREVENT data.`;

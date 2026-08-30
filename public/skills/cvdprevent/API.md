@@ -1,8 +1,8 @@
 # CVDPREVENT API field and route reference
 
-Agent API index: `https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=4`
+Agent API index: `https://www.cvdprevent-explorer.app/api/cvdprevent?agentVersion=5`
 
-Agent API route prefix: `https://cvdprevent-explorer.app/api/cvdprevent`
+Agent API route prefix: `https://www.cvdprevent-explorer.app/api/cvdprevent`
 
 Official API origin: `https://api.cvdprevent.nhs.uk`
 
@@ -16,7 +16,7 @@ Direct clients append routes to the official origin. For example:
 https://api.cvdprevent.nhs.uk/area/search?partialAreaName=North%20Central%20London&timePeriodID=33
 ```
 
-If direct requests are blocked, start at the versioned Agent API index and follow `_links.timePeriods`. The version parameter prevents assistants from reusing cached pre-link responses. The relay excludes CSV and XLSX downloads; use the official API origin for those files.
+If direct requests are blocked, read `https://www.cvdprevent-explorer.app/skill-relay.md`, start at the versioned Agent API index, and follow its links. The relay excludes CSV and XLSX downloads; use the official API origin for those files.
 
 ## Relay links
 
@@ -39,6 +39,8 @@ These aliases keep the route list readable. They describe every field currently 
 
 `EndDate`, `IndicatorTypeID`, `IndicatorTypeName`, `StartDate`, `TimePeriodID`, `TimePeriodName`.
 
+`TimePeriodName` is the reporting or measurement-window label. Use parsed `EndDate` to order releases; do not describe it as a publication date unless another source defines it that way.
+
 The system-level period routes may omit `IndicatorTypeID` and `IndicatorTypeName`.
 
 ### `SystemLevel`
@@ -51,7 +53,7 @@ Known IDs are England `1`, historic STP `2`, historic CCG `3`, PCN `4`, Practice
 
 `AreaCode`, `AreaID`, `AreaName`, `AreaOdsCode`, `Parents`, `ParticipationRate`, `PopulationRate`, `SystemLevelID`, `SystemLevelName`.
 
-Some endpoints call the ODS field `OdsCode` or omit it. Relationship responses add `ParentAreaID`, `Children`, or `SubSystems`.
+Use `AreaCode` as the organisation code. `AreaOdsCode` may be null; some endpoints call the field `OdsCode` or omit it. Relationship responses add `ParentAreaID`, `Children`, or `SubSystems`.
 
 ### `IndicatorDescriptor`
 
@@ -226,6 +228,10 @@ Response: `IndicatorGroup` with `HighestPriorityNotificationType`, `IndicatorGro
 
 ## Indicator data routes
 
+### `/polarity` (Agent API only)
+
+No parameters are required. The response contains `indicators[]` with `IndicatorCode`, `Section`, `Polarity`, and `ClassificationSource`. Match only on authoritative `IndicatorCode`; display text can contain upstream code typos. Treat absent codes as unclassified rather than inferring a direction silently.
+
 ### `/summary` (Agent API only)
 
 Parameters:
@@ -236,13 +242,13 @@ Parameters:
 
 This compact route compares the Sex / Persons headline for every subject indicator with a comparison organisation. It fetches official `/indicator` and area-detail responses, matches indicators by `IndicatorCode`, and returns:
 
-- `TimePeriodID`, `SubjectArea`, `ComparisonArea`, `ComparisonTolerance`, and `ComparisonToleranceNote`;
+- `TimePeriodID`, `SubjectArea`, `ComparisonArea`, and `ComparisonRules`;
 - `Counts.subjectIndicators`, `comparable`, `missingComparison`, `favourable`, `similar`, `unfavourable`, and `unclassified`;
 - `Counts.recordedPrevalence.higher`, `similar`, and `lower`;
-- `Indicators[]`, containing every `IndicatorDescriptor` field returned upstream plus `IndicatorTypeID`, `IndicatorTypeName`, `Section`, `Polarity`, `Subject`, `Comparison`, `Difference`, `DifferenceUnit`, `Relation`, `Assessment`, and focused `_links`;
+- `Indicators[]`, containing every `IndicatorDescriptor` field returned upstream plus `IndicatorTypeID`, `IndicatorTypeName`, `Section`, `Polarity`, `ClassificationSource`, `ClassificationReason`, `Subject`, `Comparison`, `Difference`, `DifferenceUnit`, `SimilarityRule`, `Relation`, `Assessment`, and focused `_links`;
 - top-level `_links.self`, `apiIndex`, and `skill`.
 
-`Subject` and `Comparison` retain every field from the corresponding Sex / Persons `Data` object. `Relation` is neutral. `Assessment` applies the explorer's polarity rules and is null for recorded prevalence. Differences whose absolute value is at or below `ComparisonTolerance` are similar. Use separate summary calls for Standard and Outcomes periods.
+`Subject` and `Comparison` retain every field from the corresponding Sex / Persons `Data` object. `Relation` is neutral. `Assessment` applies the explorer's polarity rules and is null for recorded prevalence. Percentage differences at or below 0.5 percentage points are similar; other units are similar only when equal at the explorer display precision. `SimilarityRule` states the applied rule. These are display conventions, not significance tests. `comparisonAreaID` can identify any published organisation in the same period. Use separate summary calls for Standard and Outcomes periods.
 
 ### `/indicator`
 
