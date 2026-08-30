@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Search, Building2, BarChart3, List, Globe, ArrowRight } from 'lucide-react';
+import { Search, Building2, BarChart3, Bot, List, Globe, ArrowRight } from 'lucide-react';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useOrganisation } from '@/providers/organisation-context';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
@@ -35,6 +35,7 @@ const PAGES = [
   { id: 'dashboard', title: 'Dashboard', subtitle: 'Overview of all indicators', path: '/dashboard', icon: BarChart3 },
   { id: 'indicators', title: 'Indicators', subtitle: 'Browse and explore all indicators', path: '/indicators', icon: List },
   { id: 'benchmarks', title: 'Benchmarks', subtitle: 'Rank and compare areas across indicators', path: '/benchmarks', icon: BarChart3 },
+  { id: 'skills', title: 'AI skill', subtitle: 'Ask CVDPREVENT data with ChatGPT or Claude', path: '/skills', icon: Bot },
   { id: 'england', title: 'England Overview', subtitle: 'National-level data', path: '/dashboard', isEngland: true, icon: Globe },
 ];
 
