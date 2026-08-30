@@ -20,7 +20,8 @@ interface DemographicChartProps {
   orgName?: string;
   baselineName?: string;
   formatValue?: (value: number) => string;
-  height?: number;
+  height?: number | string;
+  barMaxWidth?: number;
 }
 
 export function DemographicChart({
@@ -29,6 +30,7 @@ export function DemographicChart({
   baselineName = 'England',
   formatValue = (v) => v.toFixed(1),
   height = 200,
+  barMaxWidth = 30,
 }: DemographicChartProps) {
   // Check if any org values are missing (null when baseline has data)
   const hasMissingData = data.some((d) => d.orgValue === null && d.baselineValue !== null);
@@ -140,14 +142,14 @@ export function DemographicChart({
         data: shortenedData.map((d) => d.orgValue),
         itemStyle: { color: NHS_COLORS.blue },
         barGap: '10%',
-        barMaxWidth: 30,
+        barMaxWidth,
       },
       {
         name: baselineName,
         type: 'bar',
         data: shortenedData.map((d) => d.baselineValue),
         itemStyle: { color: NHS_COLORS.midGrey },
-        barMaxWidth: 30,
+        barMaxWidth,
       },
     ],
   };

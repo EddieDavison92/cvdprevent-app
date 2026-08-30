@@ -145,6 +145,20 @@ export function TrendSection({
       ['Area', areaCode ? `${areaName} (${areaCode})` : areaName],
       ...(timePeriod ? [['Period', timePeriod] as [string, string]] : []),
     ],
+    fullscreen: {
+      title: 'Performance Over Time',
+      description: indicator.IndicatorShortName,
+      chart: (
+        <LineChart
+          key={`${indicator.IndicatorID}-fullscreen`}
+          series={series}
+          yAxisLabel={indicator.AxisCharacter}
+          formatValue={formatFn}
+          height="calc(100vh - 9rem)"
+          diffSuffix={fmtDisplay.includes('%') ? 'pp' : ''}
+        />
+      ),
+    },
   });
 
   return (

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowRight, Info, Minus, RotateCcw, Search, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowRight, Info, RotateCcw, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -15,9 +15,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Sparkline } from '@/components/charts/sparkline';
+import { PeerRangeBar, STATUS_META } from '@/components/dashboard/peer-range-bar';
+import { NHS_COLORS } from '@/lib/constants/colors';
 import type { IndicatorWithData } from '@/lib/api/types';
 import { formatAbsDiff, formatDiff, formatValue } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
+import { classifyIndicator } from '@/lib/constants/indicator-sections';
 import {
   buildQualityImprovementRows,
   assessQualityImprovementRow,
@@ -25,12 +29,12 @@ import {
   getMarkerGroupLabel,
   getMarkerOptions,
   type MarkerSelection,
-  type Quintile,
+  type PerformanceStatus,
 } from '@/lib/utils/quality-improvement';
 import { cn } from '@/lib/utils';
 
 type ChangeFilter = 'all' | 'deteriorating' | 'improving' | 'stable' | 'history';
-type PeerFilter = 'all' | '1' | '2' | '3' | '4' | '5';
+type StatusFilter = 'all' | PerformanceStatus;
 type SortOption = 'priority' | 'gap' | 'change' | 'name';
 
 interface QualityImprovementExplorerProps {
@@ -42,26 +46,19 @@ interface QualityImprovementExplorerProps {
 }
 
 const CHANGE_FILTERS: Array<{ value: ChangeFilter; label: string }> = [
-  { value: 'all', label: 'Any recent change' },
+  { value: 'all', label: 'Any trend' },
   { value: 'deteriorating', label: 'Deteriorating' },
   { value: 'improving', label: 'Improving' },
   { value: 'stable', label: 'Stable' },
   { value: 'history', label: 'Not enough history' },
 ];
 
-const PEER_FILTERS: Array<{ value: PeerFilter; label: string }> = [
-  { value: 'all', label: 'Any peer position' },
-  { value: '1', label: 'Q1 — lowest values' },
-  { value: '2', label: 'Q2' },
-  { value: '3', label: 'Q3 — middle values' },
-  { value: '4', label: 'Q4' },
-  { value: '5', label: 'Q5 — highest values' },
-];
+const STATUS_ORDER: PerformanceStatus[] = ['unfavourable', 'similar', 'favourable', 'recording'];
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: 'priority', label: 'Needs attention first' },
   { value: 'gap', label: 'Largest gap first' },
-  { value: 'change', label: 'Largest recent change' },
+  { value: 'change', label: 'Largest trend change' },
   { value: 'name', label: 'Indicator name' },
 ];
 
@@ -93,12 +90,22 @@ export function QualityImprovementExplorer({
   const [marker, setMarker] = useState<MarkerSelection>('persons');
   const [breakdown, setBreakdown] = useState('persons');
   const [changeFilter, setChangeFilter] = useState<ChangeFilter>('all');
-  const [peerFilter, setPeerFilter] = useState<PeerFilter>('all');
+  const [sectionFilter, setSectionFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortBy, setSortBy] = useState<SortOption>('priority');
   const [query, setQuery] = useState('');
   const [showDefinitions, setShowDefinitions] = useState(false);
 
   const markerOptions = useMemo(() => getMarkerOptions(indicators ?? []), [indicators]);
+  const sectionOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const indicator of indicators ?? []) {
+      const { section } = classifyIndicator(indicator);
+      if (!seen.has(section.id)) seen.set(section.id, section.name);
+    }
+    const order = ['prevalence', 'detection', 'treatment', 'control', 'monitoring', 'outcomes', 'other'];
+    return order.filter((id) => seen.has(id)).map((id) => ({ id, name: seen.get(id)! }));
+  }, [indicators]);
   const markerGroups = useMemo(() => {
     const groups = new Map<string, typeof markerOptions>();
     for (const option of markerOptions) {
@@ -121,6 +128,12 @@ export function QualityImprovementExplorer({
     assessment: assessQualityImprovementRow(row),
   })), [rows]);
 
+  const statusCounts = useMemo(() => {
+    const counts: Record<PerformanceStatus, number> = { unfavourable: 0, similar: 0, favourable: 0, recording: 0, unavailable: 0 };
+    for (const { assessment } of assessedRows) counts[assessment.status] += 1;
+    return counts;
+  }, [assessedRows]);
+
   const visibleRows = useMemo(() => {
     const normalisedQuery = query.trim().toLowerCase();
     const statusPriority = { unfavourable: 0, similar: 1, recording: 2, favourable: 3, unavailable: 4 } as const;
@@ -130,24 +143,26 @@ export function QualityImprovementExplorer({
         || row.indicator.IndicatorName.toLowerCase().includes(normalisedQuery)
         || row.indicator.IndicatorShortName.toLowerCase().includes(normalisedQuery);
       const matchesChange = changeFilter === 'all' || assessment.trendStatus === changeFilter;
-      const matchesPeer = peerFilter === 'all' || row.quintiles.includes(Number(peerFilter) as Quintile);
-      return matchesQuery && matchesChange && matchesPeer;
+      const matchesSection = sectionFilter === 'all' || classifyIndicator(row.indicator).section.id === sectionFilter;
+      const matchesStatus = statusFilter === 'all' || assessment.status === statusFilter;
+      return matchesQuery && matchesChange && matchesSection && matchesStatus;
     }).sort((a, b) => {
       if (sortBy === 'name') return a.row.indicator.IndicatorShortName.localeCompare(b.row.indicator.IndicatorShortName);
-      if (sortBy === 'change') return Math.abs(b.row.trend ?? 0) - Math.abs(a.row.trend ?? 0);
+      if (sortBy === 'change') return Math.abs(b.row.overallTrend ?? 0) - Math.abs(a.row.overallTrend ?? 0);
       if (sortBy === 'gap') return Math.abs(b.assessment.gap ?? 0) - Math.abs(a.assessment.gap ?? 0);
       return statusPriority[a.assessment.status] - statusPriority[b.assessment.status]
         || Math.abs(b.assessment.performanceGap ?? 0) - Math.abs(a.assessment.performanceGap ?? 0);
     });
-  }, [assessedRows, query, changeFilter, peerFilter, sortBy]);
+  }, [assessedRows, query, changeFilter, sectionFilter, statusFilter, sortBy]);
 
-  const hasFilters = query !== '' || breakdown !== 'persons' || changeFilter !== 'all' || peerFilter !== 'all';
+  const hasFilters = query !== '' || breakdown !== 'persons' || changeFilter !== 'all' || sectionFilter !== 'all' || statusFilter !== 'all';
   const resetFilters = () => {
     setQuery('');
     setBreakdown('persons');
     setMarker('persons');
     setChangeFilter('all');
-    setPeerFilter('all');
+    setSectionFilter('all');
+    setStatusFilter('all');
     setSortBy('priority');
   };
 
@@ -166,7 +181,7 @@ export function QualityImprovementExplorer({
           <p className="mt-0.5 max-w-3xl text-sm text-gray-500">
             {isEngland
               ? 'Filter the national indicator set by population marker and recent direction.'
-              : `Find indicators where ${displayAreaName} may have room to improve compared with similar ${systemLevelName ?? 'organisations'}.`}
+              : `Each row compares ${displayAreaName} with every ${systemLevelName ?? 'organisation'} in England on one indicator. The dot is ${displayAreaName}'s position on the range of peer values; the dark line is the peer median. Red rows are behind peers, green rows are ahead.`}
           </p>
         </div>
         <button
@@ -176,7 +191,7 @@ export function QualityImprovementExplorer({
           className="inline-flex items-center gap-1 text-xs text-nhs-blue hover:underline"
         >
           <Info className="h-3.5 w-3.5" aria-hidden />
-          {showDefinitions ? 'Hide definitions' : 'How values are defined'}
+          {showDefinitions ? 'Hide detail' : 'More detail'}
         </button>
       </div>
 
@@ -188,22 +203,22 @@ export function QualityImprovementExplorer({
           </div>
           <div>
             <dt className="font-semibold text-gray-800">Peer median</dt>
-            <dd className="mt-0.5 text-gray-600">The middle value across organisations at the same level. The gap accounts for whether higher or lower values are preferred.</dd>
+            <dd className="mt-0.5 text-gray-600">The middle value across all organisations of the same type in England (not just the region). The gap accounts for whether higher or lower values are preferred.</dd>
           </div>
           <div>
-            <dt className="font-semibold text-gray-800">System quintile</dt>
-            <dd className="mt-0.5 text-gray-600">The area value&apos;s position among the same type of organisation. Q1 is lowest and Q5 highest; this is not a performance rating.</dd>
+            <dt className="font-semibold text-gray-800">Peer range</dt>
+            <dd className="mt-0.5 text-gray-600">The bar runs from the lowest to the highest value among all organisations of the same type in England, split into quintiles. The dark line is the median; the dot is this area.</dd>
           </div>
           <div>
-            <dt className="font-semibold text-gray-800">Recent change</dt>
-            <dd className="mt-0.5 text-gray-600">The change between the latest two published periods. Recorded prevalence is described as higher or lower recording rather than better or worse.</dd>
+            <dt className="font-semibold text-gray-800">Trend</dt>
+            <dd className="mt-0.5 text-gray-600">Direction across the published series: the average of the most recent third of periods against the earliest third, so a single unusual period does not dominate. The last-period change is shown underneath. Recorded prevalence is described as rising or falling rather than better or worse.</dd>
           </div>
         </dl>
       )}
 
       <section className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         <div className="grid gap-3 bg-gray-50/70 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-12">
-          <label className="block lg:col-span-4">
+          <label className={cn('block', breakdown === 'persons' ? 'lg:col-span-5' : 'lg:col-span-3')}>
             <span className="mb-1 block text-xs font-medium text-gray-500">Search</span>
             <span className="relative block">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden />
@@ -257,10 +272,10 @@ export function QualityImprovementExplorer({
             </div>
           )}
 
-          <div className={cn('lg:col-span-2', breakdown === 'persons' && 'lg:col-span-3')}>
-            <span className="mb-1 block text-xs font-medium text-gray-500">Recent change</span>
+          <div className="lg:col-span-2">
+            <span className="mb-1 block text-xs font-medium text-gray-500">Trend</span>
             <Select value={changeFilter} onValueChange={(value) => setChangeFilter(value as ChangeFilter)}>
-              <SelectTrigger className="w-full bg-white" aria-label="Recent change">
+              <SelectTrigger className="w-full bg-white" aria-label="Trend">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -271,21 +286,21 @@ export function QualityImprovementExplorer({
             </Select>
           </div>
 
-          {!isEngland && (
-            <div className="lg:col-span-2">
-              <span className="mb-1 block text-xs font-medium text-gray-500">Peer position</span>
-              <Select value={peerFilter} onValueChange={(value) => setPeerFilter(value as PeerFilter)}>
-                <SelectTrigger className="w-full bg-white" aria-label="Peer position">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PEER_FILTERS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div className="lg:col-span-2">
+            <span className="mb-1 block text-xs font-medium text-gray-500">Category</span>
+            <Select value={sectionFilter} onValueChange={setSectionFilter}>
+              <SelectTrigger className="w-full bg-white" aria-label="Indicator category">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All categories</SelectItem>
+                {sectionOptions.map((section) => (
+                  <SelectItem key={section.id} value={section.id}>{section.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
 
           {selectedBreakdownLabel?.includes('age-standardised') && (
             <p className="text-xs text-gray-500 sm:col-span-2 lg:col-span-12">
@@ -294,6 +309,27 @@ export function QualityImprovementExplorer({
           )}
         </div>
       </section>
+
+      {!isEngland && (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by position against peers">
+          {(['all', ...STATUS_ORDER.filter((status) => statusCounts[status] > 0)] as StatusFilter[]).map((status) => (
+            <button
+              key={status}
+              type="button"
+              aria-pressed={statusFilter === status}
+              onClick={() => setStatusFilter((current) => (current === status && status !== 'all' ? 'all' : status))}
+              className={cn(
+                'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors',
+                statusFilter === status ? 'border-gray-800 bg-gray-800 text-white' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
+              )}
+            >
+              {status !== 'all' && <span className={cn('h-2 w-2 rounded-full', STATUS_META[status].dot)} aria-hidden />}
+              {status === 'all' ? 'All' : STATUS_META[status].label}
+              <span className="tabular-nums opacity-70">{status === 'all' ? assessedRows.length : statusCounts[status]}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <section className="overflow-hidden rounded-lg border border-gray-200 bg-white" aria-label="Filtered indicators">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 sm:px-5">
@@ -327,12 +363,12 @@ export function QualityImprovementExplorer({
           </div>
         </div>
 
-        <div className="hidden grid-cols-[minmax(16rem,1fr)_7rem_7rem_9rem_9rem_1rem] gap-4 border-b border-gray-100 bg-gray-50/60 px-5 py-2 text-[11px] font-medium uppercase tracking-wide text-gray-500 lg:grid">
+        <div className="hidden grid-cols-[minmax(14rem,1fr)_7rem_10rem_8rem_13rem_1rem] gap-4 border-b border-gray-100 bg-gray-50/60 px-5 py-2 text-[11px] font-medium uppercase tracking-wide text-gray-500 lg:grid">
           <span>Indicator</span>
           <span className="text-right">Area result</span>
-          <span className="text-right">Peer median</span>
+          <span>Peer range</span>
           <span>Against median</span>
-          <span>Recent change</span>
+          <span>Trend</span>
           <span />
         </div>
 
@@ -344,16 +380,14 @@ export function QualityImprovementExplorer({
         ) : (
           <ul className="divide-y divide-gray-100">
             {visibleRows.map(({ row, assessment }) => {
-              const TrendIcon = row.trendDirection === 'up'
-                ? TrendingUp
-                : row.trendDirection === 'down'
-                  ? TrendingDown
-                  : Minus;
               return (
                 <li key={`${row.indicator.IndicatorID}-${row.category.MetricID}`}>
                   <Link
                     href={buildUrl(`/dashboard/${row.indicator.IndicatorID}`, searchParams)}
-                    className="group grid gap-3 px-4 py-3 transition-colors hover:bg-nhs-pale-grey/40 focus-visible:bg-nhs-pale-grey/40 focus-visible:outline-none sm:px-5 lg:grid-cols-[minmax(16rem,1fr)_7rem_7rem_9rem_9rem_1rem] lg:items-center lg:gap-4"
+                    className={cn(
+                      'group grid gap-3 border-l-4 px-4 py-3 transition-colors hover:bg-nhs-pale-grey/40 focus-visible:bg-nhs-pale-grey/40 focus-visible:outline-none sm:px-5 lg:grid-cols-[minmax(14rem,1fr)_7rem_10rem_8rem_13rem_1rem] lg:items-center lg:gap-4',
+                      isEngland ? 'border-l-transparent' : STATUS_META[assessment.status].stripe,
+                    )}
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm text-gray-800 group-hover:text-nhs-blue" title={cleanIndicatorName(row.indicator.IndicatorShortName)}>
@@ -361,24 +395,40 @@ export function QualityImprovementExplorer({
                       </p>
                       <div className="mt-0.5 flex min-w-0 items-center gap-2 text-[11px] text-gray-400">
                         <span className="font-mono">{row.indicator.IndicatorCode}</span>
+                        {!isEngland && (
+                          <span className={cn('inline-flex items-center gap-1 font-medium', STATUS_META[assessment.status].text)}>
+                            <span className={cn('h-1.5 w-1.5 rounded-full', STATUS_META[assessment.status].dot)} aria-hidden />
+                            {STATUS_META[assessment.status].label}
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     <div className="flex items-baseline justify-between gap-2 lg:block lg:text-right">
                       <span className="text-xs text-gray-400 lg:hidden">Area value</span>
-                      <span className="text-sm font-semibold tabular-nums text-gray-900">{formatValue(row.value, row.indicator.FormatDisplayName)}</span>
-                    </div>
-
-                    <div className="flex items-baseline justify-between gap-2 lg:block lg:text-right">
-                      <span className="text-xs text-gray-400 lg:hidden">Peer median</span>
                       <span>
-                        <span className="block text-sm tabular-nums text-gray-600">
-                          {isEngland || row.median === null ? '—' : formatValue(row.median, row.indicator.FormatDisplayName)}
-                        </span>
-                        {!isEngland && row.quintiles.length > 0 && (
-                          <span className="mt-0.5 block text-[10px] text-gray-400">Area is Q{row.quintiles.join('–')}</span>
+                        <span className="block text-sm font-semibold tabular-nums text-gray-900">{formatValue(row.value, row.indicator.FormatDisplayName)}</span>
+                        {!isEngland && row.median !== null && (
+                          <span className="mt-0.5 block text-[10px] tabular-nums text-gray-400">median {formatValue(row.median, row.indicator.FormatDisplayName)}</span>
                         )}
                       </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs text-gray-400 lg:hidden">Peer range</span>
+                      <div className="w-full max-w-[10rem]">
+                        {isEngland ? <span className="text-xs text-gray-400">—</span> : (
+                          <PeerRangeBar
+                            value={row.value}
+                            min={row.min}
+                            max={row.max}
+                            median={row.median}
+                            quintileBounds={[row.category.Data.Q20, row.category.Data.Q40, row.category.Data.Q60, row.category.Data.Q80]}
+                            status={assessment.status}
+                            formatDisplayName={row.indicator.FormatDisplayName}
+                          />
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between gap-3 text-xs font-medium">
@@ -402,16 +452,29 @@ export function QualityImprovementExplorer({
                         : assessment.trendStatus === 'deteriorating' ? 'text-nhs-red'
                           : 'text-gray-500'
                     )}>
-                      <span className="text-gray-400 lg:hidden">Recent change</span>
-                      <span className="inline-flex items-center gap-1">
-                        {row.trendDirection !== null && <TrendIcon className="h-3.5 w-3.5" aria-hidden />}
-                        {row.trend === null
-                          ? 'Not enough history'
-                          : assessment.trendStatus === 'stable'
-                            ? 'Stable'
-                            : assessment.trendStatus === 'recording'
-                              ? `${row.trendDirection === 'up' ? 'Increasing' : 'Decreasing'} ${formatDiff(row.trend, row.indicator.FormatDisplayName)}`
-                              : `${assessment.trendStatus === 'improving' ? 'Improving' : 'Deteriorating'} ${formatDiff(row.trend, row.indicator.FormatDisplayName)}`}
+                      <span className="text-gray-400 lg:hidden">Trend</span>
+                      <span className="inline-flex items-center gap-2">
+                        {row.trendValues.length >= 2 && (
+                          <Sparkline
+                            data={row.trendValues.map((y, i) => ({ x: String(i), y }))}
+                            width={56}
+                            height={26}
+                            showArea={false}
+                            color={assessment.trendStatus === 'improving' ? NHS_COLORS.green : assessment.trendStatus === 'deteriorating' ? NHS_COLORS.red : NHS_COLORS.midGrey}
+                          />
+                        )}
+                        <span>
+                          {row.overallTrend === null
+                            ? 'Not enough history'
+                            : assessment.trendStatus === 'stable'
+                              ? 'Stable'
+                              : assessment.trendStatus === 'recording'
+                                ? `${row.trendDirection === 'up' ? 'Rising' : 'Falling'} ${formatDiff(row.overallTrend, row.indicator.FormatDisplayName)}`
+                                : `${assessment.trendStatus === 'improving' ? 'Improving' : 'Deteriorating'} ${formatDiff(row.overallTrend, row.indicator.FormatDisplayName)}`}
+                          {row.trend !== null && row.trendValues.length > 2 && (
+                            <span className="block text-[10px] font-normal text-gray-400">last period {formatDiff(row.trend, row.indicator.FormatDisplayName)}</span>
+                          )}
+                        </span>
                       </span>
                     </div>
 

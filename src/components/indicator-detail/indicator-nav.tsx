@@ -90,9 +90,9 @@ export function IndicatorNav({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="mb-6">
+      <div>
         {currentCondition && (
-          <p className="text-xs text-gray-500 mb-2 font-medium">{currentCondition} indicators</p>
+          <p className="mb-2 text-xs font-medium text-gray-500">{currentCondition} indicators</p>
         )}
 
         <div className="flex items-center gap-2">
@@ -141,7 +141,7 @@ export function IndicatorNav({
                         onSelectIndicator(indicator.IndicatorID);
                       }}
                       className={cn(
-                        'flex shrink-0 flex-col rounded-lg border px-4 py-2 transition-all',
+                        'flex shrink-0 flex-col rounded-md border px-3 py-1.5 transition-all',
                         isActive
                           ? 'border-nhs-blue bg-nhs-blue text-white'
                           : 'border-gray-200 bg-white hover:border-nhs-blue/50 hover:shadow-sm'

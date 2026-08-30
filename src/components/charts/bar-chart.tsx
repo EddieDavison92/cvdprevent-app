@@ -31,7 +31,7 @@ interface BarChartProps {
   benchmark?: BenchmarkLine;
   benchmarks?: BenchmarkLine[];
   formatValue?: (value: number) => string;
-  height?: number;
+  height?: number | string;
   barColor?: string;
 }
 

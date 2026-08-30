@@ -3,7 +3,7 @@ import type { IndicatorCategoryData } from '@/lib/api/types';
 import {
   assessQualityImprovementRow,
   getDefaultMarkerOption,
-  getLatestTrend,
+  getCategoryTrend,
   getMarkerGroupLabel,
   getMarkerLabel,
   getQuintiles,
@@ -56,7 +56,7 @@ describe('quality improvement calculations', () => {
       { TimePeriodID: 3, TimePeriodName: 'Three', Value: 52, Median: null, StartDate: '2025-07-01', EndDate: '2025-09-30' },
     ];
 
-    expect(getLatestTrend(item)).toMatchObject({ change: 2, direction: 'up' });
+    expect(getCategoryTrend(item)).toMatchObject({ latest: { change: 2, direction: 'up' }, overall: { change: 42, direction: 'up' } });
   });
 
   it('does not infer a trend from one observation', () => {
@@ -65,7 +65,7 @@ describe('quality improvement calculations', () => {
       { TimePeriodID: 1, TimePeriodName: 'One', Value: 10, Median: null, StartDate: '2025-01-01', EndDate: '2025-03-31' },
     ];
 
-    expect(getLatestTrend(item)).toMatchObject({ change: null, direction: null });
+    expect(getCategoryTrend(item)).toMatchObject({ latest: null, overall: null });
   });
 
   it('translates API marker names without duplicating attributes', () => {
@@ -104,6 +104,7 @@ describe('quality improvement calculations', () => {
       quintiles: [5],
       trend: 0.5,
       trendDirection: 'up',
+      overallTrend: 0.5,
       trendValues: [2.5, 3],
     } satisfies QualityImprovementRow;
 
@@ -134,6 +135,7 @@ describe('quality improvement calculations', () => {
       quintiles: [1],
       trend: 0.3,
       trendDirection: 'up',
+      overallTrend: 0.3,
       trendValues: [11.7, 12],
     } satisfies QualityImprovementRow;
 

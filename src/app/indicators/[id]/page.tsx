@@ -322,6 +322,7 @@ export default function IndicatorExplorePage() {
   const activePeriod = isOutcome ? outPeriod : stdPeriod;
   const periodLabel = activePeriod ? formatTimePeriod(activePeriod.TimePeriodName) : '';
   const periodSlug = periodLabel.replace(/\s+/g, '-');
+  const levelName = SYSTEM_LEVEL_NAMES[levelId] ?? 'area';
   const { viewMode: chartViewMode, actions: chartActions } = useChartTableActions({
     tableData,
     columns: tableColumns,
@@ -331,6 +332,22 @@ export default function IndicatorExplorePage() {
       ['Area Type', SYSTEM_LEVEL_NAMES[levelId] ?? 'Unknown'],
       ...(periodLabel ? [['Period', periodLabel] as [string, string]] : []),
     ] : undefined,
+    fullscreen: indicator ? {
+      title: scopeParent
+        ? `${levelName}s in ${cleanAreaName(scopeParent.AreaName)}`
+        : `All ${levelName}s`,
+      description: indicator.IndicatorShortName,
+      chart: (
+        <BarChart
+          data={chartData}
+          yAxisLabel={indicator.AxisCharacter}
+          benchmarks={benchmarks}
+          formatValue={formatFn}
+          height="calc(100vh - 9rem)"
+          barColor={NHS_COLORS.lightBlue}
+        />
+      ),
+    } : undefined,
   });
 
   // --- Selected area ---
@@ -411,7 +428,6 @@ export default function IndicatorExplorePage() {
     NotificationCount: indicator.NotificationCount ?? 0,
   }) : null, [indicator]);
 
-  const levelName = SYSTEM_LEVEL_NAMES[levelId] ?? 'area';
   const scopeLevelName = scopeLevelId ? SYSTEM_LEVEL_NAMES[scopeLevelId] : '';
   const requiresScoping = isPcn && !scopeParentId;
 

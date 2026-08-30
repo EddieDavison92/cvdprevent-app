@@ -3,9 +3,10 @@
 import { Card, CardContent } from '@/components/ui/card';
 import type { Indicator, IndicatorRawData } from '@/lib/api/types';
 import { formatValue, formatNumber, formatDiff } from '@/lib/utils/format';
-import { TrendingUp, TrendingDown, Minus, Users, Hash, BarChart3, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
-import { getTrendDirection } from '@/lib/utils/trend';
+import { summariseTrend } from '@/lib/utils/trend';
+import { cn } from '@/lib/utils';
 
 interface HeroSectionProps {
   indicator: Indicator;
@@ -15,16 +16,11 @@ interface HeroSectionProps {
   previousData?: IndicatorRawData;
   areaName: string;
   isEngland?: boolean;
-  rank?: { position: number; total: number; levelName: string } | null;
   timePeriodLabel?: string;
   lowerIsBetter: boolean;
+  /** Recorded prevalence: differences describe recording, not performance. */
+  recordedPrevalence?: boolean;
   trendValues?: Array<number | null>;
-}
-
-function getOrdinal(n: number): string {
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 export function HeroSection({
@@ -35,162 +31,104 @@ export function HeroSection({
   previousData,
   areaName,
   isEngland,
-  rank,
   timePeriodLabel,
   lowerIsBetter,
+  recordedPrevalence = false,
   trendValues = [],
 }: HeroSectionProps) {
   const fmt = (v: number) => formatValue(v, indicator.FormatDisplayName);
 
-  const trend =
-    areaData?.Value !== null &&
-    previousData?.Value !== null &&
-    areaData?.Value !== undefined &&
-    previousData?.Value !== undefined
-      ? areaData.Value - previousData.Value
-      : null;
+  const trendSummary = summariseTrend(
+    trendValues.length >= 2 ? trendValues : [previousData?.Value, areaData?.Value],
+  );
+  const trend = trendSummary.overall?.change ?? null;
+  const latestChange = trendSummary.values.length > 2 ? trendSummary.latest?.change ?? null : null;
+  const periodCount = trendSummary.values.length;
 
+  const hasValue = areaData?.Value !== null && areaData?.Value !== undefined;
   const gap = areaData?.Value != null && baselineData?.Value != null
     ? areaData.Value - baselineData.Value
     : null;
-
-  const hasValue = areaData?.Value !== null && areaData?.Value !== undefined;
-
   const gapIsSignificant = gap !== null && Math.abs(gap) > COMPARISON_TOLERANCE;
-
   const gapIsGood = gap !== null && (lowerIsBetter ? gap < 0 : gap > 0);
-  const gapColor = gapIsSignificant
-    ? (gapIsGood ? 'text-green-700' : 'text-red-700')
-    : 'text-gray-900';
-  const gapBg = gapIsSignificant
-    ? (gapIsGood ? 'bg-green-50' : 'bg-red-50')
-    : 'bg-gray-50';
+  const gapTone = recordedPrevalence ? 'neutral' : gapIsSignificant ? (gapIsGood ? 'good' : 'bad') : 'neutral';
 
-  const trendDirection = trend !== null
-    ? getTrendDirection(trend, trendValues)
-    : null;
+  const trendDirection = trendSummary.overall?.direction ?? null;
   const TrendIcon = trendDirection === 'up' ? TrendingUp : trendDirection === 'down' ? TrendingDown : Minus;
   const trendIsGood = trendDirection === (lowerIsBetter ? 'down' : 'up');
   const trendIsBad = trendDirection === (lowerIsBetter ? 'up' : 'down');
-  const trendColor = trendIsGood ? 'text-green-700' : trendIsBad ? 'text-red-700' : 'text-gray-900';
-  const trendBg = trendIsGood ? 'bg-green-50' : trendIsBad ? 'bg-red-50' : 'bg-gray-50';
+  const trendTone = recordedPrevalence ? 'neutral' : trendIsGood ? 'good' : trendIsBad ? 'bad' : 'neutral';
 
-  const rankQuartile = rank
-    ? (rank.position <= Math.ceil(rank.total * 0.25) ? 'Top quartile'
-      : rank.position <= Math.ceil(rank.total * 0.5) ? 'Upper half'
-        : rank.position <= Math.ceil(rank.total * 0.75) ? 'Lower half'
-          : 'Bottom quartile')
+  const tone = {
+    good: { card: 'border-green-100 bg-green-50/60', value: 'text-green-700', sub: 'text-green-700/70' },
+    bad: { card: 'border-red-100 bg-red-50/60', value: 'text-red-700', sub: 'text-red-700/70' },
+    neutral: { card: 'bg-gray-50', value: 'text-gray-900', sub: 'text-gray-500' },
+  } as const;
+
+  const isPercent = indicator.FormatDisplayName.includes('%');
+  const hasPatients = areaData?.Numerator != null && areaData?.Denominator != null;
+  // Rates (e.g. age-standardised per 100,000) are not a simple share of patients
+  const countsLine = hasPatients
+    ? isPercent
+      ? `${formatNumber(areaData!.Numerator!)} of ${formatNumber(areaData!.Denominator!)} patients`
+      : `${formatNumber(areaData!.Numerator!)} events · ${formatNumber(areaData!.Denominator!)} population`
     : null;
-
-  const showRank = !!rank;
-
-  const gridCols = isEngland ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-6';
+  const unit = !isPercent && indicator.AxisCharacter ? indicator.AxisCharacter : null;
 
   return (
-    <div>
-      {timePeriodLabel && (
-        <p className="text-xs text-gray-500 mb-2 font-medium">Period: {timePeriodLabel}</p>
-      )}
-      <div className={`grid gap-3 ${gridCols}`}>
-        {/* Area value */}
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
-              <BarChart3 className="h-3 w-3" />
-              {isEngland ? 'England' : areaName}
-            </div>
-            <div className="text-2xl font-bold text-nhs-blue">
-              {hasValue ? fmt(areaData!.Value!) : 'N/A'}
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Area value */}
+      <Card className="border-nhs-blue/20 bg-nhs-blue py-0 text-white">
+        <CardContent className="px-4 py-3">
+          <div className="flex items-baseline justify-between gap-2 text-xs text-white/75">
+            <span className="truncate font-medium">{isEngland ? 'England' : areaName}</span>
+            {timePeriodLabel && <span className="shrink-0">{timePeriodLabel}</span>}
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="text-2xl font-bold tabular-nums">{hasValue ? fmt(areaData!.Value!) : 'N/A'}</span>
+            {unit && <span className="text-xs text-white/75">{unit}</span>}
+            {countsLine && <span className="text-xs text-white/75">{countsLine}</span>}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Baseline comparison */}
+      {!isEngland && (
+        <Card className={cn('py-0', tone[gapTone].card)}>
+          <CardContent className="px-4 py-3">
+            <div className="text-xs font-medium text-gray-500">vs {baselineName}</div>
+            <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className={cn('text-2xl font-bold tabular-nums', tone[gapTone].value)}>
+                {gap === null ? '—' : gapIsSignificant ? formatDiff(gap, indicator.FormatDisplayName) : 'Similar'}
+              </span>
+              <span className={cn('text-xs', tone[gapTone].sub)}>
+                {baselineData?.Value != null ? `${baselineName} ${fmt(baselineData.Value)}` : 'No comparison value'}
+              </span>
             </div>
           </CardContent>
         </Card>
+      )}
 
-        {/* Baseline benchmark */}
-        {!isEngland && (
-          <Card className="bg-gray-50">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
-                <BarChart3 className="h-3 w-3" />
-                {baselineName}
-              </div>
-              <div className="text-2xl font-bold text-gray-700">
-                {baselineData?.Value != null ? fmt(baselineData.Value) : 'N/A'}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Gap to baseline — only show when the gap is meaningful */}
-        {!isEngland && gap !== null && (
-          <Card className={gapBg}>
-            <CardContent className="p-3">
-              <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
-                <Activity className="h-3 w-3" />
-                vs {baselineName}
-              </div>
-              <div className={`text-xl font-bold ${gapColor}`}>
-                {gapIsSignificant
-                  ? formatDiff(gap, indicator.FormatDisplayName)
-                  : 'Similar'}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Trend */}
-        {trend !== null && (
-          <Card className={trendBg}>
-            <CardContent className="p-3">
-              <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
-                <TrendIcon className="h-3 w-3" />
-                Trend
-              </div>
-              <div className={`text-xl font-bold ${trendColor}`}>
-                {trendDirection === 'flat'
-                  ? 'Stable'
-                  : formatDiff(trend, indicator.FormatDisplayName)}
-              </div>
-              {trendDirection !== 'flat' && (
-                <div className={`text-xs ${trendColor} opacity-75`}>
-                  from previous period
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Rank — only show when there are enough peers to be meaningful */}
-        {!isEngland && showRank && (
-          <Card className="bg-gray-50">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
-                <Hash className="h-3 w-3" />
-                Peer rank
-              </div>
-              <div className="text-xl font-bold text-gray-700">
-                {getOrdinal(rank!.position)} <span className="text-sm font-normal text-gray-500">/ {rank!.total}</span>
-              </div>
-              <div className="text-xs text-gray-500">{rankQuartile}</div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Population */}
-        {areaData?.Numerator != null && areaData?.Denominator != null && (
-          <Card className="bg-gray-50">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
-                <Users className="h-3 w-3" />
-                Patients
-              </div>
-              <div className="text-xl font-bold text-gray-700">
-                {formatNumber(areaData.Numerator)}
-              </div>
-              <div className="text-xs text-gray-500">of {formatNumber(areaData.Denominator)}</div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      {/* Trend */}
+      <Card className={cn('py-0', tone[trendTone].card)}>
+        <CardContent className="px-4 py-3">
+          <div className="flex items-center gap-1 text-xs font-medium text-gray-500">
+            <TrendIcon className="h-3.5 w-3.5" aria-hidden />
+            Trend
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className={cn('text-2xl font-bold tabular-nums', tone[trendTone].value)}>
+              {trend === null ? '—' : trendDirection === 'flat' ? 'Stable' : formatDiff(trend, indicator.FormatDisplayName)}
+            </span>
+            <span className={cn('text-xs', tone[trendTone].sub)}>
+              {trend === null
+                ? 'Not enough history'
+                : periodCount > 2 ? `over ${periodCount} periods` : 'from previous period'}
+              {latestChange !== null && ` · last ${formatDiff(latestChange, indicator.FormatDisplayName)}`}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

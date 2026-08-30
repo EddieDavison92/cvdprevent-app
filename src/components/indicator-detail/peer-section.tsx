@@ -260,6 +260,22 @@ export function PeerSection({
       ['Area Type', activeViewMode === 'national' ? `All ${levelName}s` : activeViewMode === 'children' ? childLevelName : levelName],
       ...(timePeriod ? [['Period', timePeriod] as [string, string]] : []),
     ],
+    fullscreen: {
+      title: activeViewMode === 'peers' ? 'Comparison with Peers'
+        : activeViewMode === 'national' ? `All ${levelName}s`
+          : `${childLevelName} Breakdown`,
+      description,
+      chart: (
+        <BarChart
+          data={chartData}
+          yAxisLabel={indicator.AxisCharacter}
+          benchmarks={benchmarks}
+          formatValue={formatFn}
+          height="calc(100vh - 9rem)"
+          barColor={NHS_COLORS.lightBlue}
+        />
+      ),
+    },
   });
 
   return (

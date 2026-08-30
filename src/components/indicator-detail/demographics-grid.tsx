@@ -262,6 +262,26 @@ function DemographicCard({
       ['Breakdown', demo.label],
       ...(timePeriod ? [['Period', timePeriod] as [string, string]] : []),
     ],
+    fullscreen: {
+      title: demo.label,
+      description: `${indicator.IndicatorShortName}${isEngland ? '' : ` — ${displayAreaName} compared with ${baselineName}`}`,
+      chart: isEngland ? (
+        <BarChart
+          data={simpleChartData}
+          formatValue={formatFn}
+          height="calc(100vh - 9rem)"
+        />
+      ) : (
+        <DemographicChart
+          data={comparisonChartData}
+          orgName={displayAreaName}
+          baselineName={baselineName}
+          formatValue={formatFn}
+          height="calc(100vh - 9rem)"
+          barMaxWidth={64}
+        />
+      ),
+    },
   });
 
   return (

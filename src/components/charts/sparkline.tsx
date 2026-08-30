@@ -38,7 +38,7 @@ export function Sparkline({
     );
   }
 
-  const pad = { top: 6, right: 6, bottom: 6, left: 2 };
+  const pad = { top: 3, right: 6, bottom: 3, left: 2 };
   const plotW = width - pad.left - pad.right;
   const plotH = height - pad.top - pad.bottom;
 
@@ -46,9 +46,9 @@ export function Sparkline({
   const dataMin = Math.min(...yValues);
   const dataMax = Math.max(...yValues);
   const dataRange = dataMax - dataMin;
-  // Pad the range to 3x the data spread (centered), so real trends are visible
-  // but small noise doesn't fill the entire height
-  const padding = Math.max(dataRange, dataMax * 0.1);
+  // Scale to the data spread (10% headroom) so direction is legible at any height.
+  // Used by both the Trends and Improvement tabs; keep one method.
+  const padding = dataRange * 0.1;
   const minY = Math.max(0, dataMin - padding);
   const maxY = dataMax + padding;
   const yRange = maxY - minY || 1;

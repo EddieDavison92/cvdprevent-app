@@ -7,7 +7,6 @@ import dynamic from 'next/dynamic';
 import { ArrowLeft } from 'lucide-react';
 import { Footer } from '@/components/layout/footer';
 import { Header } from '@/components/layout/header';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,6 +14,10 @@ import { CSVButton } from '@/components/charts';
 import { downloadCSV, type CSVMetadata } from '@/lib/utils/csv';
 
 // Leaflet requires browser APIs, so dynamic import with SSR disabled
+function cleanIndicatorTitle(name: string) {
+  return name.replace(/\s*\(CVDP?\d+[A-Z]*\)\s*$/i, '').trim();
+}
+
 const ChoroplethMap = dynamic(
   () => import('@/components/charts/choropleth-map').then((m) => m.ChoroplethMap),
   { ssr: false, loading: () => <div className="flex h-[400px] items-center justify-center text-gray-400">Loading map...</div> }
@@ -27,6 +30,7 @@ import {
   DemographicsGrid,
   PopulationProfile,
   PolarityBadge,
+  PeerPositionCard,
 } from '@/components/indicator-detail';
 import { BaselineSelector } from '@/components/dashboard';
 import { useOrganisation } from '@/providers/organisation-context';
@@ -498,17 +502,17 @@ export default function IndicatorDetailPage() {
     return { regionName, regionValue: null as number | null };
   }, [orgFromAreas, isEngland, areasByLevel, effectiveParentId, parentValue, baseline, baselineData]);
 
-  // Compute rank among peers (higher value = rank 1)
-  const rank = useMemo(() => {
-    if (!peerData.length || !organisation) return null;
-    const sorted = peerData
-      .filter((d) => d.Value !== null)
-      .sort((a, b) => (b.Value ?? 0) - (a.Value ?? 0));
-    const position = sorted.findIndex((d) => d.AreaCode === organisation.AreaCode) + 1;
-    if (position === 0) return null;
-    const effectiveLevel = levelId ?? SYSTEM_LEVELS.ICB;
-    return { position, total: sorted.length, levelName: SYSTEM_LEVEL_NAMES[effectiveLevel] ?? 'peer' };
-  }, [peerData, organisation, levelId]);
+
+  // Comparison set for the peer position card follows the baseline:
+  // England -> all organisations at this level; a parent area -> siblings within it.
+  const peerScope = useMemo(() => {
+    const levelName = SYSTEM_LEVEL_NAMES[levelId ?? SYSTEM_LEVELS.ICB] ?? 'organisation';
+    const siblingValues = peerData.map((d) => d.Value);
+    if (baseline.SystemLevelID !== 1 && baseline.AreaID === effectiveParentId && siblingValues.length > 1) {
+      return { values: siblingValues, label: `${levelName}s in ${baselineName}` };
+    }
+    return { values: nationalData.map((d) => d.Value), label: `${levelName}s in England` };
+  }, [peerData, nationalData, baseline, effectiveParentId, baselineName, levelId]);
 
   // Time period label
   const timePeriodLabel = latestPeriod?.TimePeriodName ?? '';
@@ -563,46 +567,47 @@ export default function IndicatorDetailPage() {
 
       <main className="flex-1 bg-nhs-pale-grey/30 p-6">
         <div className="mx-auto max-w-6xl">
-          {/* Back link */}
-          <Link href={buildUrl('/dashboard', searchParams)}>
-            <Button variant="ghost" size="sm" className="mb-4">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
-            </Button>
-          </Link>
-
-          {/* Organisation & Indicator Header */}
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">{isEngland ? 'National' : organisation?.SystemLevelName}</p>
-              <h1 className="text-xl font-bold text-nhs-dark-blue">{areaName}</h1>
+          {/* Page header: eyebrow, indicator title, comparison controls */}
+          <div className="mb-4 rounded-lg border border-gray-200 bg-white px-5 py-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-500">
+                  <Link href={buildUrl('/dashboard', searchParams)} className="inline-flex items-center gap-1 hover:text-nhs-blue">
+                    <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+                    Dashboard
+                  </Link>
+                  <span aria-hidden>/</span>
+                  <span className="font-medium text-gray-700">{isEngland ? 'England' : areaName}</span>
+                  {!isEngland && <span className="text-gray-400">{organisation?.SystemLevelName}</span>}
+                </div>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                  <h1 className="text-2xl font-bold text-nhs-dark-blue">{cleanIndicatorTitle(indicator.IndicatorShortName)}</h1>
+                  <span className="font-mono text-xs text-gray-400">{indicator.IndicatorCode}</span>
+                  <span className="flex items-center gap-1.5">
+                    <Badge variant={indicator.IndicatorTypeName === 'Outcome' ? 'secondary' : 'default'}>
+                      {indicator.IndicatorTypeName}
+                    </Badge>
+                    <PolarityBadge
+                      lowerIsBetter={lowerIsBetter}
+                      recordedPrevalence={indicatorSection?.id === 'prevalence'}
+                    />
+                  </span>
+                </div>
+                <p className="mt-1.5 max-w-3xl text-sm text-gray-600">{indicator.IndicatorName}</p>
+              </div>
+              {!isEngland && <div className="shrink-0"><BaselineSelector /></div>}
             </div>
-            {!isEngland && <BaselineSelector />}
-          </div>
 
-          {/* Indicator Nav */}
-          {indicators && (
-            <IndicatorNav
-              indicators={indicators}
-              currentId={selectedIndicatorId}
-              dataByIndicator={navDataByIndicator}
-              onSelectIndicator={handleSelectIndicator}
-            />
-          )}
-
-          {/* Indicator Header */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-2">
-              <h2 className="text-lg font-semibold text-nhs-dark-blue">{indicator.IndicatorShortName}</h2>
-              <Badge variant={indicator.IndicatorTypeName === 'Outcome' ? 'secondary' : 'default'}>
-                {indicator.IndicatorTypeName}
-              </Badge>
-              <PolarityBadge
-                lowerIsBetter={lowerIsBetter}
-                recordedPrevalence={indicatorSection?.id === 'prevalence'}
-              />
-            </div>
-            <p className="text-sm text-gray-600">{indicator.IndicatorName}</p>
+            {indicators && (
+              <div className="mt-4 border-t border-gray-100 pt-3">
+                <IndicatorNav
+                  indicators={indicators}
+                  currentId={selectedIndicatorId}
+                  dataByIndicator={navDataByIndicator}
+                  onSelectIndicator={handleSelectIndicator}
+                />
+              </div>
+            )}
           </div>
 
           {/* All sections visible at once */}
@@ -616,11 +621,22 @@ export default function IndicatorDetailPage() {
               previousData={previousData}
               areaName={areaName}
               isEngland={isEngland}
-              rank={rank}
               timePeriodLabel={timePeriodLabel}
               lowerIsBetter={lowerIsBetter}
+              recordedPrevalence={indicatorSection?.id === 'prevalence'}
               trendValues={areaTrendData.map(point => point.value)}
             />
+
+            {!isEngland && (
+              <PeerPositionCard
+                indicator={indicator}
+                areaName={areaName}
+                areaValue={areaData?.Value}
+                peerValues={peerScope.values}
+                scopeLabel={peerScope.label}
+                improvementHref={buildUrl('/dashboard', new URLSearchParams({ ...Object.fromEntries(searchParams), tab: 'indicators' }))}
+              />
+            )}
 
             {/* Trend Section - data is already loaded from the main query! */}
             <TrendSection

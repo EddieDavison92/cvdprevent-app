@@ -37,11 +37,15 @@ function ProfileChart({
   areaName,
   baselineName,
   isEngland,
+  height = 200,
+  barMaxWidth = 30,
 }: {
   data: CategoryShare[];
   areaName: string;
   baselineName: string;
   isEngland?: boolean;
+  height?: number | string;
+  barMaxWidth?: number;
 }) {
   const categories = data.map((d) => DEPRIVATION_LABELS[d.name]?.short ?? formatDemographicCategoryLabel(d.name));
   const hasAreaSuppression = data.some((d) => d.areaSuppressed);
@@ -121,7 +125,7 @@ function ProfileChart({
         data: data.map((d) => d.areaShare),
         itemStyle: { color: NHS_COLORS.blue },
         barGap: '10%',
-        barMaxWidth: 30,
+        barMaxWidth,
       },
       // Baseline markers (diamond overlay)
       ...(isEngland ? [] : [{
@@ -159,14 +163,14 @@ function ProfileChart({
       }] : []),
     ],
     animationDuration: 300,
-  }), [data, categories, areaName, baselineName, isEngland, hasAreaSuppression, hasBaselineSuppression]);
+  }), [data, categories, areaName, baselineName, isEngland, hasAreaSuppression, hasBaselineSuppression, barMaxWidth]);
 
   return (
     <ReactECharts
       option={option}
       notMerge
       lazyUpdate
-      style={{ height: 200, width: '100%' }}
+      style={{ height, width: '100%' }}
       opts={{ renderer: 'svg' }}
     />
   );
@@ -236,6 +240,20 @@ function ProfileCard({
       ['Breakdown', `Population Profile — ${demo.label}`],
       ...(timePeriod ? [['Period', timePeriod] as [string, string]] : []),
     ],
+    fullscreen: {
+      title: demo.label,
+      description: `${indicatorName ?? 'Population profile'}${isEngland ? '' : ` — ${areaName} compared with ${baselineName}`}`,
+      chart: (
+        <ProfileChart
+          data={shares}
+          areaName={areaName}
+          baselineName={baselineName}
+          isEngland={isEngland}
+          height="calc(100vh - 9rem)"
+          barMaxWidth={64}
+        />
+      ),
+    },
   });
 
   return (

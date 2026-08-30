@@ -1,7 +1,7 @@
 import type { IndicatorCategoryData, IndicatorWithData } from '@/lib/api/types';
 import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
 import { classifyIndicator } from '@/lib/constants/indicator-sections';
-import { getTrendDirection, type TrendDirection } from '@/lib/utils/trend';
+import { summariseTrend, type TrendDirection } from '@/lib/utils/trend';
 
 export type MarkerSelection = 'persons' | 'all' | string;
 export type Quintile = 1 | 2 | 3 | 4 | 5;
@@ -22,8 +22,12 @@ export interface QualityImprovementRow {
   min: number | null;
   max: number | null;
   quintiles: Quintile[];
+  /** Change between the latest two periods. */
   trend: number | null;
+  /** Direction across the series (see summariseTrend). */
   trendDirection: TrendDirection | null;
+  /** Change across the series. */
+  overallTrend: number | null;
   trendValues: number[];
 }
 
@@ -152,26 +156,12 @@ export function getQuintiles(category: IndicatorCategoryData): Quintile[] {
     .map(([quintile]) => quintile);
 }
 
-export function getLatestTrend(category: IndicatorCategoryData): {
-  change: number | null;
-  direction: TrendDirection | null;
-  values: number[];
-} {
-  const points = category.TimeSeries
-    .filter((point) => point.Value !== null)
+export function getCategoryTrend(category: IndicatorCategoryData) {
+  const values = category.TimeSeries
     .slice()
-    .sort((a, b) => new Date(a.EndDate).getTime() - new Date(b.EndDate).getTime());
-  const values = points.map((point) => point.Value!);
-  if (values.length < 2) return { change: null, direction: null, values };
-
-  const previous = values.at(-2)!;
-  const latest = values.at(-1)!;
-  const change = latest - previous;
-  return {
-    change,
-    direction: getTrendDirection(change, values),
-    values,
-  };
+    .sort((a, b) => new Date(a.EndDate).getTime() - new Date(b.EndDate).getTime())
+    .map((point) => point.Value);
+  return summariseTrend(values);
 }
 
 function selectedCategories(indicator: IndicatorWithData, marker: MarkerSelection) {
@@ -193,7 +183,7 @@ export function buildQualityImprovementRows(
     selectedCategories(indicator, marker)
       .filter((category) => category.Data.Value !== null)
       .map((category) => {
-        const trend = getLatestTrend(category);
+        const trend = getCategoryTrend(category);
         return {
           indicator,
           category,
@@ -203,8 +193,9 @@ export function buildQualityImprovementRows(
           min: category.Data.Min,
           max: category.Data.Max,
           quintiles: getQuintiles(category),
-          trend: trend.change,
-          trendDirection: trend.direction,
+          trend: trend.latest?.change ?? null,
+          trendDirection: trend.overall?.direction ?? null,
+          overallTrend: trend.overall?.change ?? null,
           trendValues: trend.values,
         };
       })

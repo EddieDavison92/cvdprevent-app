@@ -40,7 +40,7 @@ interface LineChartProps {
   xAxisLabel?: string;
   yAxisLabel?: string;
   formatValue?: (value: number) => string;
-  height?: number;
+  height?: number | string;
   /** Suffix for difference values (e.g. "pp" for percentage points) */
   diffSuffix?: string;
 }

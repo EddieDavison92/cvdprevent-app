@@ -22,3 +22,40 @@ export function getTrendDirection(
   if (Math.abs(change) < tolerance) return 'flat';
   return change > 0 ? 'up' : 'down';
 }
+
+export interface TrendChange {
+  change: number;
+  direction: TrendDirection;
+}
+
+export interface TrendSummary {
+  /** Valid values in period order. */
+  values: number[];
+  /** Change between the latest two periods. */
+  latest: TrendChange | null;
+  /**
+   * Change across the series: mean of the last third minus mean of the first
+   * third (smooths single-period noise). Falls back to the two-point change
+   * when fewer than three periods exist.
+   */
+  overall: TrendChange | null;
+}
+
+/** Single source of trend direction for all views. */
+export function summariseTrend(seriesValues: Array<number | null | undefined>): TrendSummary {
+  const values = seriesValues.filter((value): value is number => value != null && Number.isFinite(value));
+  if (values.length < 2) return { values, latest: null, overall: null };
+
+  const latestChange = values[values.length - 1] - values[values.length - 2];
+  const latest = { change: latestChange, direction: getTrendDirection(latestChange, values) };
+
+  let overallChange = latestChange;
+  if (values.length >= 3) {
+    const third = Math.max(1, Math.floor(values.length / 3));
+    const mean = (slice: number[]) => slice.reduce((sum, value) => sum + value, 0) / slice.length;
+    overallChange = mean(values.slice(-third)) - mean(values.slice(0, third));
+  }
+  const overall = { change: overallChange, direction: getTrendDirection(overallChange, values) };
+
+  return { values, latest, overall };
+}

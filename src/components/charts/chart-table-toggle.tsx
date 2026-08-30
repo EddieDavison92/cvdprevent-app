@@ -1,7 +1,14 @@
 'use client';
 
 import { useState, useCallback, useMemo, type ReactNode } from 'react';
-import { Download } from 'lucide-react';
+import { Download, Maximize2, Minimize2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -36,8 +43,14 @@ export function useChartTableActions(opts: {
   columns: TableColumn[];
   filename?: string;
   metadata?: CSVMetadata;
+  fullscreen?: {
+    title: string;
+    description?: string;
+    chart: ReactNode;
+  };
 }) {
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const toggleView = useCallback(() => {
     setViewMode((prev) => (prev === 'chart' ? 'table' : 'chart'));
@@ -57,23 +70,106 @@ export function useChartTableActions(opts: {
   }, [opts.tableData, opts.columns, opts.filename, opts.metadata]);
 
   const actions = useMemo(() => (
-    <div className="flex items-center gap-3">
-      <button
-        onClick={handleExportCSV}
-        className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
-        title="Download as CSV"
-      >
-        <Download className="h-3 w-3" />
-        CSV
-      </button>
-      <button
-        onClick={toggleView}
-        className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
-      >
-        {viewMode === 'chart' ? 'View as table' : 'View as chart'}
-      </button>
-    </div>
-  ), [handleExportCSV, toggleView, viewMode]);
+    <>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleExportCSV}
+          className="flex items-center gap-1 text-xs text-gray-500 transition-colors hover:text-gray-700"
+          title="Download as CSV"
+        >
+          <Download className="h-3 w-3" />
+          CSV
+        </button>
+        <button
+          type="button"
+          onClick={toggleView}
+          className="text-xs text-gray-500 transition-colors hover:text-gray-700"
+        >
+          {viewMode === 'chart' ? 'View as table' : 'View as chart'}
+        </button>
+        {opts.fullscreen && (
+          <button
+            type="button"
+            onClick={() => setIsFullscreen(true)}
+            className="rounded-md p-1 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue focus-visible:ring-offset-2"
+            title="View full screen"
+            aria-label={`View ${opts.fullscreen.title} full screen`}
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      {opts.fullscreen && (
+        <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
+          <DialogContent
+            hideClose
+            className="flex overflow-hidden rounded-xl p-0"
+            style={{
+              inset: 'clamp(0.5rem, 2vw, 1.5rem)',
+              width: 'auto',
+              height: 'auto',
+              maxWidth: 'none',
+              transform: 'none',
+              translate: 'none',
+            }}
+          >
+            <div className="flex min-h-0 w-full flex-col">
+              <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-200 px-4 py-3 sm:px-6">
+                <div className="min-w-0">
+                  <DialogTitle className="truncate text-base sm:text-lg">
+                    {opts.fullscreen.title}
+                  </DialogTitle>
+                  {opts.fullscreen.description && (
+                    <DialogDescription className="mt-1 truncate text-xs sm:text-sm">
+                      {opts.fullscreen.description}
+                    </DialogDescription>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleExportCSV}
+                    className="flex items-center gap-1 text-xs text-gray-500 transition-colors hover:text-gray-700"
+                    title="Download as CSV"
+                  >
+                    <Download className="h-3 w-3" />
+                    CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleView}
+                    className="text-xs text-gray-500 transition-colors hover:text-gray-700"
+                  >
+                    {viewMode === 'chart' ? 'View as table' : 'View as chart'}
+                  </button>
+                  <DialogClose asChild>
+                    <button
+                      type="button"
+                      className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue focus-visible:ring-offset-2"
+                      title="Exit full screen"
+                      aria-label="Exit full screen"
+                    >
+                      <Minimize2 className="h-4 w-4" />
+                    </button>
+                  </DialogClose>
+                </div>
+              </div>
+              <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-6">
+                <ChartTableToggle
+                  chart={opts.fullscreen.chart}
+                  tableData={opts.tableData}
+                  columns={opts.columns}
+                  viewMode={viewMode}
+                />
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  ), [handleExportCSV, isFullscreen, opts.columns, opts.fullscreen, opts.tableData, toggleView, viewMode]);
 
   return { viewMode, actions, handleExportCSV };
 }

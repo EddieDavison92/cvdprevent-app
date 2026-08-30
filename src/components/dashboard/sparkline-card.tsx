@@ -3,14 +3,13 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Sparkline } from '@/components/charts/sparkline';
 import { getPersonsData } from '@/lib/hooks/use-area-indicators';
-import { formatTimePeriod, formatValue } from '@/lib/utils/format';
+import { formatDiff, formatTimePeriod, formatValue } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 import { cn } from '@/lib/utils';
 import type { IndicatorWithData } from '@/lib/api/types';
-import { getTrendDirection } from '@/lib/utils/trend';
+import { summariseTrend } from '@/lib/utils/trend';
 
 interface SparklineCardProps {
   indicator: IndicatorWithData;
@@ -26,9 +25,9 @@ function cleanName(name: string) {
 export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recordedPrevalence = false }: SparklineCardProps) {
   const searchParams = useSearchParams();
 
-  const { chartData, value, pctChange, trendDirection, trendGood } = useMemo(() => {
+  const { chartData, value, overallChange, latestChange, trendDirection, trendGood } = useMemo(() => {
     const persons = getPersonsData(indicator);
-    if (!persons) return { chartData: [], value: null, pctChange: null, trendDirection: null, trendGood: false };
+    if (!persons) return { chartData: [], value: null, overallChange: null, latestChange: null, trendDirection: null, trendGood: false };
 
     const ts = persons.TimeSeries
       ?.slice()
@@ -41,33 +40,18 @@ export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recorded
 
     const value = persons.Data.Value;
 
-    // Overall trend: compare first third avg to last third avg (smooths outliers)
-    const validPoints = ts.filter((p) => p.Value !== null).map((p) => p.Value!);
-    let pctChange: number | null = null;
-    let dir: 'up' | 'down' | 'flat' | null = null;
-    let rawChange: number | null = null;
-
-    if (validPoints.length >= 3) {
-      const third = Math.max(1, Math.floor(validPoints.length / 3));
-      const earlyAvg = validPoints.slice(0, third).reduce((s, v) => s + v, 0) / third;
-      const lateAvg = validPoints.slice(-third).reduce((s, v) => s + v, 0) / third;
-      rawChange = lateAvg - earlyAvg;
-      pctChange = earlyAvg !== 0 ? ((lateAvg - earlyAvg) / Math.abs(earlyAvg)) * 100 : 0;
-    } else if (validPoints.length === 2) {
-      rawChange = validPoints[1] - validPoints[0];
-      pctChange = validPoints[0] !== 0
-        ? ((validPoints[1] - validPoints[0]) / Math.abs(validPoints[0])) * 100
-        : 0;
-    }
-
-    if (rawChange !== null) {
-      dir = getTrendDirection(rawChange, validPoints);
-    }
-
-    // For polarity: "good" means improving
+    const trend = summariseTrend(ts.map((p) => p.Value));
+    const dir = trend.overall?.direction ?? null;
     const good = lowerIsBetter ? dir === 'down' : dir === 'up';
 
-    return { chartData, value, pctChange, trendDirection: dir, trendGood: good };
+    return {
+      chartData,
+      value,
+      overallChange: trend.overall?.change ?? null,
+      latestChange: trend.values.length > 2 ? trend.latest?.change ?? null : null,
+      trendDirection: dir,
+      trendGood: good,
+    };
   }, [indicator, lowerIsBetter]);
 
   return (
@@ -80,9 +64,6 @@ export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recorded
           {cleanName(indicator.IndicatorShortName)}
         </p>
         <div className="mt-1 flex items-center gap-1.5 text-xs">
-          {trendDirection === 'up' && <TrendingUp className={cn('h-3.5 w-3.5', recordedPrevalence ? 'text-nhs-blue' : trendGood ? 'text-nhs-green' : 'text-nhs-red')} />}
-          {trendDirection === 'down' && <TrendingDown className={cn('h-3.5 w-3.5', recordedPrevalence ? 'text-nhs-blue' : trendGood ? 'text-nhs-green' : 'text-nhs-red')} />}
-          {trendDirection === 'flat' && <Minus className="h-3.5 w-3.5 text-gray-400" />}
           <span className={cn(
             trendDirection === null || trendDirection === 'flat'
               ? 'text-gray-500'
@@ -101,8 +82,11 @@ export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recorded
                   : trendGood
                     ? 'Improving'
                     : 'Deteriorating'}
-            {pctChange !== null && trendDirection !== 'flat' ? ` · ${pctChange > 0 ? '+' : ''}${pctChange.toFixed(1)}%` : ''}
+            {overallChange !== null && trendDirection !== 'flat' ? ` ${formatDiff(overallChange, indicator.FormatDisplayName)}` : ''}
           </span>
+          {latestChange !== null && (
+            <span className="text-gray-400">· last period {formatDiff(latestChange, indicator.FormatDisplayName)}</span>
+          )}
         </div>
       </div>
 
