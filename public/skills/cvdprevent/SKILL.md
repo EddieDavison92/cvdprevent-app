@@ -12,7 +12,7 @@ Answer questions about aggregate cardiovascular prevention data in England using
 - Explorer: https://cvdprevent-explorer.app
 - Skill: https://cvdprevent-explorer.app/skill.md
 - API field and route reference: https://cvdprevent-explorer.app/api-reference.md
-- Agent API index: https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=2
+- Agent API index: https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=3
 - Agent API route prefix: https://cvdprevent-explorer.app/api/cvdprevent
 - Official API origin: https://api.cvdprevent.nhs.uk
 - Official CVDPREVENT site: https://www.cvdprevent.nhs.uk
@@ -23,7 +23,7 @@ Treat every API path below as relative to the Agent API route prefix. The relay 
 Start by opening this exact URL:
 
 ```text
-https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=2
+https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=3
 ```
 
 Its `_links.timePeriods` value is the exact URL for the first data request. Follow URLs from `_links` rather than assembling them when the fetch tool has a per-URL allowlist. Do not replace, shorten, decode, or re-order a linked URL's query string.
@@ -127,7 +127,7 @@ For a London ICB, `compare with London` normally means its parent Region row (`S
       "EndDate": "Tue, 31 Mar 2026 00:00:00 GMT",
       "IndicatorTypeName": "Standard",
       "_links": {
-        "navigation": "https://cvdprevent-explorer.app/api/cvdprevent/period/33?agentVersion=2"
+        "navigation": "https://cvdprevent-explorer.app/api/cvdprevent/period/33?agentVersion=3"
       }
     }
   ]
@@ -149,14 +149,14 @@ Follow `navigation` to get only the system levels published for that period and 
       {
         "systemLevelID": 7,
         "systemLevelName": "ICB",
-        "href": "https://cvdprevent-explorer.app/api/cvdprevent/area?agentVersion=2&timePeriodID=33&systemLevelID=7"
+        "href": "https://cvdprevent-explorer.app/api/cvdprevent/area?agentVersion=3&timePeriodID=33&systemLevelID=7"
       }
     ],
     "indicatorLists": [
       {
         "systemLevelID": 7,
         "systemLevelName": "ICB",
-        "href": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/list?agentVersion=2&timePeriodID=33&systemLevelID=7"
+        "href": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/list?agentVersion=3&timePeriodID=33&systemLevelID=7"
       }
     ]
   }
@@ -179,9 +179,9 @@ Follow `navigation` to get only the system levels published for that period and 
       "SystemLevelName": "ICB",
       "Parents": [7669],
       "_links": {
-        "details": "https://cvdprevent-explorer.app/api/cvdprevent/area/8038/details?agentVersion=2&timePeriodID=33",
-        "indicatorList": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/list?agentVersion=2&timePeriodID=33&systemLevelID=7&areaID=8038",
-        "allIndicatorsLarge": "https://cvdprevent-explorer.app/api/cvdprevent/indicator?agentVersion=2&timePeriodID=33&areaID=8038"
+        "details": "https://cvdprevent-explorer.app/api/cvdprevent/area/8038/details?agentVersion=3&timePeriodID=33",
+        "indicatorList": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/list?agentVersion=3&timePeriodID=33&systemLevelID=7&areaID=8038",
+        "allIndicatorsLarge": "https://cvdprevent-explorer.app/api/cvdprevent/indicator?agentVersion=3&timePeriodID=33&areaID=8038"
       }
     }
   ]
@@ -204,10 +204,10 @@ Resolve names case-insensitively against `AreaName`. NHS prefixes and organisati
   "AxisCharacter": "%",
   "IndicatorTypeName": "Standard",
   "_links": {
-    "details": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/details?agentVersion=2",
-    "data": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/data?agentVersion=2&timePeriodID=33&areaID=8038",
-    "rawPersonsDataAtSystemLevel": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/rawDataJSON?agentVersion=2&timePeriodID=33&systemLevelID=7&metricCategoryTypeName=Sex&metricCategoryName=Persons",
-    "dataAvailability": "https://cvdprevent-explorer.app/api/cvdprevent/dataAvailability?agentVersion=2&timePeriodID=33&systemLevelID=7&indicatorID=58"
+    "details": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/details?agentVersion=3",
+    "data": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/data?agentVersion=3&timePeriodID=33&areaID=8038",
+    "rawPersonsDataAtSystemLevel": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/rawDataJSON?agentVersion=3&timePeriodID=33&systemLevelID=7&metricCategoryTypeName=Sex&metricCategoryName=Persons",
+    "dataAvailability": "https://cvdprevent-explorer.app/api/cvdprevent/dataAvailability?agentVersion=3&timePeriodID=33&systemLevelID=7&indicatorID=58"
   }
 }
 ```
@@ -243,9 +243,9 @@ Use `IndicatorShortName` in prose, `IndicatorName` when the user asks for the de
       },
       "TimeSeries": [],
       "_links": {
-        "trend": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/timeSeriesByMetric/1493?agentVersion=2&areaID=8038",
-        "geographicPeers": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/siblingData?agentVersion=2&timePeriodID=33&areaID=8038&metricID=1493",
-        "areaBreakdown": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricAreaBreakdown/1493?agentVersion=2&timePeriodID=33&areaID=8038"
+        "trend": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/timeSeriesByMetric/1493?agentVersion=3&areaID=8038",
+        "geographicPeers": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/siblingData?agentVersion=3&timePeriodID=33&areaID=8038&metricID=1493",
+        "areaBreakdown": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricAreaBreakdown/1493?agentVersion=3&timePeriodID=33&areaID=8038"
       }
     }
   ]
@@ -338,12 +338,12 @@ Focused indicator data:
           "ValueNote": null
         },
         "_links": {
-          "trend": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/timeSeriesByMetric/1493?agentVersion=2&areaID=8038",
-          "geographicPeers": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/siblingData?agentVersion=2&timePeriodID=33&areaID=8038&metricID=1493",
-          "immediateChildren": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/childData?agentVersion=2&timePeriodID=33&areaID=8038&metricID=1493",
-          "areaBreakdown": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricAreaBreakdown/1493?agentVersion=2&timePeriodID=33&areaID=8038",
-          "systemLevelComparison": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricSystemLevelComparison/1493?agentVersion=2&timePeriodID=33&areaID=8038",
-          "nationalAndArea": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/nationalVsAreaMetricData/1493?agentVersion=2&timePeriodID=33&areaID=8038"
+          "trend": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/timeSeriesByMetric/1493?agentVersion=3&areaID=8038",
+          "geographicPeers": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/siblingData?agentVersion=3&timePeriodID=33&areaID=8038&metricID=1493",
+          "immediateChildren": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/childData?agentVersion=3&timePeriodID=33&areaID=8038&metricID=1493",
+          "areaBreakdown": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricAreaBreakdown/1493?agentVersion=3&timePeriodID=33&areaID=8038",
+          "systemLevelComparison": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricSystemLevelComparison/1493?agentVersion=3&timePeriodID=33&areaID=8038",
+          "nationalAndArea": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/nationalVsAreaMetricData/1493?agentVersion=3&timePeriodID=33&areaID=8038"
         }
       }
     ]

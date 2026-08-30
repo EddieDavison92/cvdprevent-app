@@ -1,6 +1,6 @@
 # CVDPREVENT API field and route reference
 
-Agent API index: `https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=2`
+Agent API index: `https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=3`
 
 Agent API route prefix: `https://cvdprevent-explorer.app/api/cvdprevent`
 
@@ -13,7 +13,7 @@ All routes use `GET`. The API needs no authentication. The Agent API base is a r
 Start at the versioned API index and follow `_links.timePeriods`. The version parameter prevents assistants from reusing cached pre-link responses. Direct clients can also append routes to the route prefix. For example:
 
 ```text
-https://cvdprevent-explorer.app/api/cvdprevent/area/search?agentVersion=2&partialAreaName=North%20Central%20London&timePeriodID=33
+https://cvdprevent-explorer.app/api/cvdprevent/area/search?agentVersion=3&partialAreaName=North%20Central%20London&timePeriodID=33
 ```
 
 The relay excludes the CSV and XLSX download routes. Use the official API origin for those files.
