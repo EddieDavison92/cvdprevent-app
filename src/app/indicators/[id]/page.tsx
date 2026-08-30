@@ -147,8 +147,8 @@ export default function IndicatorExplorePage() {
 
   const isOutcome = indicator ? isOutcomeIndicator(indicator) : false;
   const periodId = isOutcome ? outPeriod?.TimePeriodID : stdPeriod?.TimePeriodID;
-  const section = indicator ? findSectionForIndicator(indicator.IndicatorCode) : undefined;
-  const lowerIsBetter = indicator ? isLowerBetterIndicator(indicator.IndicatorCode) : false;
+  const section = indicator ? findSectionForIndicator(indicator.IndicatorCode, indicator) : undefined;
+  const lowerIsBetter = indicator ? isLowerBetterIndicator(indicator.IndicatorCode, indicator) : false;
 
   const formatFn = useCallback(
     (v: number) => formatValue(v, indicator?.FormatDisplayName ?? ''),

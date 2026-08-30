@@ -6,6 +6,7 @@
  */
 
 import { NHS_COLORS } from './colors';
+import { classifyIndicator, type IndicatorDescriptor } from './indicator-sections';
 
 export type StageType = 'detection' | 'prevalence' | 'monitoring' | 'treatment' | 'control' | 'outcome';
 
@@ -396,6 +397,37 @@ export function findPathwayByIndicatorCode(code: string): ConditionPathway | und
 export function getPathwayIndicatorCodes(pathway: ConditionPathway): string[] {
   const stageCodes = pathway.stages.flatMap(s => s.indicatorCodes);
   return [...stageCodes, ...pathway.outcomeIndicatorCodes];
+}
+
+/** Adds new indicators to a pathway only when condition, stage and polarity are unambiguous. */
+export function getConditionPathways(indicators: IndicatorDescriptor[]): ConditionPathway[] {
+  const pathways = CONDITION_PATHWAYS.map(pathway => ({
+    ...pathway,
+    stages: pathway.stages.map(stage => ({ ...stage, indicatorCodes: [...stage.indicatorCodes] })),
+    outcomeIndicatorCodes: [...pathway.outcomeIndicatorCodes],
+  }));
+  const knownCodes = new Set(CONDITION_PATHWAYS.flatMap(getPathwayIndicatorCodes));
+
+  for (const indicator of indicators) {
+    if (knownCodes.has(indicator.IndicatorCode)) continue;
+    const pathway = pathways.find(candidate => candidate.id === getConditionFromCode(indicator.IndicatorCode));
+    if (!pathway) continue;
+
+    const classification = classifyIndicator(indicator);
+    if (classification.section.id === 'outcomes') {
+      pathway.outcomeIndicatorCodes.push(indicator.IndicatorCode);
+      continue;
+    }
+    if (classification.section.id === 'other') continue;
+
+    const stageType = classification.section.id as StageType;
+    const candidates = pathway.stages.filter(stage =>
+      stage.type === stageType && stage.higherIsBetter === !classification.lowerIsBetter
+    );
+    if (candidates.length === 1) candidates[0].indicatorCodes.push(indicator.IndicatorCode);
+  }
+
+  return pathways;
 }
 
 // Get condition suffix from indicator code (e.g., "CVDP001HYP" -> "HYP")

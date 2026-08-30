@@ -44,7 +44,7 @@ These rules are presentation logic, not statistical significance tests. The offi
 
 ## Data source and coverage
 
-The app reads the public API at `https://api.cvdprevent.nhs.uk`. It covers England, Regions, ICBs, Sub-ICBs and PCNs. Indicator metadata, organisation lists and results come from the API; pathway and polarity mappings are maintained in this repository.
+The app reads the public API at `https://api.cvdprevent.nhs.uk`. It covers England, Regions, ICBs, Sub-ICBs and PCNs. Indicator metadata, organisation lists and results come from the API. Reviewed pathway and polarity mappings are maintained in this repository. New codes are classified from their metadata so they remain visible until their mappings are reviewed.
 
 Run the data profile to check current indicator and organisation coverage:
 
@@ -52,7 +52,7 @@ Run the data profile to check current indicator and organisation coverage:
 bun run profile:data
 ```
 
-The profile is useful after an API release because new indicator codes may need to be assigned to a dashboard section or clinical pathway.
+The profile checks indicators, organisations and data availability after an API release.
 
 ## Project structure
 
@@ -60,6 +60,7 @@ The profile is useful after an API release because new indicator codes may need 
 src/
 ├── app/
 │   ├── api/feedback/       # Server-side feedback delivery
+│   ├── api/cron/           # Weekly API catalog check
 │   ├── dashboard/          # Organisation overview and detail pages
 │   ├── indicators/         # Indicator catalogue and cross-area explorer
 │   └── benchmarks/         # Cross-area comparison matrix
@@ -120,11 +121,27 @@ The footer form sends feedback through the [Resend email API](https://resend.com
 RESEND_API_KEY=re_your_api_key
 FEEDBACK_FROM_EMAIL=CVDPREVENT feedback <feedback@your-domain.example>
 FEEDBACK_TO_EMAIL=eddie.davison@nhs.net
+CRON_SECRET=replace_with_a_random_secret
+BLOB_READ_WRITE_TOKEN=vercel_blob_rw_your_token
 ```
 
 Only `RESEND_API_KEY` is required. The configured account can use Resend's test sender because the footer address is also the account's permitted test recipient. `FEEDBACK_FROM_EMAIL` can be set to an address on a verified domain later. `FEEDBACK_TO_EMAIL` defaults to the address shown in the footer. Add the server-side key in Vercel before deploying the form.
 
 The endpoint validates input, checks same-origin browser requests and includes a hidden spam field. It sends the feedback type, message, optional reply address, current page and submission time.
+
+## Data release monitor
+
+Vercel calls `/api/cron/catalog-monitor` at 07:00 UTC each Monday. This cadence suits the infrequent CVDPREVENT release schedule without creating daily noise.
+
+The check compares the latest standard and outcome periods and their indicator codes with a private Vercel Blob checkpoint. It emails the feedback recipient only when a release, indicator addition or indicator removal is found. New indicators receive a suggested dashboard section, polarity and pathway in the message. Unclear indicators appear in the app under **Needs review**.
+
+To enable it in Vercel:
+
+1. Connect a private Blob store to the project. Vercel supplies `BLOB_READ_WRITE_TOKEN`.
+2. Add `CRON_SECRET` as a random value of at least 16 characters.
+3. Keep `RESEND_API_KEY` and the feedback recipient settings configured.
+
+The schedule is defined in `vercel.json` and runs only on production deployments.
 
 ## Limitations
 
@@ -132,7 +149,7 @@ The endpoint validates input, checks same-origin browser requests and includes a
 - Practice-level data is not exposed by the public API; PCN is the lowest supported level.
 - Deprivation breakdowns are not available at PCN level.
 - Peer data for PCNs may be absent.
-- Pathway and polarity mappings must be reviewed when the API adds indicators.
+- Inferred mappings should be reviewed after a new indicator alert.
 - Some dense comparison views are best used on a desktop display.
 - The app depends on the availability and response shape of the public API.
 

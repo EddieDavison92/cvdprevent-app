@@ -89,11 +89,11 @@ export function Header() {
             </Link>
             <Link
               href="/skills"
-              aria-label="AI skill"
+              aria-label="Ask AI"
               className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               <Bot className="h-4 w-4" />
-              <span className="hidden xl:inline">AI skill</span>
+              <span className="hidden xl:inline">Ask AI</span>
             </Link>
           </nav>
         </div>

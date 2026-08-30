@@ -34,7 +34,7 @@ import { useAreas } from '@/lib/hooks/use-areas';
 import { useIndicators } from '@/lib/hooks/use-indicator-data';
 import { getIndicatorData, getPersonsData } from '@/lib/api';
 import { SYSTEM_LEVELS, type Indicator } from '@/lib/api/types';
-import { DASHBOARD_SECTIONS, findSectionForIndicator, isLowerBetterIndicator, type DashboardSection } from '@/lib/constants/indicator-sections';
+import { findSectionForIndicator, getDashboardSections, isLowerBetterIndicator, type DashboardSection } from '@/lib/constants/indicator-sections';
 import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
 import { formatValue, formatTimePeriod } from '@/lib/utils/format';
@@ -43,7 +43,7 @@ import { cn } from '@/lib/utils';
 import { downloadCSV } from '@/lib/utils/csv';
 import {
   ArrowUpDown, ArrowUp, ArrowDown, BarChart3, Info, Download, Calendar,
-  Activity, SearchX, Pill, Target, ClipboardCheck, HeartPulse,
+  Activity, SearchX, Pill, Target, ClipboardCheck, HeartPulse, CircleHelp,
 } from 'lucide-react';
 import type { SectionType } from '@/lib/constants/indicator-sections';
 
@@ -65,6 +65,7 @@ const SECTION_ICONS: Record<SectionType, React.ComponentType<{ className?: strin
   control: Target,
   monitoring: ClipboardCheck,
   outcomes: HeartPulse,
+  other: CircleHelp,
 };
 
 const LEVEL_OPTIONS = [
@@ -174,6 +175,11 @@ export default function BenchmarksPage() {
   );
 
   const isDataError = isPeriodError || isIndError;
+  const allIndicators = useMemo(
+    () => [...(indicatorList ?? []), ...(outcomeIndicatorList ?? [])],
+    [indicatorList, outcomeIndicatorList],
+  );
+  const dashboardSections = useMemo(() => getDashboardSections(allIndicators), [allIndicators]);
 
   // Fetch parent-level areas for scoping
   const { data: regions } = useAreas(standardPeriod?.TimePeriodID, SYSTEM_LEVELS.REGION);
@@ -229,9 +235,8 @@ export default function BenchmarksPage() {
   const selectedIndicators = useMemo(() => {
     if (!indicatorList) return [];
 
-    const allIndicators = [...indicatorList, ...(outcomeIndicatorList ?? [])];
     const codes = sectionFilter
-      ? DASHBOARD_SECTIONS.find(s => s.id === sectionFilter)?.indicatorCodes ?? []
+      ? dashboardSections.find(s => s.id === sectionFilter)?.indicatorCodes ?? []
       : DEFAULT_INDICATOR_CODES;
 
     return codes
@@ -240,11 +245,11 @@ export default function BenchmarksPage() {
         if (!ind) return null;
         const isOutcome = code.includes('MORT') || code.includes('ADMN');
         const timePeriodId = isOutcome ? outcomePeriod?.TimePeriodID : standardPeriod?.TimePeriodID;
-        const section = findSectionForIndicator(code);
+        const section = findSectionForIndicator(code, ind);
         return { ...ind, timePeriodId, section };
       })
       .filter((x): x is Indicator & { timePeriodId: number | undefined; section: DashboardSection | undefined } => x !== null && x.timePeriodId !== undefined);
-  }, [indicatorList, outcomeIndicatorList, standardPeriod, outcomePeriod, sectionFilter]);
+  }, [indicatorList, allIndicators, dashboardSections, standardPeriod, outcomePeriod, sectionFilter]);
 
   // Fetch rawDataJSON for each selected indicator + England baseline
   const dataQueries = useQueries({
@@ -345,7 +350,7 @@ export default function BenchmarksPage() {
     }
 
     for (const ind of availableIndicators) {
-      const lowerIsBetter = isLowerBetterIndicator(ind.IndicatorCode);
+      const lowerIsBetter = isLowerBetterIndicator(ind.IndicatorCode, ind);
       const values = filteredAreas
         .map(a => ({ code: a.AreaCode, value: matrix.get(a.AreaCode)?.get(ind.IndicatorID) ?? null }))
         .filter(v => v.value !== null) as { code: string; value: number }[];
@@ -525,7 +530,7 @@ export default function BenchmarksPage() {
               <BarChart3 className="h-3 w-3" />
               Key indicators
             </button>
-            {DASHBOARD_SECTIONS.map(s => {
+            {dashboardSections.map(s => {
               const Icon = SECTION_ICONS[s.id];
               const active = sectionFilter === s.id;
               return (
@@ -579,7 +584,7 @@ export default function BenchmarksPage() {
                       <code className="shrink-0 text-gray-500 font-mono">{ind.IndicatorCode}</code>
                       <span className="text-gray-600 truncate" title={ind.IndicatorShortName}>
                         {cleanIndicatorName(ind.IndicatorShortName)}
-                        {isLowerBetterIndicator(ind.IndicatorCode) ? ' ↓' : ''}
+                        {isLowerBetterIndicator(ind.IndicatorCode, ind) ? ' ↓' : ''}
                       </span>
                     </Link>
                   );
@@ -656,7 +661,7 @@ export default function BenchmarksPage() {
                             </TooltipTrigger>
                             <TooltipContent>
                               <p className="text-xs font-medium">{cleanIndicatorName(ind.IndicatorShortName)}</p>
-                              <p className="text-xs text-gray-400">{isLowerBetterIndicator(ind.IndicatorCode) ? 'Lower is better' : 'Higher is better'}</p>
+                              <p className="text-xs text-gray-400">{isLowerBetterIndicator(ind.IndicatorCode, ind) ? 'Lower is better' : 'Higher is better'}</p>
                               <Link href={indicatorHref(ind.IndicatorID)} onClick={e => e.stopPropagation()} className="text-xs text-white hover:underline mt-1 block">
                                 View indicator details ↗
                               </Link>
@@ -740,7 +745,7 @@ export default function BenchmarksPage() {
                             {availableIndicators.map((ind, indIdx) => {
                               const val = matrix.get(area.AreaCode)?.get(ind.IndicatorID) ?? null;
                               const engVal = baselineValues.get(ind.IndicatorID) ?? null;
-                              const lowerIsBetter = isLowerBetterIndicator(ind.IndicatorCode);
+                              const lowerIsBetter = isLowerBetterIndicator(ind.IndicatorCode, ind);
                               const style = getCellStyle(val, engVal, lowerIsBetter);
                               const isLast = indIdx === availableIndicators.length - 1;
 

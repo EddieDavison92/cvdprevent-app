@@ -5,8 +5,7 @@ import type { Indicator, IndicatorRawData } from '@/lib/api/types';
 import { formatValue, formatNumber, formatDiff } from '@/lib/utils/format';
 import { TrendingUp, TrendingDown, Minus, Users, Hash, BarChart3, Activity } from 'lucide-react';
 import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
-
-const TREND_TOLERANCE = 0.1;
+import { getTrendDirection } from '@/lib/utils/trend';
 
 interface HeroSectionProps {
   indicator: Indicator;
@@ -19,6 +18,7 @@ interface HeroSectionProps {
   rank?: { position: number; total: number; levelName: string } | null;
   timePeriodLabel?: string;
   lowerIsBetter: boolean;
+  trendValues?: Array<number | null>;
 }
 
 function getOrdinal(n: number): string {
@@ -38,6 +38,7 @@ export function HeroSection({
   rank,
   timePeriodLabel,
   lowerIsBetter,
+  trendValues = [],
 }: HeroSectionProps) {
   const fmt = (v: number) => formatValue(v, indicator.FormatDisplayName);
 
@@ -65,7 +66,9 @@ export function HeroSection({
     ? (gapIsGood ? 'bg-green-50' : 'bg-red-50')
     : 'bg-gray-50';
 
-  const trendDirection = trend !== null ? (trend > TREND_TOLERANCE ? 'up' : trend < -TREND_TOLERANCE ? 'down' : 'flat') : null;
+  const trendDirection = trend !== null
+    ? getTrendDirection(trend, trendValues)
+    : null;
   const TrendIcon = trendDirection === 'up' ? TrendingUp : trendDirection === 'down' ? TrendingDown : Minus;
   const trendIsGood = trendDirection === (lowerIsBetter ? 'down' : 'up');
   const trendIsBad = trendDirection === (lowerIsBetter ? 'up' : 'down');

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   DASHBOARD_SECTIONS,
+  classifyIndicator,
   findSectionForIndicator,
+  getDashboardSections,
   isLowerBetterIndicator,
 } from '@/lib/constants/indicator-sections';
-import { CONDITION_PATHWAYS, findPathwayByIndicatorCode } from '@/lib/constants/pathways';
+import { CONDITION_PATHWAYS, findPathwayByIndicatorCode, getConditionPathways } from '@/lib/constants/pathways';
 
 const NEW_INDICATOR_CODES = [
   'CVDP006HYP',
@@ -40,5 +42,35 @@ describe('indicator classification', () => {
         }
       }
     }
+  });
+
+  it('infers treatment and outcome metadata for unseen codes', () => {
+    const treatment = {
+      IndicatorCode: 'CVDP099HF',
+      IndicatorName: 'Patients with heart failure treated with a new therapy',
+      IndicatorShortName: 'HF: Treated with new therapy',
+    };
+    const outcome = {
+      IndicatorCode: 'CVDP099MORT',
+      IndicatorName: 'Cardiovascular mortality',
+      IndicatorShortName: 'CVD: Cardiovascular mortality',
+    };
+
+    expect(classifyIndicator(treatment)).toMatchObject({ source: 'inferred', lowerIsBetter: false, section: { id: 'treatment' } });
+    expect(classifyIndicator(outcome)).toMatchObject({ source: 'inferred', lowerIsBetter: true, section: { id: 'outcomes' } });
+    expect(getDashboardSections([treatment]).find(section => section.id === 'treatment')?.indicatorCodes).toContain('CVDP099HF');
+    expect(getConditionPathways([treatment]).find(pathway => pathway.id === 'HF')?.stages
+      .find(stage => stage.id === 'treatment')?.indicatorCodes).toContain('CVDP099HF');
+  });
+
+  it('keeps an unclear new indicator visible for review', () => {
+    const indicator = {
+      IndicatorCode: 'CVDP099NEW',
+      IndicatorName: 'New experimental measure',
+      IndicatorShortName: 'New experimental measure',
+    };
+
+    expect(classifyIndicator(indicator)).toMatchObject({ source: 'unclassified', section: { id: 'other' } });
+    expect(getDashboardSections([indicator]).at(-1)).toMatchObject({ id: 'other', indicatorCodes: ['CVDP099NEW'] });
   });
 });

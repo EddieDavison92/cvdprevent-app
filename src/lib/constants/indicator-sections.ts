@@ -5,8 +5,9 @@
  */
 
 import { NHS_COLORS } from './colors';
+import type { Indicator } from '@/lib/api/types';
 
-export type SectionType = 'prevalence' | 'detection' | 'treatment' | 'control' | 'monitoring' | 'outcomes';
+export type SectionType = 'prevalence' | 'detection' | 'treatment' | 'control' | 'monitoring' | 'outcomes' | 'other';
 
 export interface DashboardSection {
   id: SectionType;
@@ -133,24 +134,118 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
   },
 ];
 
-// Helper to find section for an indicator
-export function findSectionForIndicator(code: string): DashboardSection | undefined {
-  return DASHBOARD_SECTIONS.find(section => 
-    section.indicatorCodes.includes(code)
-  );
+export const REVIEW_SECTION: DashboardSection = {
+  id: 'other',
+  name: 'Needs review',
+  description: 'New indicators awaiting a confirmed pathway stage',
+  color: NHS_COLORS.midGrey,
+  lowerIsBetter: false,
+  indicatorCodes: [],
+};
+
+export type IndicatorDescriptor = Pick<Indicator, 'IndicatorCode' | 'IndicatorName' | 'IndicatorShortName'>;
+
+export interface IndicatorClassification {
+  section: DashboardSection;
+  lowerIsBetter: boolean;
+  source: 'mapped' | 'inferred' | 'unclassified';
+  reason: string;
 }
+
+const SECTION_BY_CODE = new Map(
+  DASHBOARD_SECTIONS.flatMap(section => section.indicatorCodes.map(code => [code, section] as const)),
+);
 
 const LOWER_IS_BETTER_OVERRIDES = new Set([
   'CVDP006HYP', // Potential antihypertensive overtreatment
 ]);
 
+/** Classifies API indicators not yet listed in the maintained mapping. */
+export function classifyIndicator(indicator: IndicatorDescriptor): IndicatorClassification {
+  const mappedSection = SECTION_BY_CODE.get(indicator.IndicatorCode);
+  if (mappedSection) {
+    return {
+      section: mappedSection,
+      lowerIsBetter: LOWER_IS_BETTER_OVERRIDES.has(indicator.IndicatorCode) || mappedSection.lowerIsBetter,
+      source: 'mapped',
+      reason: 'Maintained indicator mapping',
+    };
+  }
+
+  const text = `${indicator.IndicatorShortName} ${indicator.IndicatorName}`.toLowerCase();
+  const inferred = (sectionId: Exclude<SectionType, 'other'>, lowerIsBetter: boolean, reason: string): IndicatorClassification => ({
+    section: DASHBOARD_SECTIONS.find(section => section.id === sectionId)!,
+    lowerIsBetter,
+    source: 'inferred',
+    reason,
+  });
+
+  if (/mortality|admission|\bmort\b|\badmn\b/.test(`${text} ${indicator.IndicatorCode.toLowerCase()}`)) {
+    return inferred('outcomes', true, 'Mortality or admission wording');
+  }
+  if (/prevalence/.test(text)) {
+    return inferred('prevalence', false, 'Prevalence wording');
+  }
+  if (/undiagnosed|uncoded|no recorded|no diagnosis|no investigation/.test(text)) {
+    return inferred('detection', true, 'Detection-gap wording');
+  }
+  if (/overtreatment|over-treatment/.test(text)) {
+    return inferred('treatment', true, 'Potential overtreatment wording');
+  }
+  if (/threshold|at target|controlled|\bcontrol\b/.test(text)) {
+    return inferred('control', false, 'Therapeutic target wording');
+  }
+  if (/monitoring|monitored|record of|recorded .*(score|status)|risk score|assessment/.test(text)) {
+    return inferred('monitoring', false, 'Monitoring or recording wording');
+  }
+  if (/treated|treatment|therapy|anticoagul|sglt2|statin|\bllt\b|support offered|four pillar/.test(text)) {
+    return inferred('treatment', false, 'Treatment wording');
+  }
+
+  return {
+    section: REVIEW_SECTION,
+    lowerIsBetter: false,
+    source: 'unclassified',
+    reason: 'No classification rule matched',
+  };
+}
+
+/** Returns sections with newly inferred indicators appended. */
+export function getDashboardSections(indicators: IndicatorDescriptor[]): DashboardSection[] {
+  const sections = DASHBOARD_SECTIONS.map(section => ({ ...section, indicatorCodes: [...section.indicatorCodes] }));
+  const sectionMap = new Map(sections.map(section => [section.id, section]));
+  const reviewCodes: string[] = [];
+
+  for (const indicator of indicators) {
+    if (SECTION_BY_CODE.has(indicator.IndicatorCode)) continue;
+    const classification = classifyIndicator(indicator);
+    if (classification.section.id === 'other') {
+      reviewCodes.push(indicator.IndicatorCode);
+      continue;
+    }
+    const section = sectionMap.get(classification.section.id);
+    if (section && !section.indicatorCodes.includes(indicator.IndicatorCode)) {
+      section.indicatorCodes.push(indicator.IndicatorCode);
+    }
+  }
+
+  if (reviewCodes.length > 0) {
+    sections.push({ ...REVIEW_SECTION, indicatorCodes: reviewCodes });
+  }
+  return sections;
+}
+
+export function findSectionForIndicator(code: string, indicator?: IndicatorDescriptor): DashboardSection | undefined {
+  return SECTION_BY_CODE.get(code) ?? (indicator ? classifyIndicator(indicator).section : undefined);
+}
+
 /** Returns the comparison polarity for an indicator. */
-export function isLowerBetterIndicator(code: string): boolean {
+export function isLowerBetterIndicator(code: string, indicator?: IndicatorDescriptor): boolean {
   if (LOWER_IS_BETTER_OVERRIDES.has(code)) return true;
-  return findSectionForIndicator(code)?.lowerIsBetter ?? false;
+  return indicator ? classifyIndicator(indicator).lowerIsBetter : findSectionForIndicator(code)?.lowerIsBetter ?? false;
 }
 
 // Helper to get section by ID
 export function getSectionById(id: SectionType): DashboardSection | undefined {
-  return DASHBOARD_SECTIONS.find(section => section.id === id);
+  return id === 'other' ? REVIEW_SECTION : DASHBOARD_SECTIONS.find(section => section.id === id);
 }

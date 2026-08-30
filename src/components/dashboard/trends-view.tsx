@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { SparklineCard } from './sparkline-card';
-import { DASHBOARD_SECTIONS, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
+import { getDashboardSections, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
 import type { IndicatorWithData } from '@/lib/api/types';
 
 interface TrendsViewProps {
@@ -11,6 +11,7 @@ interface TrendsViewProps {
 }
 
 export function TrendsView({ indicators, isEngland }: TrendsViewProps) {
+  const sections = useMemo(() => getDashboardSections(indicators), [indicators]);
   const indicatorMap = useMemo(() => {
     const map = new Map<string, IndicatorWithData>();
     for (const ind of indicators) {
@@ -32,7 +33,7 @@ export function TrendsView({ indicators, isEngland }: TrendsViewProps) {
       </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-2">
-        {DASHBOARD_SECTIONS.map((section) => {
+        {sections.map((section) => {
           const sectionIndicators = section.indicatorCodes
             .map((code) => indicatorMap.get(code))
             .filter((ind): ind is IndicatorWithData => ind !== undefined);
@@ -55,7 +56,7 @@ export function TrendsView({ indicators, isEngland }: TrendsViewProps) {
                     key={ind.IndicatorID}
                     indicator={ind}
                     sectionColor={section.color}
-                    lowerIsBetter={isLowerBetterIndicator(ind.IndicatorCode)}
+                    lowerIsBetter={isLowerBetterIndicator(ind.IndicatorCode, ind)}
                     recordedPrevalence={section.id === 'prevalence'}
                   />
                 ))}

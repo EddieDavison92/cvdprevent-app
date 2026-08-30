@@ -79,7 +79,8 @@ export function formatIndicatorValue(value: number | null, formatDisplayName: st
  */
 export function formatDiff(diff: number, formatDisplayName: string): string {
   const suffix = formatDisplayName.includes('%') ? 'pp' : '';
-  return `${diff > 0 ? '+' : ''}${diff.toFixed(1)}${suffix}`;
+  const decimals = diff !== 0 && Math.abs(diff) < 0.1 ? 2 : 1;
+  return `${diff > 0 ? '+' : ''}${diff.toFixed(decimals)}${suffix}`;
 }
 
 /**
@@ -87,7 +88,8 @@ export function formatDiff(diff: number, formatDisplayName: string): string {
  */
 export function formatAbsDiff(diff: number, formatDisplayName: string): string {
   const suffix = formatDisplayName.includes('%') ? 'pp' : '';
-  return `${Math.abs(diff).toFixed(1)}${suffix}`;
+  const decimals = diff !== 0 && Math.abs(diff) < 0.1 ? 2 : 1;
+  return `${Math.abs(diff).toFixed(decimals)}${suffix}`;
 }
 
 // Extract condition code from indicator short name (e.g., "CKD: ..." -> "CKD")

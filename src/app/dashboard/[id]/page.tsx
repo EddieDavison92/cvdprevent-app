@@ -174,9 +174,9 @@ export default function IndicatorDetailPage() {
   }, [baselineIndicators, selectedIndicatorId]);
 
   const indicatorSection = indicator
-    ? findSectionForIndicator(indicator.IndicatorCode)
+    ? findSectionForIndicator(indicator.IndicatorCode, indicator)
     : undefined;
-  const lowerIsBetter = indicator ? isLowerBetterIndicator(indicator.IndicatorCode) : false;
+  const lowerIsBetter = indicator ? isLowerBetterIndicator(indicator.IndicatorCode, indicator) : false;
 
 
   // Get the metricID for Persons (needed for siblingData)
@@ -619,6 +619,7 @@ export default function IndicatorDetailPage() {
               rank={rank}
               timePeriodLabel={timePeriodLabel}
               lowerIsBetter={lowerIsBetter}
+              trendValues={areaTrendData.map(point => point.value)}
             />
 
             {/* Trend Section - data is already loaded from the main query! */}

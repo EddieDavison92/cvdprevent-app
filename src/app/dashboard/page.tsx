@@ -24,10 +24,11 @@ import { useOrganisation } from '@/providers/organisation-context';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAreaIndicators, getPersonsData } from '@/lib/hooks/use-area-indicators';
 import { extractCondition } from '@/lib/utils/format';
-import { DASHBOARD_SECTIONS, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
+import { getDashboardSections, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
 import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
 import type { IndicatorCategoryData, IndicatorWithData } from '@/lib/api/types';
 import { ApiUnavailable } from '@/components/api-status-banner';
+import { getTrendDirection } from '@/lib/utils/trend';
 
 // Convert new data format to the format expected by IndicatorSummaryGrid
 function convertToRawDataFormat(category: IndicatorCategoryData, indicator: IndicatorWithData) {
@@ -127,6 +128,7 @@ export default function DashboardPage() {
     return [...(standardIndicators ?? []), ...(outcomeIndicators ?? [])];
   }, [standardIndicators, outcomeIndicators]);
   const isLoadingData = isLoadingStandard || isLoadingOutcome;
+  const dashboardSections = useMemo(() => getDashboardSections(areaIndicators ?? []), [areaIndicators]);
 
   // Fetch baseline data for comparison (if not viewing same org as baseline)
   const shouldFetchBaseline = !isEngland && organisation?.AreaID !== baseline.AreaID;
@@ -213,9 +215,17 @@ export default function DashboardPage() {
         const prevData = prevMap.get(indicator.IndicatorID);
         if (prevData?.Value !== null && prevData?.Value !== undefined) {
           const change = orgValue - prevData.Value;
-          if (Math.abs(change) < 0.1) stable++;
-          else if (change > 0) improving++;
-          else declining++;
+          const direction = getTrendDirection(
+            change,
+            timeSeries.map(point => point.Value),
+          );
+          if (direction === 'flat') stable++;
+          else {
+            const lowerIsBetter = isLowerBetterIndicator(indicator.IndicatorCode, indicator);
+            const isImproving = lowerIsBetter ? direction === 'down' : direction === 'up';
+            if (isImproving) improving++;
+            else declining++;
+          }
         }
       }
 
@@ -233,7 +243,7 @@ export default function DashboardPage() {
 
       if (orgValue !== null && baselineValue !== null && !isEngland) {
         const diff = orgValue - baselineValue;
-        const effectiveDiff = isLowerBetterIndicator(indicator.IndicatorCode) ? -diff : diff;
+        const effectiveDiff = isLowerBetterIndicator(indicator.IndicatorCode, indicator) ? -diff : diff;
         const isSignificant = Math.abs(diff) > COMPARISON_TOLERANCE;
         if (isSignificant && effectiveDiff > 0) favourable++;
         else if (isSignificant && effectiveDiff < 0) unfavourable++;
@@ -339,7 +349,7 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="grid items-stretch gap-4 lg:grid-cols-2">
-                      {DASHBOARD_SECTIONS.map(section => (
+                      {dashboardSections.map(section => (
                         <SectionView
                           key={section.id}
                           section={section}

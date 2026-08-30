@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
+import { sendEmail } from '@/lib/email/resend';
 
 const FEEDBACK_TYPES = new Set(['Idea', 'Problem', 'Data question', 'Other']);
-const DEFAULT_RECIPIENT = 'eddie.davison@nhs.net';
-const DEFAULT_SENDER = 'CVDPREVENT feedback <onboarding@resend.dev>';
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type FeedbackBody = {
@@ -63,11 +62,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid page URL' }, { status: 400 });
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.FEEDBACK_FROM_EMAIL ?? DEFAULT_SENDER;
-  const to = process.env.FEEDBACK_TO_EMAIL ?? DEFAULT_RECIPIENT;
-
-  if (!apiKey) {
+  if (!process.env.RESEND_API_KEY) {
     console.error('Feedback email is not configured');
     return NextResponse.json({ error: 'Feedback is unavailable' }, { status: 503 });
   }
@@ -84,26 +79,11 @@ export async function POST(request: Request) {
   ].join('\n');
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from,
-        to: [to],
-        subject: `[CVDPREVENT feedback] ${type}`,
-        text: emailText,
-        ...(email ? { reply_to: email } : {}),
-      }),
-      signal: AbortSignal.timeout(10_000),
+    await sendEmail({
+      subject: `[CVDPREVENT feedback] ${type}`,
+      text: emailText,
+      replyTo: email || undefined,
     });
-
-    if (!response.ok) {
-      console.error('Feedback email failed', response.status, await response.text());
-      return NextResponse.json({ error: 'Feedback could not be sent' }, { status: 502 });
-    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {

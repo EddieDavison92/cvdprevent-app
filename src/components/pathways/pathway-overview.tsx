@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { AlertTriangle, ArrowRight } from 'lucide-react';
-import { CONDITION_PATHWAYS, type ConditionPathway, type PathwayStage } from '@/lib/constants/pathways';
+import { getConditionPathways, type ConditionPathway, type PathwayStage } from '@/lib/constants/pathways';
 import type { IndicatorWithData } from '@/lib/api/types';
 import { formatValue, formatAbsDiff } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
@@ -216,6 +216,7 @@ export function PathwayOverview({
     () => new Map(baselineIndicators.map((indicator) => [indicator.IndicatorCode, indicator])),
     [baselineIndicators]
   );
+  const pathways = useMemo(() => getConditionPathways(indicators), [indicators]);
 
   return (
     <div className="space-y-4">
@@ -227,7 +228,7 @@ export function PathwayOverview({
         <p className="text-xs text-gray-500">Compared with {baselineName}</p>
       </div>
 
-      {CONDITION_PATHWAYS.map((pathway) => (
+      {pathways.map((pathway) => (
         <PathwayCard
           key={pathway.id}
           pathway={pathway}

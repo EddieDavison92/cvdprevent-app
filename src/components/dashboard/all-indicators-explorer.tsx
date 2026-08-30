@@ -8,10 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { buildUrl } from '@/lib/utils/url';
 import { cn } from '@/lib/utils';
-import { DASHBOARD_SECTIONS, findSectionForIndicator, isLowerBetterIndicator, type DashboardSection } from '@/lib/constants/indicator-sections';
+import { findSectionForIndicator, getDashboardSections, isLowerBetterIndicator, type DashboardSection } from '@/lib/constants/indicator-sections';
 import { formatValue, formatDiff, formatAbsDiff } from '@/lib/utils/format';
 import type { Indicator, IndicatorRawData } from '@/lib/api/types';
 import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
+import { getTrendDirection } from '@/lib/utils/trend';
 
 type SortMode = 'gap' | 'trend' | 'name';
 
@@ -25,6 +26,7 @@ interface IndicatorPerformance extends Indicator {
   lowerIsBetter: boolean;
   isBelowBaseline: boolean;
   isAboveBaseline: boolean;
+  trendValues: Array<number | null>;
 }
 
 interface AllIndicatorsExplorerProps {
@@ -51,9 +53,11 @@ function getComparisonState(indicator: IndicatorPerformance, isEngland: boolean)
 }
 
 function getTrendState(indicator: IndicatorPerformance) {
-  if (indicator.trend === null || Math.abs(indicator.trend) < 0.1) return 'stable' as const;
-  if (indicator.lowerIsBetter) return indicator.trend < 0 ? 'improving' as const : 'declining' as const;
-  return indicator.trend > 0 ? 'improving' as const : 'declining' as const;
+  if (indicator.trend === null) return 'stable' as const;
+  const direction = getTrendDirection(indicator.trend, indicator.trendValues);
+  if (direction === 'flat') return 'stable' as const;
+  if (indicator.lowerIsBetter) return direction === 'down' ? 'improving' as const : 'declining' as const;
+  return direction === 'up' ? 'improving' as const : 'declining' as const;
 }
 
 function sortIndicators(items: IndicatorPerformance[], sortMode: SortMode, isEngland: boolean) {
@@ -104,6 +108,7 @@ export function AllIndicatorsExplorer({
 }: AllIndicatorsExplorerProps) {
   const searchParams = useSearchParams();
   const [sortMode, setSortMode] = useState<SortMode>(isEngland ? 'trend' : 'gap');
+  const dashboardSections = useMemo(() => getDashboardSections(indicators ?? []), [indicators]);
 
   const performanceItems = useMemo(() => (indicators ?? []).map((indicator) => {
     const data = dataByIndicator.get(indicator.IndicatorID);
@@ -111,9 +116,12 @@ export function AllIndicatorsExplorer({
     const baselineData = baselineDataByIndicator?.get(indicator.IndicatorID);
     const gap = !isEngland && data?.Value != null && baselineData?.Value != null ? data.Value - baselineData.Value : null;
     const trend = data?.Value != null && previousData?.Value != null ? data.Value - previousData.Value : null;
-    const section = findSectionForIndicator(indicator.IndicatorCode) ?? null;
-    const lowerIsBetter = isLowerBetterIndicator(indicator.IndicatorCode);
+    const section = findSectionForIndicator(indicator.IndicatorCode, indicator) ?? null;
+    const lowerIsBetter = isLowerBetterIndicator(indicator.IndicatorCode, indicator);
     const effectiveGap = gap === null ? null : lowerIsBetter ? -gap : gap;
+    const trendValues = data?.Value != null
+      ? [previousData?.Value ?? null, data.Value]
+      : [];
 
     return {
       ...indicator,
@@ -126,6 +134,7 @@ export function AllIndicatorsExplorer({
       lowerIsBetter,
       isBelowBaseline: effectiveGap !== null && effectiveGap < -COMPARISON_TOLERANCE,
       isAboveBaseline: effectiveGap !== null && effectiveGap > COMPARISON_TOLERANCE,
+      trendValues,
     };
   }), [indicators, dataByIndicator, previousDataByIndicator, baselineDataByIndicator, isEngland]);
 
@@ -151,12 +160,12 @@ export function AllIndicatorsExplorer({
       .map((group) => ({ ...group, items: sortIndicators(group.items, sortMode, isEngland) }))
       .sort((a, b) => {
         if (a.section && b.section) {
-          return DASHBOARD_SECTIONS.findIndex((section) => section.id === a.section!.id)
-            - DASHBOARD_SECTIONS.findIndex((section) => section.id === b.section!.id);
+          return dashboardSections.findIndex((section) => section.id === a.section!.id)
+            - dashboardSections.findIndex((section) => section.id === b.section!.id);
         }
         return a.section ? -1 : b.section ? 1 : 0;
       });
-  }, [performanceItems, sortMode, isEngland]);
+  }, [performanceItems, sortMode, isEngland, dashboardSections]);
 
   if (isLoadingIndicators) return <ExplorerSkeleton />;
 

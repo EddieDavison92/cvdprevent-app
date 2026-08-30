@@ -113,13 +113,12 @@ describe('GET /indicator/list', () => {
       .filter((period) => period.IndicatorTypeName === type)
       .sort((a, b) => b.TimePeriodID - a.TimePeriodID)[0]);
 
-    const indicatorLists = await Promise.all(latestPeriods.map((period) => fetchJSON<{ indicatorList: { IndicatorCode: string }[] }>(
+    const indicatorLists = await Promise.all(latestPeriods.map((period) => fetchJSON<{ indicatorList: { IndicatorCode: string; IndicatorName: string; IndicatorShortName: string }[] }>(
       `/indicator/list?timePeriodID=${period.TimePeriodID}&systemLevelID=7`,
     )));
     const unclassified = indicatorLists
       .flatMap((response) => response.indicatorList)
-      .map((indicator) => indicator.IndicatorCode)
-      .filter((code) => !findSectionForIndicator(code));
+      .filter((indicator) => !findSectionForIndicator(indicator.IndicatorCode, indicator));
 
     expect(unclassified).toEqual([]);
   });

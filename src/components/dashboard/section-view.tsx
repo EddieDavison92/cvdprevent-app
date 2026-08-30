@@ -11,6 +11,7 @@ import { buildUrl } from '@/lib/utils/url';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
+import { getTrendDirection } from '@/lib/utils/trend';
 
 interface SectionViewProps {
   section: DashboardSection;
@@ -30,10 +31,8 @@ interface IndicatorRow {
   gap: number | null;
   trend: number | null;
   lowerIsBetter: boolean;
+  trendValues: Array<number | null>;
 }
-
-/** Change (pp) within which a trend counts as stable. */
-const FLAT_THRESHOLD = 0.1;
 
 function getPersonsData(indicator: IndicatorWithData) {
   return indicator.Categories.find(
@@ -93,7 +92,8 @@ export function SectionView({
           previousValue,
           gap,
           trend,
-          lowerIsBetter: isLowerBetterIndicator(code),
+          lowerIsBetter: isLowerBetterIndicator(code, indicator),
+          trendValues: persons?.TimeSeries?.map(point => point.Value) ?? [],
         };
       })
       .filter((row): row is IndicatorRow => row !== null && row.value !== null);
@@ -134,8 +134,14 @@ export function SectionView({
     if (isEngland) {
       const withTrends = sectionIndicators.filter(r => r.trend !== null);
       if (withTrends.length === 0) return null;
-      const improving = withTrends.filter(r => r.lowerIsBetter ? r.trend! < -FLAT_THRESHOLD : r.trend! > FLAT_THRESHOLD).length;
-      const declining = withTrends.filter(r => r.lowerIsBetter ? r.trend! > FLAT_THRESHOLD : r.trend! < -FLAT_THRESHOLD).length;
+      const improving = withTrends.filter(row => {
+        const direction = getTrendDirection(row.trend!, row.trendValues);
+        return row.lowerIsBetter ? direction === 'down' : direction === 'up';
+      }).length;
+      const declining = withTrends.filter(row => {
+        const direction = getTrendDirection(row.trend!, row.trendValues);
+        return row.lowerIsBetter ? direction === 'up' : direction === 'down';
+      }).length;
       return { good: improving, bad: declining, total: withTrends.length, goodLabel: 'improving', badLabel: 'declining' };
     }
 
@@ -197,7 +203,7 @@ export function SectionView({
 
       <ul className="divide-y divide-gray-100">
         {filteredIndicators.map((row) => {
-          const { indicator, value, baselineValue, gap, trend, lowerIsBetter } = row;
+          const { indicator, value, baselineValue, gap, trend, lowerIsBetter, trendValues } = row;
           const fmt = indicator.FormatDisplayName;
 
           const effectiveGap = lowerIsBetter && gap !== null ? -gap : gap;
@@ -208,9 +214,7 @@ export function SectionView({
             ? 'In line'
             : `${formatAbsDiff(gap!, fmt)} ${isRecordedPrevalence ? (gap! > 0 ? 'higher' : 'lower') : gapDirection}`;
 
-          const trendDirection = trend !== null
-            ? (Math.abs(trend) < FLAT_THRESHOLD ? 'flat' : trend > 0 ? 'up' : 'down')
-            : null;
+          const trendDirection = trend !== null ? getTrendDirection(trend, trendValues) : null;
           const trendGood = lowerIsBetter ? trendDirection === 'down' : trendDirection === 'up';
           const trendLabel = trend === null ? 'No previous period'
             : trendDirection === 'flat' ? 'Stable'

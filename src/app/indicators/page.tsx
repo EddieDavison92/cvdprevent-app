@@ -5,14 +5,13 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Activity, SearchX, Pill, Target, ClipboardCheck, HeartPulse, List, ChevronRight,
+  Activity, SearchX, Pill, Target, ClipboardCheck, HeartPulse, List, ChevronRight, CircleHelp,
 } from 'lucide-react';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAreaIndicators, getPersonsData } from '@/lib/hooks/use-area-indicators';
-import { DASHBOARD_SECTIONS, type SectionType } from '@/lib/constants/indicator-sections';
+import { getDashboardSections, type SectionType } from '@/lib/constants/indicator-sections';
 import { formatValue, extractCondition } from '@/lib/utils/format';
 import { ApiUnavailable } from '@/components/api-status-banner';
 import { cn } from '@/lib/utils';
@@ -24,6 +23,7 @@ const SECTION_ICONS: Record<SectionType, React.ComponentType<{ className?: strin
   control: Target,
   monitoring: ClipboardCheck,
   outcomes: HeartPulse,
+  other: CircleHelp,
 };
 
 export default function IndicatorsIndexPage() {
@@ -43,6 +43,7 @@ export default function IndicatorsIndexPage() {
     [engStdInds, engOutInds],
   );
   const isLoading = isLoadingStd || isLoadingOut;
+  const dashboardSections = useMemo(() => getDashboardSections(allIndicators), [allIndicators]);
 
   // Build flat indicator list with section info
   const indicators = useMemo(() => {
@@ -51,7 +52,7 @@ export default function IndicatorsIndexPage() {
       value: number | null; format: string; sectionId: SectionType; sectionName: string;
     }[] = [];
 
-    for (const section of DASHBOARD_SECTIONS) {
+    for (const section of dashboardSections) {
       for (const code of section.indicatorCodes) {
         const ind = allIndicators.find(i => i.IndicatorCode === code);
         if (!ind) continue;
@@ -69,7 +70,7 @@ export default function IndicatorsIndexPage() {
       }
     }
     return result;
-  }, [allIndicators]);
+  }, [allIndicators, dashboardSections]);
 
   // Unique conditions for filter pills
   const conditions = useMemo(() => {
@@ -88,13 +89,13 @@ export default function IndicatorsIndexPage() {
       ? indicators.filter(ind => ind.condition === conditionFilter)
       : indicators;
 
-    return DASHBOARD_SECTIONS
+    return dashboardSections
       .map(section => ({
         ...section,
         indicators: filtered.filter(ind => ind.sectionId === section.id),
       }))
       .filter(s => s.indicators.length > 0);
-  }, [indicators, conditionFilter]);
+  }, [indicators, conditionFilter, dashboardSections]);
 
   const buildHref = (indicatorId: number) => {
     const params = new URLSearchParams();
@@ -123,7 +124,7 @@ export default function IndicatorsIndexPage() {
               <div>
                 <h1 className="text-2xl font-bold text-nhs-dark-blue">Indicators</h1>
                 <p className="text-sm text-gray-500">
-                  {isLoading ? 'Loading...' : `${indicators.length} indicators across ${DASHBOARD_SECTIONS.length} domains`}
+                  {isLoading ? 'Loading...' : `${indicators.length} indicators across ${dashboardSections.length} domains`}
                 </p>
               </div>
             </div>

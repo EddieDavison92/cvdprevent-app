@@ -45,6 +45,11 @@ interface LineChartProps {
   diffSuffix?: string;
 }
 
+function formatDifference(value: number, suffix: string) {
+  const decimals = value !== 0 && Math.abs(value) < 0.1 ? 2 : 1;
+  return `${value > 0 ? '+' : ''}${value.toFixed(decimals)}${suffix}`;
+}
+
 export function LineChart({
   series,
   title,
@@ -110,8 +115,7 @@ export function LineChart({
                 const prevPoint = seriesData?.data.find((d) => d.x === prevX);
                 if (prevPoint?.y != null) {
                   const change = item.value - prevPoint.y;
-                  const sign = change > 0 ? '+' : '';
-                  html += ` <span style="color:${change > 0 ? NHS_COLORS.green : change < 0 ? NHS_COLORS.red : NHS_COLORS.midGrey}">(${sign}${change.toFixed(1)}${diffSuffix})</span>`;
+                  html += ` <span style="color:${change > 0 ? NHS_COLORS.green : change < 0 ? NHS_COLORS.red : NHS_COLORS.midGrey}">(${formatDifference(change, diffSuffix)})</span>`;
                 }
               }
               html += '<br/>';
@@ -120,8 +124,7 @@ export function LineChart({
 
           if (values.length === 2) {
             const gap = values[0] - values[1];
-            const sign = gap > 0 ? '+' : '';
-            html += `<span style="color:${NHS_COLORS.midGrey}">Gap: ${sign}${gap.toFixed(1)}${diffSuffix}</span>`;
+            html += `<span style="color:${NHS_COLORS.midGrey}">Gap: ${formatDifference(gap, diffSuffix)}</span>`;
           }
 
           return html;

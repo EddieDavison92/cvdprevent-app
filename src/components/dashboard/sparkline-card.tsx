@@ -10,6 +10,7 @@ import { formatTimePeriod, formatValue } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 import { cn } from '@/lib/utils';
 import type { IndicatorWithData } from '@/lib/api/types';
+import { getTrendDirection } from '@/lib/utils/trend';
 
 interface SparklineCardProps {
   indicator: IndicatorWithData;
@@ -44,20 +45,23 @@ export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recorded
     const validPoints = ts.filter((p) => p.Value !== null).map((p) => p.Value!);
     let pctChange: number | null = null;
     let dir: 'up' | 'down' | 'flat' | null = null;
+    let rawChange: number | null = null;
 
     if (validPoints.length >= 3) {
       const third = Math.max(1, Math.floor(validPoints.length / 3));
       const earlyAvg = validPoints.slice(0, third).reduce((s, v) => s + v, 0) / third;
       const lateAvg = validPoints.slice(-third).reduce((s, v) => s + v, 0) / third;
+      rawChange = lateAvg - earlyAvg;
       pctChange = earlyAvg !== 0 ? ((lateAvg - earlyAvg) / Math.abs(earlyAvg)) * 100 : 0;
     } else if (validPoints.length === 2) {
+      rawChange = validPoints[1] - validPoints[0];
       pctChange = validPoints[0] !== 0
         ? ((validPoints[1] - validPoints[0]) / Math.abs(validPoints[0])) * 100
         : 0;
     }
 
-    if (pctChange !== null) {
-      dir = Math.abs(pctChange) < 1 ? 'flat' : pctChange > 0 ? 'up' : 'down';
+    if (rawChange !== null) {
+      dir = getTrendDirection(rawChange, validPoints);
     }
 
     // For polarity: "good" means improving
@@ -79,8 +83,24 @@ export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recorded
           {trendDirection === 'up' && <TrendingUp className={cn('h-3.5 w-3.5', recordedPrevalence ? 'text-nhs-blue' : trendGood ? 'text-nhs-green' : 'text-nhs-red')} />}
           {trendDirection === 'down' && <TrendingDown className={cn('h-3.5 w-3.5', recordedPrevalence ? 'text-nhs-blue' : trendGood ? 'text-nhs-green' : 'text-nhs-red')} />}
           {trendDirection === 'flat' && <Minus className="h-3.5 w-3.5 text-gray-400" />}
-          <span className={cn(trendDirection === 'flat' ? 'text-gray-500' : recordedPrevalence ? 'text-nhs-blue' : trendGood ? 'text-nhs-green' : 'text-nhs-red')}>
-            {trendDirection === 'flat' ? 'Stable' : recordedPrevalence ? (trendDirection === 'up' ? 'Rising' : 'Falling') : trendGood ? 'Improving' : 'Deteriorating'}
+          <span className={cn(
+            trendDirection === null || trendDirection === 'flat'
+              ? 'text-gray-500'
+              : recordedPrevalence
+                ? 'text-nhs-blue'
+                : trendGood
+                  ? 'text-nhs-green'
+                  : 'text-nhs-red'
+          )}>
+            {trendDirection === null
+              ? 'Not enough history'
+              : trendDirection === 'flat'
+                ? 'Stable'
+                : recordedPrevalence
+                  ? (trendDirection === 'up' ? 'Rising' : 'Falling')
+                  : trendGood
+                    ? 'Improving'
+                    : 'Deteriorating'}
             {pctChange !== null && trendDirection !== 'flat' ? ` · ${pctChange > 0 ? '+' : ''}${pctChange.toFixed(1)}%` : ''}
           </span>
         </div>

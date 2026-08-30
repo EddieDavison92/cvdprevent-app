@@ -4,11 +4,12 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { IndicatorWithData } from '@/lib/api/types';
-import { DASHBOARD_SECTIONS, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
+import { findSectionForIndicator, isLowerBetterIndicator, type DashboardSection } from '@/lib/constants/indicator-sections';
 import { formatValue, formatAbsDiff } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 import { CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getTrendDirection } from '@/lib/utils/trend';
 
 interface PrioritiesCardProps {
   indicators: IndicatorWithData[];
@@ -25,8 +26,9 @@ interface PriorityItem {
   gap: number;
   trend: number | null;
   reason: 'gap' | 'deteriorating' | 'both';
-  section: typeof DASHBOARD_SECTIONS[0] | undefined;
+  section: DashboardSection | undefined;
   lowerIsBetter: boolean;
+  trendValues: Array<number | null>;
 }
 
 /** Gap beyond which an indicator counts as a priority (percentage points). */
@@ -84,12 +86,10 @@ export function PrioritiesCard({
         }
       }
 
-      const section = DASHBOARD_SECTIONS.find(s =>
-        s.indicatorCodes.includes(indicator.IndicatorCode)
-      );
+      const section = findSectionForIndicator(indicator.IndicatorCode, indicator);
 
       // For lowerIsBetter sections a positive gap / rising trend is bad
-      const lowerIsBetter = isLowerBetterIndicator(indicator.IndicatorCode);
+      const lowerIsBetter = isLowerBetterIndicator(indicator.IndicatorCode, indicator);
       const effectiveGap = lowerIsBetter ? gap : -gap;
       const isSignificantGap = effectiveGap > GAP_THRESHOLD;
       const isDeteriorating = trend !== null && (
@@ -107,6 +107,7 @@ export function PrioritiesCard({
                   isSignificantGap ? 'gap' : 'deteriorating',
           section,
           lowerIsBetter,
+          trendValues: persons.TimeSeries?.map(point => point.Value) ?? [],
         });
       }
     }
@@ -149,12 +150,13 @@ export function PrioritiesCard({
         </div>
       ) : (
         <ol className="divide-y divide-gray-100">
-          {priorities.map(({ indicator, value, baselineValue, gap, trend, reason, section, lowerIsBetter }, i) => {
+          {priorities.map(({ indicator, value, baselineValue, gap, trend, reason, section, lowerIsBetter, trendValues }, i) => {
             const fmt = indicator.FormatDisplayName;
             const isRecordedPrevalence = section?.id === 'prevalence';
             const gapIsBad = lowerIsBetter ? gap > 0 : gap < 0;
             const trendIsBad = trend !== null && (lowerIsBetter ? trend > 0 : trend < 0);
-            const showTrend = trend !== null && Math.abs(trend) >= 0.1;
+            const showTrend = trend !== null
+              && getTrendDirection(trend, trendValues) !== 'flat';
 
             return (
               <li key={indicator.IndicatorID}>
