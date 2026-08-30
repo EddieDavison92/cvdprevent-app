@@ -1,5 +1,6 @@
 import { fetchApi, fetchApiWithBrowserCache } from './client';
 import type { Area, AreaResponse, SystemLevel, SystemLevelResponse } from './types';
+import { findKnownParentArea } from '@/lib/utils/geography';
 
 const AREA_LIST_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 
@@ -49,7 +50,7 @@ export function buildAreaHierarchy(areaCode: string, areasByLevel: Map<number, A
   while (currentArea) {
     hierarchy.push(currentArea);
     if (currentArea.Parents.length === 0) break;
-    currentArea = areaById.get(currentArea.Parents[0]);
+    currentArea = findKnownParentArea(currentArea, areaById);
   }
 
   return hierarchy;

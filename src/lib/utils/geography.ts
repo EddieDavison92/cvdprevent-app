@@ -8,6 +8,15 @@ export interface GeographyNode {
   children: GeographyNode[];
 }
 
+/** Returns the first current parent, skipping legacy hierarchy IDs from the API. */
+export function findKnownParentArea(area: Area, areaById: Map<number, Area>): Area | undefined {
+  for (const parentId of area.Parents) {
+    const parent = areaById.get(parentId);
+    if (parent) return parent;
+  }
+  return undefined;
+}
+
 export function buildGeographyTree(areasByLevel: Map<number, Area[]>): GeographyNode | null {
   // England is the root
   const englandNode: GeographyNode = {
@@ -43,7 +52,7 @@ export function buildGeographyTree(areasByLevel: Map<number, Area[]>): Geography
 
       // Link to parent using Parents array
       if (area.Parents.length > 0) {
-        const parentNode = nodeById.get(area.Parents[0]);
+        const parentNode = area.Parents.map((parentId) => nodeById.get(parentId)).find(Boolean);
         if (parentNode) {
           node.parent = parentNode;
           parentNode.children.push(node);

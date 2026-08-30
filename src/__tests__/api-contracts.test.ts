@@ -4,6 +4,7 @@
  * Run as part of build (`npm run test && next build`).
  */
 import { describe, it, expect, beforeAll } from 'vitest';
+import { findSectionForIndicator } from '@/lib/constants/indicator-sections';
 
 const BASE_URL = 'https://api.cvdprevent.nhs.uk';
 
@@ -104,6 +105,23 @@ describe('GET /indicator/list', () => {
       'DataUpdateInterval', 'IndicatorStatus',
       'HighestPriorityNotificationType', 'NotificationCount',
     ]);
+  });
+
+  it('classifies every current ICB indicator used by the dashboard', async () => {
+    const periods = await fetchJSON<{ timePeriodList: { TimePeriodID: number; IndicatorTypeName: string }[] }>('/timePeriod');
+    const latestPeriods = ['Standard', 'Outcomes'].map((type) => periods.timePeriodList
+      .filter((period) => period.IndicatorTypeName === type)
+      .sort((a, b) => b.TimePeriodID - a.TimePeriodID)[0]);
+
+    const indicatorLists = await Promise.all(latestPeriods.map((period) => fetchJSON<{ indicatorList: { IndicatorCode: string }[] }>(
+      `/indicator/list?timePeriodID=${period.TimePeriodID}&systemLevelID=7`,
+    )));
+    const unclassified = indicatorLists
+      .flatMap((response) => response.indicatorList)
+      .map((indicator) => indicator.IndicatorCode)
+      .filter((code) => !findSectionForIndicator(code));
+
+    expect(unclassified).toEqual([]);
   });
 });
 

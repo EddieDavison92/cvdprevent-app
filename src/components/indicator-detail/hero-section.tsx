@@ -4,6 +4,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { Indicator, IndicatorRawData } from '@/lib/api/types';
 import { formatValue, formatNumber, formatDiff } from '@/lib/utils/format';
 import { TrendingUp, TrendingDown, Minus, Users, Hash, BarChart3, Activity } from 'lucide-react';
+import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
+
+const TREND_TOLERANCE = 0.1;
 
 interface HeroSectionProps {
   indicator: Indicator;
@@ -52,9 +55,7 @@ export function HeroSection({
 
   const hasValue = areaData?.Value !== null && areaData?.Value !== undefined;
 
-  // Use relative threshold (0.25% of baseline value) for significance
-  const baseVal = baselineData?.Value ?? 0;
-  const gapIsSignificant = gap !== null && baseVal !== 0 && (Math.abs(gap) / baseVal) * 100 > 0.25;
+  const gapIsSignificant = gap !== null && Math.abs(gap) > COMPARISON_TOLERANCE;
 
   const gapIsGood = gap !== null && (lowerIsBetter ? gap < 0 : gap > 0);
   const gapColor = gapIsSignificant
@@ -64,10 +65,7 @@ export function HeroSection({
     ? (gapIsGood ? 'bg-green-50' : 'bg-red-50')
     : 'bg-gray-50';
 
-  // Use relative threshold for trend stability (0.25% of area value)
-  const areaVal = areaData?.Value ?? 0;
-  const trendThreshold = areaVal !== 0 ? Math.abs(areaVal) * 0.0025 : 0.1;
-  const trendDirection = trend !== null ? (trend > trendThreshold ? 'up' : trend < -trendThreshold ? 'down' : 'flat') : null;
+  const trendDirection = trend !== null ? (trend > TREND_TOLERANCE ? 'up' : trend < -TREND_TOLERANCE ? 'down' : 'flat') : null;
   const TrendIcon = trendDirection === 'up' ? TrendingUp : trendDirection === 'down' ? TrendingDown : Minus;
   const trendIsGood = trendDirection === (lowerIsBetter ? 'down' : 'up');
   const trendIsBad = trendDirection === (lowerIsBetter ? 'up' : 'down');

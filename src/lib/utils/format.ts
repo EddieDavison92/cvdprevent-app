@@ -109,6 +109,10 @@ export function getConditionDisplayName(condition: string): string {
     Hypertension: 'Hypertension',
     Cholesterol: 'Cholesterol',
     Smoking: 'Smoking',
+    CVD: 'Cardiovascular Disease',
+    HF: 'Heart Failure',
+    CVKM: 'Cardiovascular–Kidney–Metabolic',
+    FH: 'Familial Hypercholesterolaemia',
   };
   return names[condition] ?? condition;
 }

@@ -14,7 +14,8 @@ import { getAreaDisplayName } from '@/lib/api';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
 import { buildUrl } from '@/lib/utils/url';
 import { cn } from '@/lib/utils';
-import type { Area, IndicatorWithData } from '@/lib/api/types';
+import type { Area } from '@/lib/api/types';
+import { findKnownParentArea } from '@/lib/utils/geography';
 
 interface CommandSearchProps {
   open: boolean;
@@ -80,7 +81,7 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
 
   const getParentName = useCallback((area: Area): string | undefined => {
     if (area.Parents?.length > 0) {
-      const parent = parentLookup.get(area.Parents[0]);
+      const parent = findKnownParentArea(area, parentLookup);
       return parent ? getAreaDisplayName(parent) : undefined;
     }
     return undefined;
@@ -175,18 +176,14 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
 
   // Reset state when dialog opens/closes
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    const timer = setTimeout(() => {
       setQuery('');
       setHighlightedIndex(0);
-      // Focus input after dialog animation
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
+      inputRef.current?.focus();
+    }, 50);
+    return () => clearTimeout(timer);
   }, [open]);
-
-  // Reset highlight when results change
-  useEffect(() => {
-    setHighlightedIndex(0);
-  }, [results.length]);
 
   // Scroll highlighted item into view
   useEffect(() => {
@@ -265,7 +262,10 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
           <input
             ref={inputRef}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setHighlightedIndex(0);
+            }}
             placeholder="Search organisations, indicators, pages..."
             aria-label="Search organisations, indicators, and pages"
             className="flex-1 bg-transparent px-3 py-3 text-sm outline-none placeholder:text-gray-400"

@@ -68,6 +68,12 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
       'CVDP009CHOL', // CVD treated with LLT
       'CVDP010CHOL', // CKD treated with LLT
       'CVDP002SMOK', // Current smokers offered support/treatment
+      'CVDP008CKD',  // CKD treated with SGLT2i
+      'CVDP006DM',   // Type 2 diabetes treated with SGLT2i
+      'CVDP003HF',   // Heart failure treated with four pillar model
+      'CVDP004HF',   // Heart failure treated with SGLT2i
+      'CVDP001CVKM', // CKD, HF or T2D treated with SGLT2i
+      'CVDP006HYP',  // Potential antihypertensive overtreatment
     ],
   },
   {
@@ -84,6 +90,8 @@ export const DASHBOARD_SECTIONS: DashboardSection[] = [
       'CVDP012CHOL', // CVD treated to cholesterol threshold
       'CVDP002CHD',  // CHD treated to BP threshold
       'CVDP002STRK', // Stroke treatment to BP threshold
+      'CVDP010HYP',  // CVD treated to BP threshold
+      'CVDP002CVKM', // CVD with BP and cholesterol treated to threshold
     ],
   },
   {
@@ -130,6 +138,16 @@ export function findSectionForIndicator(code: string): DashboardSection | undefi
   return DASHBOARD_SECTIONS.find(section => 
     section.indicatorCodes.includes(code)
   );
+}
+
+const LOWER_IS_BETTER_OVERRIDES = new Set([
+  'CVDP006HYP', // Potential antihypertensive overtreatment
+]);
+
+/** Returns the comparison polarity for an indicator. */
+export function isLowerBetterIndicator(code: string): boolean {
+  if (LOWER_IS_BETTER_OVERRIDES.has(code)) return true;
+  return findSectionForIndicator(code)?.lowerIsBetter ?? false;
 }
 
 // Helper to get section by ID

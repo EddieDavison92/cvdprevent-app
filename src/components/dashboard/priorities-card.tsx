@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { IndicatorWithData } from '@/lib/api/types';
-import { DASHBOARD_SECTIONS } from '@/lib/constants/indicator-sections';
+import { DASHBOARD_SECTIONS, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
 import { formatValue, formatAbsDiff } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 import { CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
@@ -26,6 +26,7 @@ interface PriorityItem {
   trend: number | null;
   reason: 'gap' | 'deteriorating' | 'both';
   section: typeof DASHBOARD_SECTIONS[0] | undefined;
+  lowerIsBetter: boolean;
 }
 
 /** Gap beyond which an indicator counts as a priority (percentage points). */
@@ -88,7 +89,7 @@ export function PrioritiesCard({
       );
 
       // For lowerIsBetter sections a positive gap / rising trend is bad
-      const lowerIsBetter = section?.lowerIsBetter ?? false;
+      const lowerIsBetter = isLowerBetterIndicator(indicator.IndicatorCode);
       const effectiveGap = lowerIsBetter ? gap : -gap;
       const isSignificantGap = effectiveGap > GAP_THRESHOLD;
       const isDeteriorating = trend !== null && (
@@ -105,6 +106,7 @@ export function PrioritiesCard({
           reason: isSignificantGap && isDeteriorating ? 'both' :
                   isSignificantGap ? 'gap' : 'deteriorating',
           section,
+          lowerIsBetter,
         });
       }
     }
@@ -113,8 +115,8 @@ export function PrioritiesCard({
     items.sort((a, b) => {
       if (a.reason === 'both' && b.reason !== 'both') return -1;
       if (b.reason === 'both' && a.reason !== 'both') return 1;
-      const aEffective = (a.section?.lowerIsBetter ? a.gap : -a.gap);
-      const bEffective = (b.section?.lowerIsBetter ? b.gap : -b.gap);
+      const aEffective = a.lowerIsBetter ? a.gap : -a.gap;
+      const bEffective = b.lowerIsBetter ? b.gap : -b.gap;
       return bEffective - aEffective;
     });
 
@@ -147,9 +149,8 @@ export function PrioritiesCard({
         </div>
       ) : (
         <ol className="divide-y divide-gray-100">
-          {priorities.map(({ indicator, value, baselineValue, gap, trend, reason, section }, i) => {
+          {priorities.map(({ indicator, value, baselineValue, gap, trend, reason, section, lowerIsBetter }, i) => {
             const fmt = indicator.FormatDisplayName;
-            const lowerIsBetter = section?.lowerIsBetter ?? false;
             const isRecordedPrevalence = section?.id === 'prevalence';
             const gapIsBad = lowerIsBetter ? gap > 0 : gap < 0;
             const trendIsBad = trend !== null && (lowerIsBetter ? trend > 0 : trend < 0);

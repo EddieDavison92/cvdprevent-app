@@ -9,6 +9,7 @@ import type { IndicatorWithData } from '@/lib/api/types';
 import { formatValue, formatAbsDiff } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 import { cn } from '@/lib/utils';
+import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
 
 interface PathwayOverviewProps {
   indicators: IndicatorWithData[];
@@ -27,6 +28,11 @@ interface StageData {
   formatDisplayName: string;
 }
 
+interface StageGroup {
+  stage: PathwayStage;
+  indicators: StageData[];
+}
+
 function getPersonsValue(indicator: IndicatorWithData): number | null {
   const persons = indicator.Categories.find(
     (category) => category.MetricCategoryTypeName === 'Sex' && category.MetricCategoryName === 'Persons'
@@ -36,8 +42,8 @@ function getPersonsValue(indicator: IndicatorWithData): number | null {
 
 function getGapDirection(gap: number | null, higherIsBetter: boolean) {
   if (gap === null) return null;
-  if (higherIsBetter) return gap > 0.5 ? 'ahead' : gap < -0.5 ? 'behind' : 'in line';
-  return gap < -0.5 ? 'ahead' : gap > 0.5 ? 'behind' : 'in line';
+  if (higherIsBetter) return gap > COMPARISON_TOLERANCE ? 'ahead' : gap < -COMPARISON_TOLERANCE ? 'behind' : 'in line';
+  return gap < -COMPARISON_TOLERANCE ? 'ahead' : gap > COMPARISON_TOLERANCE ? 'behind' : 'in line';
 }
 
 function getGapLabel(item: StageData, baselineName: string) {
@@ -63,16 +69,16 @@ function PathwayCard({
 }) {
   const searchParams = useSearchParams();
 
-  const stageData = useMemo<StageData[]>(() => pathway.stages.map((stage) => {
-    for (const code of stage.indicatorCodes) {
+  const stageGroups = useMemo<StageGroup[]>(() => pathway.stages.map((stage) => {
+    const stageIndicators = stage.indicatorCodes.flatMap((code) => {
       const indicator = indicatorMap.get(code);
-      if (!indicator) continue;
+      if (!indicator) return [];
       const value = getPersonsValue(indicator);
-      if (value === null) continue;
+      if (value === null) return [];
 
       const baselineIndicator = baselineMap.get(code);
       const baselineValue = baselineIndicator ? getPersonsValue(baselineIndicator) : null;
-      return {
+      return [{
         stage,
         value,
         baselineValue,
@@ -81,36 +87,29 @@ function PathwayCard({
         indicatorId: indicator.IndicatorID,
         indicatorCode: code,
         formatDisplayName: indicator.FormatDisplayName,
-      };
-    }
+      }];
+    });
 
-    return {
-      stage,
-      value: null,
-      baselineValue: null,
-      gap: null,
-      indicatorName: stage.name,
-      indicatorId: null,
-      indicatorCode: null,
-      formatDisplayName: '%',
-    };
+    return { stage, indicators: stageIndicators };
   }), [pathway.stages, indicatorMap, baselineMap]);
 
   const worstStage = useMemo(() => {
     let worst: StageData | null = null;
     let worstScore = 0;
-    for (const item of stageData) {
-      if (item.gap === null) continue;
-      const score = item.stage.higherIsBetter ? item.gap : -item.gap;
-      if (score < worstScore) {
-        worst = item;
-        worstScore = score;
+    for (const group of stageGroups) {
+      for (const item of group.indicators) {
+        if (item.gap === null) continue;
+        const score = item.stage.higherIsBetter ? item.gap : -item.gap;
+        if (score < worstScore) {
+          worst = item;
+          worstScore = score;
+        }
       }
     }
     return worst;
-  }, [stageData]);
+  }, [stageGroups]);
 
-  const populatedStages = stageData.filter((item) => item.value !== null).length;
+  const populatedStages = stageGroups.filter((group) => group.indicators.length > 0).length;
   if (populatedStages === 0) return null;
 
   return (
@@ -136,56 +135,65 @@ function PathwayCard({
         )}
       </header>
 
-      <div className="overflow-x-auto">
-        <div
-          className="grid min-w-max"
-          style={{ gridTemplateColumns: `repeat(${stageData.length}, minmax(170px, 1fr))` }}
-        >
-          {stageData.map((item, index) => {
-            const direction = getGapDirection(item.gap, item.stage.higherIsBetter);
-            const isWorst = item === worstStage;
-            const content = (
-              <>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{item.stage.type}</span>
-                  <span className="font-mono text-[10px] text-gray-400">{item.indicatorCode ?? 'No data'}</span>
-                </div>
-                <p className="mt-2 min-h-10 text-sm font-medium leading-5 text-gray-800">{item.stage.name}</p>
-                <div className="mt-2 flex items-baseline gap-1.5">
-                  <span className="text-lg font-semibold tabular-nums text-gray-900">
-                    {item.value === null ? '—' : formatValue(item.value, item.formatDisplayName)}
-                  </span>
-                  {item.baselineValue !== null && (
-                    <span className="text-xs tabular-nums text-gray-400">vs {formatValue(item.baselineValue, item.formatDisplayName)}</span>
-                  )}
-                </div>
-                <p className={cn(
-                  'mt-1 text-xs font-medium tabular-nums',
-                  direction === 'ahead' ? 'text-nhs-green' : direction === 'behind' ? 'text-nhs-red' : 'text-gray-500'
-                )}>
-                  {getGapLabel(item, baselineName)}
-                </p>
-                {item.indicatorId && (
-                  <span className="mt-auto flex items-center gap-1 pt-3 text-xs text-gray-400 group-hover:text-nhs-blue">
-                    View indicator <ArrowRight className="h-3 w-3" />
-                  </span>
+      <div>
+        <div className="grid w-full grid-cols-1 sm:grid-cols-2 xl:grid-cols-none xl:grid-flow-col xl:auto-cols-fr">
+          {stageGroups.map((group, index) => {
+            const hasWorstIndicator = group.indicators.some((item) => item === worstStage);
+
+            return (
+              <div
+                key={group.stage.id}
+                className={cn(
+                  'border-t-2',
+                  index % 2 === 1 && 'sm:border-l sm:border-l-gray-100',
+                  index > 0 && 'xl:border-l xl:border-l-gray-100',
+                  hasWorstIndicator ? 'border-t-amber-400' : 'border-t-transparent',
                 )}
-              </>
-            );
+              >
+                <div className="border-b border-gray-100 px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{group.stage.type}</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-800">{group.stage.name}</p>
+                  <p className="mt-0.5 text-xs text-gray-500">{group.stage.description}</p>
+                </div>
 
-            const className = cn(
-              'group flex min-h-40 flex-col border-t-2 px-4 py-3 transition-colors',
-              index > 0 && 'border-l border-l-gray-100',
-              isWorst ? 'border-t-amber-400 bg-amber-50/50' : 'border-t-transparent',
-              item.indicatorId && 'hover:bg-nhs-pale-grey/40 focus-visible:bg-nhs-pale-grey/40 focus-visible:outline-none'
-            );
-
-            return item.indicatorId ? (
-              <Link key={item.stage.id} href={buildUrl(`/dashboard/${item.indicatorId}`, searchParams)} className={className}>
-                {content}
-              </Link>
-            ) : (
-              <div key={item.stage.id} className={className}>{content}</div>
+                {group.indicators.length === 0 ? (
+                  <p className="px-4 py-4 text-xs text-gray-400">No data</p>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {group.indicators.map((item) => {
+                      const direction = getGapDirection(item.gap, item.stage.higherIsBetter);
+                      return (
+                        <Link
+                          key={item.indicatorCode}
+                          href={buildUrl(`/dashboard/${item.indicatorId}`, searchParams)}
+                          className={cn(
+                            'group block px-4 py-3 transition-colors hover:bg-nhs-pale-grey/40 focus-visible:bg-nhs-pale-grey/40 focus-visible:outline-none',
+                            item === worstStage && 'bg-amber-50/50',
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-xs font-medium leading-4 text-gray-800 group-hover:text-nhs-blue">{item.indicatorName}</p>
+                            <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-300 group-hover:text-nhs-blue" />
+                          </div>
+                          <p className="mt-1 font-mono text-[10px] text-gray-400">{item.indicatorCode}</p>
+                          <div className="mt-2 flex items-baseline gap-1.5">
+                            <span className="text-base font-semibold tabular-nums text-gray-900">{formatValue(item.value!, item.formatDisplayName)}</span>
+                            {item.baselineValue !== null && (
+                              <span className="text-xs tabular-nums text-gray-400">vs {formatValue(item.baselineValue, item.formatDisplayName)}</span>
+                            )}
+                          </div>
+                          <p className={cn(
+                            'mt-1 text-xs font-medium tabular-nums',
+                            direction === 'ahead' ? 'text-nhs-green' : direction === 'behind' ? 'text-nhs-red' : 'text-gray-500',
+                          )}>
+                            {getGapLabel(item, baselineName)}
+                          </p>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>

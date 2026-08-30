@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { buildUrl } from '@/lib/utils/url';
 import { cn } from '@/lib/utils';
-import { DASHBOARD_SECTIONS, findSectionForIndicator, type DashboardSection } from '@/lib/constants/indicator-sections';
+import { DASHBOARD_SECTIONS, findSectionForIndicator, isLowerBetterIndicator, type DashboardSection } from '@/lib/constants/indicator-sections';
 import { formatValue, formatDiff, formatAbsDiff } from '@/lib/utils/format';
 import type { Indicator, IndicatorRawData } from '@/lib/api/types';
+import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
 
 type SortMode = 'gap' | 'trend' | 'name';
 
@@ -21,6 +22,7 @@ interface IndicatorPerformance extends Indicator {
   baselineData?: IndicatorRawData;
   gap: number | null;
   trend: number | null;
+  lowerIsBetter: boolean;
   isBelowBaseline: boolean;
   isAboveBaseline: boolean;
 }
@@ -42,16 +44,15 @@ function cleanIndicatorName(name: string) {
 
 function getComparisonState(indicator: IndicatorPerformance, isEngland: boolean) {
   if (isEngland || indicator.gap === null) return 'neutral' as const;
-  const effectiveGap = indicator.section?.lowerIsBetter ? -indicator.gap : indicator.gap;
-  if (effectiveGap > 0.5) return 'ahead' as const;
-  if (effectiveGap < -0.5) return 'behind' as const;
+  const effectiveGap = indicator.lowerIsBetter ? -indicator.gap : indicator.gap;
+  if (effectiveGap > COMPARISON_TOLERANCE) return 'ahead' as const;
+  if (effectiveGap < -COMPARISON_TOLERANCE) return 'behind' as const;
   return 'neutral' as const;
 }
 
 function getTrendState(indicator: IndicatorPerformance) {
   if (indicator.trend === null || Math.abs(indicator.trend) < 0.1) return 'stable' as const;
-  const lowerIsBetter = indicator.section?.lowerIsBetter ?? false;
-  if (lowerIsBetter) return indicator.trend < 0 ? 'improving' as const : 'declining' as const;
+  if (indicator.lowerIsBetter) return indicator.trend < 0 ? 'improving' as const : 'declining' as const;
   return indicator.trend > 0 ? 'improving' as const : 'declining' as const;
 }
 
@@ -70,7 +71,7 @@ function sortIndicators(items: IndicatorPerformance[], sortMode: SortMode, isEng
 
     const severity = (item: IndicatorPerformance) => {
       if (item.gap === null) return Number.NEGATIVE_INFINITY;
-      return item.section?.lowerIsBetter ? item.gap : -item.gap;
+      return item.lowerIsBetter ? item.gap : -item.gap;
     };
     const difference = severity(b) - severity(a);
     if (difference !== 0) return difference;
@@ -111,7 +112,8 @@ export function AllIndicatorsExplorer({
     const gap = !isEngland && data?.Value != null && baselineData?.Value != null ? data.Value - baselineData.Value : null;
     const trend = data?.Value != null && previousData?.Value != null ? data.Value - previousData.Value : null;
     const section = findSectionForIndicator(indicator.IndicatorCode) ?? null;
-    const effectiveGap = gap === null ? null : section?.lowerIsBetter ? -gap : gap;
+    const lowerIsBetter = isLowerBetterIndicator(indicator.IndicatorCode);
+    const effectiveGap = gap === null ? null : lowerIsBetter ? -gap : gap;
 
     return {
       ...indicator,
@@ -121,8 +123,9 @@ export function AllIndicatorsExplorer({
       baselineData,
       gap,
       trend,
-      isBelowBaseline: effectiveGap !== null && effectiveGap < -0.5,
-      isAboveBaseline: effectiveGap !== null && effectiveGap > 0.5,
+      lowerIsBetter,
+      isBelowBaseline: effectiveGap !== null && effectiveGap < -COMPARISON_TOLERANCE,
+      isAboveBaseline: effectiveGap !== null && effectiveGap > COMPARISON_TOLERANCE,
     };
   }), [indicators, dataByIndicator, previousDataByIndicator, baselineDataByIndicator, isEngland]);
 

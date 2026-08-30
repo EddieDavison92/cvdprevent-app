@@ -1,4 +1,5 @@
 export { OrganisationHeader } from './organisation-header';
+export { AreaChangeDialog } from './area-change-dialog';
 export { QuickStats } from './quick-stats';
 export { ComparisonBadge } from './comparison-badge';
 export { ConditionFilter } from './condition-filter';

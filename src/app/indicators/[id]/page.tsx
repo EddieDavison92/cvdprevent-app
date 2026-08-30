@@ -25,7 +25,7 @@ import { useIndicatorData } from '@/lib/hooks/use-indicator-data';
 import { useAreas } from '@/lib/hooks/use-areas';
 import { SYSTEM_LEVELS, type IndicatorRawData, type IndicatorWithData } from '@/lib/api/types';
 import { SYSTEM_LEVEL_NAMES, getParentLevel } from '@/lib/constants/geography';
-import { findSectionForIndicator } from '@/lib/constants/indicator-sections';
+import { findSectionForIndicator, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
 import { formatValue, formatTimePeriod } from '@/lib/utils/format';
 import { NHS_COLORS } from '@/lib/constants/colors';
 import { cn } from '@/lib/utils';
@@ -148,6 +148,7 @@ export default function IndicatorExplorePage() {
   const isOutcome = indicator ? isOutcomeIndicator(indicator) : false;
   const periodId = isOutcome ? outPeriod?.TimePeriodID : stdPeriod?.TimePeriodID;
   const section = indicator ? findSectionForIndicator(indicator.IndicatorCode) : undefined;
+  const lowerIsBetter = indicator ? isLowerBetterIndicator(indicator.IndicatorCode) : false;
 
   const formatFn = useCallback(
     (v: number) => formatValue(v, indicator?.FormatDisplayName ?? ''),
@@ -474,7 +475,7 @@ export default function IndicatorExplorePage() {
                   {section.name}
                 </Badge>
               )}
-              {section && <PolarityBadge lowerIsBetter={section.lowerIsBetter} />}
+              {section && <PolarityBadge lowerIsBetter={lowerIsBetter} />}
             </div>
             <p className="text-sm text-gray-600 max-w-3xl">{indicator.IndicatorName}</p>
             {(isOutcome ? outPeriod : stdPeriod) && (
@@ -587,7 +588,7 @@ export default function IndicatorExplorePage() {
                   area={selectedArea}
                   value={selectedAreaValue}
                   rank={selectedRank}
-                  lowerIsBetter={section?.lowerIsBetter ?? false}
+                  lowerIsBetter={lowerIsBetter}
                   formatFn={formatFn}
                 />
               ) : (
@@ -615,7 +616,7 @@ export default function IndicatorExplorePage() {
               <CardDescription>
                 {indicator.IndicatorShortName}
                 {chartData.length > 0 ? ` • ${chartData.length} areas ranked by value` : ''}
-                {section?.lowerIsBetter ? ' • Lower is better' : ''}
+                {lowerIsBetter ? ' • Lower is better' : ''}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -690,7 +691,7 @@ export default function IndicatorExplorePage() {
                 timePeriod={periodLabel}
                 isEngland={!selectedArea}
                 isLoading={false}
-                lowerIsBetter={section?.lowerIsBetter ?? false}
+                lowerIsBetter={lowerIsBetter}
               />
             </div>
           )}

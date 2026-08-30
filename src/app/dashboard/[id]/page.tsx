@@ -36,7 +36,7 @@ import { useIndicatorData } from '@/lib/hooks/use-indicator-data';
 import { useAllAreas } from '@/lib/hooks/use-areas';
 import { SYSTEM_LEVELS, type Area, type IndicatorRawData, type IndicatorWithData } from '@/lib/api/types';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
-import { findSectionForIndicator } from '@/lib/constants/indicator-sections';
+import { findSectionForIndicator, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
 import { formatTimePeriod, formatValue } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 
@@ -174,7 +174,7 @@ export default function IndicatorDetailPage() {
   const indicatorSection = indicator
     ? findSectionForIndicator(indicator.IndicatorCode)
     : undefined;
-  const lowerIsBetter = indicatorSection?.lowerIsBetter ?? false;
+  const lowerIsBetter = indicator ? isLowerBetterIndicator(indicator.IndicatorCode) : false;
 
 
   // Get the metricID for Persons (needed for siblingData)
@@ -403,8 +403,16 @@ export default function IndicatorDetailPage() {
     return null;
   }, [organisation, areasByLevel]);
 
-  // Get parent AreaID from the found org (more reliable) or fallback to context org
-  const effectiveParentId = orgFromAreas?.Parents?.[0] ?? organisation?.Parents?.[0];
+  // Skip legacy parent IDs that are not part of the current area hierarchy.
+  const effectiveParentId = useMemo(() => {
+    const parentIds = orgFromAreas?.Parents ?? organisation?.Parents ?? [];
+    for (const parentId of parentIds) {
+      for (const [, areaList] of areasByLevel) {
+        if (areaList.some((area) => area.AreaID === parentId)) return parentId;
+      }
+    }
+    return undefined;
+  }, [orgFromAreas, organisation, areasByLevel]);
 
   // Fetch parent area data for benchmark comparison (e.g., ICB for PCN)
   const { data: parentIndicators2 } = useAreaIndicators(

@@ -4,12 +4,13 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { DashboardSection } from '@/lib/constants/indicator-sections';
+import { isLowerBetterIndicator, type DashboardSection } from '@/lib/constants/indicator-sections';
 import type { IndicatorWithData } from '@/lib/api/types';
 import { formatValue, formatAbsDiff, formatDiff } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
 
 interface SectionViewProps {
   section: DashboardSection;
@@ -28,10 +29,9 @@ interface IndicatorRow {
   previousValue: number | null;
   gap: number | null;
   trend: number | null;
+  lowerIsBetter: boolean;
 }
 
-/** Gap (pp) within which an indicator counts as in line with the baseline. */
-const AT_THRESHOLD = 0.5;
 /** Change (pp) within which a trend counts as stable. */
 const FLAT_THRESHOLD = 0.1;
 
@@ -86,7 +86,15 @@ export function SectionView({
         const gap = value !== null && baselineValue !== null ? value - baselineValue : null;
         const trend = value !== null && previousValue !== null ? value - previousValue : null;
 
-        return { indicator, value, baselineValue, previousValue, gap, trend };
+        return {
+          indicator,
+          value,
+          baselineValue,
+          previousValue,
+          gap,
+          trend,
+          lowerIsBetter: isLowerBetterIndicator(code),
+        };
       })
       .filter((row): row is IndicatorRow => row !== null && row.value !== null);
 
@@ -96,41 +104,45 @@ export function SectionView({
         if (a.trend === null && b.trend === null) return 0;
         if (a.trend === null) return 1;
         if (b.trend === null) return -1;
-        return section.lowerIsBetter ? b.trend - a.trend : a.trend - b.trend;
+        const aSeverity = a.lowerIsBetter ? a.trend : -a.trend;
+        const bSeverity = b.lowerIsBetter ? b.trend : -b.trend;
+        return bSeverity - aSeverity;
       });
     } else {
       rows.sort((a, b) => {
         if (a.gap === null && b.gap === null) return 0;
         if (a.gap === null) return 1;
         if (b.gap === null) return -1;
-        return section.lowerIsBetter ? b.gap - a.gap : a.gap - b.gap;
+        const aSeverity = a.lowerIsBetter ? a.gap : -a.gap;
+        const bSeverity = b.lowerIsBetter ? b.gap : -b.gap;
+        return bSeverity - aSeverity;
       });
     }
 
     return rows;
-  }, [section.indicatorCodes, section.lowerIsBetter, indicators, baselineMap, isEngland]);
+  }, [section.indicatorCodes, indicators, baselineMap, isEngland]);
 
   const filteredIndicators = useMemo(() => {
     if (!showBelowOnly) return sectionIndicators;
     return sectionIndicators.filter(row => {
       if (row.gap === null) return false;
-      return section.lowerIsBetter ? row.gap > AT_THRESHOLD : row.gap < -AT_THRESHOLD;
+      return row.lowerIsBetter ? row.gap > COMPARISON_TOLERANCE : row.gap < -COMPARISON_TOLERANCE;
     });
-  }, [sectionIndicators, showBelowOnly, section.lowerIsBetter]);
+  }, [sectionIndicators, showBelowOnly]);
 
   const summary = useMemo(() => {
     if (isEngland) {
       const withTrends = sectionIndicators.filter(r => r.trend !== null);
       if (withTrends.length === 0) return null;
-      const improving = withTrends.filter(r => section.lowerIsBetter ? r.trend! < -FLAT_THRESHOLD : r.trend! > FLAT_THRESHOLD).length;
-      const declining = withTrends.filter(r => section.lowerIsBetter ? r.trend! > FLAT_THRESHOLD : r.trend! < -FLAT_THRESHOLD).length;
+      const improving = withTrends.filter(r => r.lowerIsBetter ? r.trend! < -FLAT_THRESHOLD : r.trend! > FLAT_THRESHOLD).length;
+      const declining = withTrends.filter(r => r.lowerIsBetter ? r.trend! > FLAT_THRESHOLD : r.trend! < -FLAT_THRESHOLD).length;
       return { good: improving, bad: declining, total: withTrends.length, goodLabel: 'improving', badLabel: 'declining' };
     }
 
     const withGaps = sectionIndicators.filter(r => r.gap !== null);
     if (withGaps.length === 0) return null;
-    const ahead = withGaps.filter(r => section.lowerIsBetter ? r.gap! < -AT_THRESHOLD : r.gap! > AT_THRESHOLD).length;
-    const behind = withGaps.filter(r => section.lowerIsBetter ? r.gap! > AT_THRESHOLD : r.gap! < -AT_THRESHOLD).length;
+    const ahead = withGaps.filter(r => r.lowerIsBetter ? r.gap! < -COMPARISON_TOLERANCE : r.gap! > COMPARISON_TOLERANCE).length;
+    const behind = withGaps.filter(r => r.lowerIsBetter ? r.gap! > COMPARISON_TOLERANCE : r.gap! < -COMPARISON_TOLERANCE).length;
     return {
       good: ahead,
       bad: behind,
@@ -138,7 +150,7 @@ export function SectionView({
       goodLabel: isRecordedPrevalence ? 'higher' : 'ahead',
       badLabel: isRecordedPrevalence ? 'lower' : 'behind',
     };
-  }, [sectionIndicators, section.lowerIsBetter, isEngland, isRecordedPrevalence]);
+  }, [sectionIndicators, isEngland, isRecordedPrevalence]);
 
   if (filteredIndicators.length === 0) {
     return null;
@@ -185,12 +197,12 @@ export function SectionView({
 
       <ul className="divide-y divide-gray-100">
         {filteredIndicators.map((row) => {
-          const { indicator, value, baselineValue, gap, trend } = row;
+          const { indicator, value, baselineValue, gap, trend, lowerIsBetter } = row;
           const fmt = indicator.FormatDisplayName;
 
-          const effectiveGap = section.lowerIsBetter && gap !== null ? -gap : gap;
+          const effectiveGap = lowerIsBetter && gap !== null ? -gap : gap;
           const gapDirection = effectiveGap !== null
-            ? (effectiveGap > AT_THRESHOLD ? 'ahead' : effectiveGap < -AT_THRESHOLD ? 'behind' : 'at')
+            ? (effectiveGap > COMPARISON_TOLERANCE ? 'ahead' : effectiveGap < -COMPARISON_TOLERANCE ? 'behind' : 'at')
             : null;
           const gapLabel = gapDirection === 'at'
             ? 'In line'
@@ -199,7 +211,7 @@ export function SectionView({
           const trendDirection = trend !== null
             ? (Math.abs(trend) < FLAT_THRESHOLD ? 'flat' : trend > 0 ? 'up' : 'down')
             : null;
-          const trendGood = section.lowerIsBetter ? trendDirection === 'down' : trendDirection === 'up';
+          const trendGood = lowerIsBetter ? trendDirection === 'down' : trendDirection === 'up';
           const trendLabel = trend === null ? 'No previous period'
             : trendDirection === 'flat' ? 'Stable'
             : `${formatDiff(trend, fmt)} since last period`;

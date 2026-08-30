@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { SparklineCard } from './sparkline-card';
-import { DASHBOARD_SECTIONS } from '@/lib/constants/indicator-sections';
+import { DASHBOARD_SECTIONS, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
 import type { IndicatorWithData } from '@/lib/api/types';
 
 interface TrendsViewProps {
@@ -55,7 +55,7 @@ export function TrendsView({ indicators, isEngland }: TrendsViewProps) {
                     key={ind.IndicatorID}
                     indicator={ind}
                     sectionColor={section.color}
-                    lowerIsBetter={section.lowerIsBetter}
+                    lowerIsBetter={isLowerBetterIndicator(ind.IndicatorCode)}
                     recordedPrevalence={section.id === 'prevalence'}
                   />
                 ))}

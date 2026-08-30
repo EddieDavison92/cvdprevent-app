@@ -6,6 +6,7 @@ import { AreaCard } from './area-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Area } from '@/lib/api/types';
 import { Search } from 'lucide-react';
+import { findKnownParentArea } from '@/lib/utils/geography';
 
 interface AreaSearchProps {
   areas: Area[] | undefined;
@@ -16,7 +17,14 @@ interface AreaSearchProps {
   levelId: number;
 }
 
-export function AreaSearch({ areas, allAreas, selectedArea, onSelect, isLoading, levelId }: AreaSearchProps) {
+function getParentName(area: Area, areaById: Map<number, Area>): string | undefined {
+  return findKnownParentArea(area, areaById)?.AreaName
+    .replace(/^NHS /, '')
+    .replace(/ Integrated Care Board$/, '')
+    .replace(/ Primary Care Network$/, '');
+}
+
+export function AreaSearch({ areas, allAreas, selectedArea, onSelect, isLoading }: AreaSearchProps) {
   const [search, setSearch] = useState('');
 
   // Build parent lookup
@@ -30,20 +38,6 @@ export function AreaSearch({ areas, allAreas, selectedArea, onSelect, isLoading,
     return map;
   }, [allAreas]);
 
-  // Get parent name for an area
-  const getParentName = (area: Area): string | undefined => {
-    if (area.Parents && area.Parents.length > 0) {
-      const parent = areaById.get(area.Parents[0]);
-      if (parent) {
-        return parent.AreaName
-          .replace(/^NHS /, '')
-          .replace(/ Integrated Care Board$/, '')
-          .replace(/ Primary Care Network$/, '');
-      }
-    }
-    return undefined;
-  };
-
   // Filter areas by search
   const filteredAreas = useMemo(() => {
     if (!areas) return [];
@@ -52,7 +46,7 @@ export function AreaSearch({ areas, allAreas, selectedArea, onSelect, isLoading,
     const searchLower = search.toLowerCase();
     return areas.filter((area) => {
       const nameMatch = area.AreaName.toLowerCase().includes(searchLower);
-      const parentName = getParentName(area);
+      const parentName = getParentName(area, areaById);
       const parentMatch = parentName?.toLowerCase().includes(searchLower);
       return nameMatch || parentMatch;
     });
@@ -95,7 +89,7 @@ export function AreaSearch({ areas, allAreas, selectedArea, onSelect, isLoading,
             <AreaCard
               key={area.AreaCode}
               area={area}
-              parentName={getParentName(area)}
+              parentName={getParentName(area, areaById)}
               isSelected={selectedArea?.AreaCode === area.AreaCode}
               onClick={() => onSelect(area)}
             />

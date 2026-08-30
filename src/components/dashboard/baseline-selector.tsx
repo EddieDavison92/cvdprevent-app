@@ -2,7 +2,6 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -17,7 +16,8 @@ import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
 import type { Area } from '@/lib/api/types';
 import { Label } from '@/components/ui/label';
-import { Target, RotateCcw, RefreshCw } from 'lucide-react';
+import { Target, RotateCcw } from 'lucide-react';
+import { AreaChangeDialog } from './area-change-dialog';
 
 interface AreaDetailsResponse {
   areaDetails: Area & { ParentAreaList?: Area[] };
@@ -54,7 +54,7 @@ const ENGLAND_AREA: Area = {
 };
 
 export function BaselineSelector() {
-  const { organisation, baseline, setBaseline, resetBaseline, isBaselineEngland, clearOrganisation } = useOrganisation();
+  const { organisation, baseline, setBaseline, resetBaseline, isBaselineEngland } = useOrganisation();
   const { data: latestPeriod } = useLatestTimePeriod('standard');
   const timePeriodId = latestPeriod?.TimePeriodID;
 
@@ -143,12 +143,7 @@ export function BaselineSelector() {
           <RotateCcw className="h-3.5 w-3.5" />
         </Button>
       )}
-      <Link href="/" onClick={() => clearOrganisation()} className="hidden sm:block">
-        <Button variant="outline" size="sm" className="h-8 gap-2">
-          <RefreshCw className="h-3.5 w-3.5" />
-          Change area
-        </Button>
-      </Link>
+      <AreaChangeDialog className="hidden sm:inline-flex" />
     </div>
   );
 }

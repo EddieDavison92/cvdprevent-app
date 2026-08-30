@@ -13,6 +13,7 @@ import { SYSTEM_LEVELS, type Area } from '@/lib/api/types';
 import { Search, Globe, Heart, BarChart3, List, ArrowRight, Clock3 } from 'lucide-react';
 import { Footer } from '@/components/layout/footer';
 import { ApiUnavailable } from '@/components/api-status-banner';
+import { findKnownParentArea } from '@/lib/utils/geography';
 
 export default function LandingPage() {
   const router = useRouter();
@@ -55,7 +56,7 @@ export default function LandingPage() {
 
   const getParentName = useCallback((area: Area): string | undefined => {
     if (area.Parents?.length > 0) {
-      const parent = parentLookup.get(area.Parents[0]);
+      const parent = findKnownParentArea(area, parentLookup);
       return parent ? getAreaDisplayName(parent) : undefined;
     }
     return undefined;

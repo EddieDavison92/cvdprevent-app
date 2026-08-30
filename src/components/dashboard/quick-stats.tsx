@@ -4,9 +4,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 interface QuickStatsProps {
-  aboveCount: number;
+  favourableCount: number;
   atCount: number;
-  belowCount: number;
+  unfavourableCount: number;
   baselineName?: string;
   isEngland?: boolean;
   improvingCount?: number;
@@ -24,7 +24,7 @@ interface Segment {
 
 /** Compact strip: stacked bar of indicator counts with a legend. */
 export function QuickStats({
-  aboveCount, atCount, belowCount,
+  favourableCount, atCount, unfavourableCount,
   baselineName = 'average',
   isEngland,
   improvingCount = 0, stableCount = 0, decliningCount = 0,
@@ -46,9 +46,9 @@ export function QuickStats({
         { label: 'Declining', count: decliningCount, bar: 'bg-nhs-red', text: 'text-nhs-red' },
       ]
     : [
-        { label: `Above ${baselineName}`, count: aboveCount, bar: 'bg-nhs-green', text: 'text-nhs-green' },
+        { label: `Favourable vs ${baselineName}`, count: favourableCount, bar: 'bg-nhs-green', text: 'text-nhs-green' },
         { label: `In line with ${baselineName}`, count: atCount, bar: 'bg-gray-300', text: 'text-gray-600' },
-        { label: `Below ${baselineName}`, count: belowCount, bar: 'bg-nhs-red', text: 'text-nhs-red' },
+        { label: `Unfavourable vs ${baselineName}`, count: unfavourableCount, bar: 'bg-nhs-red', text: 'text-nhs-red' },
       ];
 
   const total = segments.reduce((sum, s) => sum + s.count, 0);

@@ -12,12 +12,10 @@ import {
   SectionView,
   PrioritiesCard,
   TrendsView,
+  AreaChangeDialog,
 } from '@/components/dashboard';
 import { OverviewSkeleton, TrendsSkeleton, PathwaysSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { Footer } from '@/components/layout/footer';
-import Link from 'next/link';
-import { RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { PathwayOverview } from '@/components/pathways';
@@ -26,7 +24,8 @@ import { useOrganisation } from '@/providers/organisation-context';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAreaIndicators, getPersonsData } from '@/lib/hooks/use-area-indicators';
 import { extractCondition } from '@/lib/utils/format';
-import { DASHBOARD_SECTIONS } from '@/lib/constants/indicator-sections';
+import { DASHBOARD_SECTIONS, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
+import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
 import type { IndicatorCategoryData, IndicatorWithData } from '@/lib/api/types';
 import { ApiUnavailable } from '@/components/api-status-banner';
 
@@ -52,7 +51,7 @@ function convertToRawDataFormat(category: IndicatorCategoryData, indicator: Indi
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { organisation, isEngland, isLoading: isLoadingOrg, baseline, clearOrganisation } = useOrganisation();
+  const { organisation, isEngland, isLoading: isLoadingOrg, baseline } = useOrganisation();
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
@@ -167,7 +166,7 @@ export default function DashboardPage() {
       condition: string;
     }[] = [];
 
-    let above = 0, at = 0, below = 0;
+    let favourable = 0, at = 0, unfavourable = 0;
     let improving = 0, stable = 0, declining = 0;
 
     areaIndicators?.forEach((indicator) => {
@@ -234,10 +233,10 @@ export default function DashboardPage() {
 
       if (orgValue !== null && baselineValue !== null && !isEngland) {
         const diff = orgValue - baselineValue;
-        const relativeDiff = baselineValue !== 0 ? (Math.abs(diff) / baselineValue) * 100 : 0;
-        const isSignificant = relativeDiff > 0.25;
-        if (isSignificant && diff > 0) above++;
-        else if (isSignificant && diff < 0) below++;
+        const effectiveDiff = isLowerBetterIndicator(indicator.IndicatorCode) ? -diff : diff;
+        const isSignificant = Math.abs(diff) > COMPARISON_TOLERANCE;
+        if (isSignificant && effectiveDiff > 0) favourable++;
+        else if (isSignificant && effectiveDiff < 0) unfavourable++;
         else at++;
       }
     });
@@ -249,7 +248,7 @@ export default function DashboardPage() {
       dataByIndicator: dataMap,
       previousDataByIndicator: prevMap,
       baselineDataByIndicator: baselineMap,
-      quickStats: { above, at, below, improving, stable, declining },
+      quickStats: { favourable, at, unfavourable, improving, stable, declining },
       indicators: indicatorList,
       conditions: sortedConditions,
     };
@@ -277,21 +276,16 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <OrganisationHeader />
               {isEngland ? (
-                <Link href="/" onClick={() => clearOrganisation()} className="hidden sm:block">
-                  <Button variant="outline" size="sm" className="h-8 gap-2">
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    Change area
-                  </Button>
-                </Link>
+                <AreaChangeDialog className="hidden sm:inline-flex" />
               ) : (
                 <BaselineSelector />
               )}
             </div>
             <div className="mt-4 border-t border-gray-100 pt-4">
               <QuickStats
-                aboveCount={quickStats.above}
+                favourableCount={quickStats.favourable}
                 atCount={quickStats.at}
-                belowCount={quickStats.below}
+                unfavourableCount={quickStats.unfavourable}
                 baselineName={baselineName}
                 isEngland={isEngland}
                 improvingCount={quickStats.improving}

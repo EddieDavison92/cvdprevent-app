@@ -1,13 +1,12 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { useOrganisation } from '@/providers/organisation-context';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
-import { Building2, RefreshCw } from 'lucide-react';
-import Link from 'next/link';
+import { Building2 } from 'lucide-react';
+import { AreaChangeDialog } from './area-change-dialog';
 
 export function OrganisationHeader() {
-  const { organisation, clearOrganisation, isEngland } = useOrganisation();
+  const { organisation, isEngland } = useOrganisation();
 
   if (!organisation) return null;
 
@@ -28,12 +27,7 @@ export function OrganisationHeader() {
           {isEngland ? 'National overview' : SYSTEM_LEVEL_NAMES[organisation.SystemLevelID]}
         </p>
       </div>
-      <Link href="/" onClick={() => clearOrganisation()} className="ml-auto sm:hidden">
-        <Button variant="outline" size="sm" className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Change
-        </Button>
-      </Link>
+      <AreaChangeDialog compact className="ml-auto sm:hidden" />
     </div>
   );
 }

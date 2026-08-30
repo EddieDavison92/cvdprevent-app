@@ -33,15 +33,16 @@ import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAreas } from '@/lib/hooks/use-areas';
 import { useIndicators } from '@/lib/hooks/use-indicator-data';
 import { getIndicatorData, getPersonsData } from '@/lib/api';
-import { SYSTEM_LEVELS, type IndicatorRawData, type Area, type Indicator } from '@/lib/api/types';
-import { DASHBOARD_SECTIONS, findSectionForIndicator, type DashboardSection } from '@/lib/constants/indicator-sections';
+import { SYSTEM_LEVELS, type Indicator } from '@/lib/api/types';
+import { DASHBOARD_SECTIONS, findSectionForIndicator, isLowerBetterIndicator, type DashboardSection } from '@/lib/constants/indicator-sections';
+import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
 import { formatValue, formatTimePeriod } from '@/lib/utils/format';
 import { ApiUnavailable } from '@/components/api-status-banner';
 import { cn } from '@/lib/utils';
 import { downloadCSV } from '@/lib/utils/csv';
 import {
-  ArrowUpDown, ArrowUp, ArrowDown, ArrowUpRight, BarChart3, Info, Download, Calendar,
+  ArrowUpDown, ArrowUp, ArrowDown, BarChart3, Info, Download, Calendar,
   Activity, SearchX, Pill, Target, ClipboardCheck, HeartPulse,
 } from 'lucide-react';
 import type { SectionType } from '@/lib/constants/indicator-sections';
@@ -93,9 +94,7 @@ function getCellStyle(value: number | null, englandValue: number | null, lowerIs
     return { bg: '', text: 'text-gray-400' };
   }
   const diff = value - englandValue;
-  const relativeDiff = (Math.abs(diff) / englandValue) * 100;
-
-  if (relativeDiff <= 0.25) {
+  if (Math.abs(diff) <= COMPARISON_TOLERANCE) {
     return { bg: 'bg-amber-50', text: 'text-gray-900' };
   }
 
@@ -346,7 +345,7 @@ export default function BenchmarksPage() {
     }
 
     for (const ind of availableIndicators) {
-      const lowerIsBetter = ind.section?.lowerIsBetter ?? false;
+      const lowerIsBetter = isLowerBetterIndicator(ind.IndicatorCode);
       const values = filteredAreas
         .map(a => ({ code: a.AreaCode, value: matrix.get(a.AreaCode)?.get(ind.IndicatorID) ?? null }))
         .filter(v => v.value !== null) as { code: string; value: number }[];
@@ -442,7 +441,7 @@ export default function BenchmarksPage() {
     return `/indicators/${indicatorId}?${params.toString()}`;
   };
 
-  const SortIcon = ({ column }: { column: string }) => {
+  const renderSortIcon = (column: string) => {
     if (sort.column !== column) return <ArrowUpDown className="h-3 w-3 opacity-40" />;
     return sort.direction === 'asc'
       ? <ArrowUp className="h-3 w-3" />
@@ -580,7 +579,7 @@ export default function BenchmarksPage() {
                       <code className="shrink-0 text-gray-500 font-mono">{ind.IndicatorCode}</code>
                       <span className="text-gray-600 truncate" title={ind.IndicatorShortName}>
                         {cleanIndicatorName(ind.IndicatorShortName)}
-                        {ind.section?.lowerIsBetter ? ' ↓' : ''}
+                        {isLowerBetterIndicator(ind.IndicatorCode) ? ' ↓' : ''}
                       </span>
                     </Link>
                   );
@@ -629,7 +628,7 @@ export default function BenchmarksPage() {
                         onClick={() => handleSort('name')}
                       >
                         <div className="flex items-center gap-1">
-                          {SYSTEM_LEVEL_NAMES[levelId]} <SortIcon column="name" />
+                          {SYSTEM_LEVEL_NAMES[levelId]} {renderSortIcon('name')}
                         </div>
                       </TableHead>
                       <TableHead
@@ -637,7 +636,7 @@ export default function BenchmarksPage() {
                         onClick={() => handleSort('score')}
                       >
                         <div className="flex items-center justify-center gap-1 text-[11px]">
-                          Score <SortIcon column="score" />
+                          Score {renderSortIcon('score')}
                         </div>
                       </TableHead>
                       {availableIndicators.map((ind) => (
@@ -652,12 +651,12 @@ export default function BenchmarksPage() {
                                 <code className="text-[9px] font-semibold text-gray-500">
                                   {ind.IndicatorCode}
                                 </code>
-                                <SortIcon column={ind.IndicatorID.toString()} />
+                                {renderSortIcon(ind.IndicatorID.toString())}
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
                               <p className="text-xs font-medium">{cleanIndicatorName(ind.IndicatorShortName)}</p>
-                              <p className="text-xs text-gray-400">{ind.section?.lowerIsBetter ? 'Lower is better' : 'Higher is better'}</p>
+                              <p className="text-xs text-gray-400">{isLowerBetterIndicator(ind.IndicatorCode) ? 'Lower is better' : 'Higher is better'}</p>
                               <Link href={indicatorHref(ind.IndicatorID)} onClick={e => e.stopPropagation()} className="text-xs text-white hover:underline mt-1 block">
                                 View indicator details ↗
                               </Link>
@@ -741,7 +740,7 @@ export default function BenchmarksPage() {
                             {availableIndicators.map((ind, indIdx) => {
                               const val = matrix.get(area.AreaCode)?.get(ind.IndicatorID) ?? null;
                               const engVal = baselineValues.get(ind.IndicatorID) ?? null;
-                              const lowerIsBetter = ind.section?.lowerIsBetter ?? false;
+                              const lowerIsBetter = isLowerBetterIndicator(ind.IndicatorCode);
                               const style = getCellStyle(val, engVal, lowerIsBetter);
                               const isLast = indIdx === availableIndicators.length - 1;
 
