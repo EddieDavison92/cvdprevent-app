@@ -40,7 +40,14 @@ function findBiggestGap(
 ): string | null {
   // Signed gap is normalised so negative = worse, regardless of polarity
   const sign = lowerIsBetter ? -1 : 1;
-  let worst: { demoLabel: string; name: string; gap: number; signed: number } | null = null;
+  let worst: {
+    demoLabel: string;
+    name: string;
+    orgValue: number;
+    baselineValue: number;
+    gap: number;
+    signed: number;
+  } | null = null;
 
   for (const { demo, chartData } of demographicsWithData) {
     for (const d of chartData) {
@@ -48,19 +55,27 @@ function findBiggestGap(
       const gap = d.orgValue - d.baselineValue;
       const signed = gap * sign;
       if (!worst || signed < worst.signed) {
-        worst = { demoLabel: demo.label.replace('By ', ''), name: d.name, gap, signed };
+        worst = {
+          demoLabel: demo.label.replace('By ', ''),
+          name: d.name,
+          orgValue: d.orgValue,
+          baselineValue: d.baselineValue,
+          gap,
+          signed,
+        };
       }
     }
   }
 
   // Only flag if gap is both >2pp absolute AND >3% relative to baseline value
   if (!worst || worst.signed >= -2) return null;
-  const baseVal = demographicsWithData
-    .flatMap((d) => d.chartData)
-    .find((d) => d.name === worst!.name)?.baselineValue;
-  if (baseVal && (Math.abs(worst.gap) / baseVal) * 100 < 3) return null;
+  if (worst.baselineValue && (Math.abs(worst.gap) / worst.baselineValue) * 100 < 3) return null;
+
+  const groupLabel = DEPRIVATION_LABELS[worst.name]
+    ? `Deprivation quintile ${worst.name.split(' ')[0]}`
+    : `${worst.demoLabel}: ${worst.name}`;
   const direction = worst.gap < 0 ? 'below' : 'above';
-  return `Biggest gap to ${baselineName}: ${worst.name} (${worst.demoLabel.toLowerCase()}) — ${formatAbsDiff(worst.gap, formatDisplayName)} ${direction}`;
+  return `Largest gap: ${groupLabel} — ${formatValue(worst.orgValue, formatDisplayName)} vs ${baselineName} ${formatValue(worst.baselineValue, formatDisplayName)} (${formatAbsDiff(worst.gap, formatDisplayName)} ${direction})`;
 }
 
 export function DemographicsGrid({ indicator, areaData, baselineData, baselineName = 'England', areaName, areaCode, timePeriod, isEngland, isLoading, lowerIsBetter }: DemographicsGridProps) {
