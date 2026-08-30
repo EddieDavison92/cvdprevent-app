@@ -26,7 +26,9 @@ export function TrendsView({ indicators, isEngland }: TrendsViewProps) {
         <div>
           <h2 className="text-base font-semibold text-gray-900">Trends by pathway stage</h2>
           <p className="mt-0.5 text-sm text-gray-500">
-            {isEngland ? 'Direction across recent national periods.' : 'Recent direction for every indicator, grouped for scanning.'}
+            {isEngland
+              ? 'Change between the latest two published national periods.'
+              : 'Change between the latest two published periods, grouped for scanning.'}
           </p>
         </div>
         <p className="text-xs text-gray-500">Prevalence trends show recording direction, not health improvement</p>

@@ -125,7 +125,9 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
         for (const b of allBenchmarks) {
           const diff = p.value - b.value;
           const diffStr = diff >= 0 ? `+${formatValue(diff)}` : formatValue(diff);
-          html += `<br/><span style="color:${b.color}">${b.label.split(':')[0]}: ${diffStr}</span>`;
+          const color = b.color ?? NHS_COLORS.darkGrey;
+          html += `<br/><span style="display:inline-block;width:10px;border-top:2px dashed ${color};margin-right:6px;vertical-align:middle"></span>`;
+          html += `<span style="color:${NHS_COLORS.darkGrey}">${b.label.split(':')[0]}: ${diffStr}</span>`;
         }
         return html;
       },

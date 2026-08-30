@@ -62,6 +62,25 @@ export async function fetchApi<T>(endpoint: string, expectedKey?: string): Promi
   return validateResponse<T>(data, expectedKey);
 }
 
+/**
+ * Fetch via the app's own relay (/api/cvdprevent), which filters rawDataJSON
+ * rows server-side and is CDN-cached. Browser only (relative URL).
+ */
+export async function fetchRelayApi<T>(endpoint: string, expectedKey?: string): Promise<T> {
+  const response = await fetch(`/api/cvdprevent${endpoint}`, {
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new ApiError(response.status, `API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return validateResponse<T>(data, expectedKey);
+}
+
 function canUseBrowserStorage() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }

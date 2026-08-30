@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight, MapPin, Building2, Building, Users, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useAreas, useAllAreas } from '@/lib/hooks';
+import { useAllAreas } from '@/lib/hooks';
 import { SYSTEM_LEVELS, type Area } from '@/lib/api/types';
 import { Skeleton } from '@/components/ui/skeleton';
 

@@ -31,16 +31,18 @@ import {
   PopulationProfile,
   PolarityBadge,
   PeerPositionCard,
+  TargetCard,
 } from '@/components/indicator-detail';
 import { BaselineSelector } from '@/components/dashboard';
 import { useOrganisation } from '@/providers/organisation-context';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
-import { useAreaIndicators, getPersonsData, useSiblingData, useChildAreas, useChildData } from '@/lib/hooks/use-area-indicators';
+import { useAreaIndicators, getPersonsData, useSiblingData, useChildAreas, useChildData, useMetricTimeSeries } from '@/lib/hooks/use-area-indicators';
 import { useIndicatorData } from '@/lib/hooks/use-indicator-data';
 import { useAllAreas } from '@/lib/hooks/use-areas';
 import { SYSTEM_LEVELS, type Area, type IndicatorRawData, type IndicatorWithData } from '@/lib/api/types';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
 import { findSectionForIndicator, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
+import { findKnownParentArea } from '@/lib/utils/geography';
 import { formatTimePeriod, formatValue } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 
@@ -166,7 +168,7 @@ export default function IndicatorDetailPage() {
   );
 
   // Get all areas for parent name lookup and to find organisation with correct Parents
-  const { areasByLevel } = useAllAreas(latestPeriod?.TimePeriodID);
+  const { areasByLevel, isLoading: isLoadingAreas } = useAllAreas(latestPeriod?.TimePeriodID);
 
   // Find the current indicator from cached data
   const indicator = useMemo(() => {
@@ -188,6 +190,11 @@ export default function IndicatorDetailPage() {
     const persons = indicator ? getPersonsData(indicator) : undefined;
     return persons?.MetricID;
   }, [indicator]);
+
+  const { data: metricTimeSeries } = useMetricTimeSeries(
+    personsMetricId,
+    organisation?.AreaID,
+  );
 
   // Fetch peer/sibling data for comparison (only if not England)
   const { data: siblingData, isLoading: isLoadingSiblings } = useSiblingData(
@@ -370,18 +377,21 @@ export default function IndicatorDetailPage() {
     return { children, childrenData };
   }, [childAreas, childData]);
 
-  // Fetch national comparison data for ICB/Sub-ICB (not PCN - too many areas)
-  // Also fetch ICB data when viewing England (for map)
-  const nationalLevelId = isEngland ? SYSTEM_LEVELS.ICB : (levelId !== SYSTEM_LEVELS.PCN ? levelId : null);
+  // Fetch national comparison data at the area's own level, Persons only
+  // (one row per area, so PCN level stays small). ICB data when viewing England (for map)
+  const nationalLevelId = isEngland ? SYSTEM_LEVELS.ICB : levelId;
   const { data: nationalRawData, isLoading: isLoadingNational } = useIndicatorData(
     selectedIndicatorId,
     latestPeriod?.TimePeriodID,
-    nationalLevelId ?? undefined
+    nationalLevelId ?? undefined,
+    true
   );
 
-  // Convert national raw data to peer format
+  // Convert national raw data to peer format.
+  // nationalLevelId guard: when the fetch is disabled (PCN), placeholderData
+  // can still surface rows from a previously viewed level
   const { nationalAreas, nationalData } = useMemo(() => {
-    if (!nationalRawData) return { nationalAreas: [] as Area[], nationalData: [] as IndicatorRawData[] };
+    if (!nationalRawData || nationalLevelId == null) return { nationalAreas: [] as Area[], nationalData: [] as IndicatorRawData[] };
 
     const personsData = nationalRawData.filter(
       (d) => d.MetricCategoryTypeName === 'Sex' && d.MetricCategoryName === 'Persons'
@@ -471,30 +481,35 @@ export default function IndicatorDetailPage() {
     return persons?.Data.Value ?? null;
   }, [isEngland, areaData, englandIndicators, selectedIndicatorId]);
 
-  // Region value: for ICBs the parent IS the region
-  // For Sub-ICBs, find the region from the parent chain
+  // Region reference: walk the full ancestor chain (the region is 2-3 hops up
+  // for Sub-ICBs and PCNs, not a direct parent)
   const { regionName, regionValue } = useMemo(() => {
-    if (!orgFromAreas || isEngland) return { regionName: undefined, regionValue: null };
+    if (!orgFromAreas || isEngland) return { regionName: undefined as string | undefined, regionValue: null as number | null };
 
-    // Find region in parent chain
-    const regionLevel = areasByLevel.get(SYSTEM_LEVELS.REGION);
-    if (!regionLevel) return { regionName: undefined, regionValue: null };
-
-    // Check if any parent is a region
-    const regionArea = regionLevel.find(r => orgFromAreas.Parents?.includes(r.AreaID));
+    const areaById = new Map<number, Area>();
+    for (const areas of areasByLevel.values()) {
+      for (const a of areas) areaById.set(a.AreaID, a);
+    }
+    let regionArea: Area | undefined;
+    let current: Area | undefined = orgFromAreas;
+    for (let hops = 0; current && hops < 6; hops++) {
+      if (current.SystemLevelID === SYSTEM_LEVELS.REGION) {
+        regionArea = current;
+        break;
+      }
+      current = findKnownParentArea(current, areaById);
+    }
     if (!regionArea) return { regionName: undefined, regionValue: null };
 
-    const regionName = regionArea.AreaName;
+    // Cleaned like baselineName/parentName so downstream identity checks match
+    const regionName = regionArea.AreaName
+      .replace(/^NHS /, '')
+      .replace(/ Integrated Care Board$/, '');
 
-    // Get region value: if parent IS the region, use parentValue
-    // Otherwise need to look it up from englandIndicators is wrong...
-    // Actually, if parent is region, parentValue is already region value
+    // Value is only available when it's already fetched as parent or baseline
     if (effectiveParentId === regionArea.AreaID) {
       return { regionName, regionValue: parentValue };
     }
-
-    // For Sub-ICB: parent is ICB, region is grandparent
-    // We'd need a separate fetch, but for now check if baseline is the region
     if (baseline.AreaID === regionArea.AreaID && baselineData) {
       return { regionName, regionValue: baselineData.Value };
     }
@@ -504,15 +519,47 @@ export default function IndicatorDetailPage() {
 
 
   // Comparison set for the peer position card follows the baseline:
-  // England -> all organisations at this level; a parent area -> siblings within it.
+  // England -> all organisations at this level; an ancestor -> same-level
+  // organisations within it (siblings for the direct parent, otherwise the
+  // national set filtered by parent chain).
   const peerScope = useMemo(() => {
     const levelName = SYSTEM_LEVEL_NAMES[levelId ?? SYSTEM_LEVELS.ICB] ?? 'organisation';
-    const siblingValues = peerData.map((d) => d.Value);
-    if (baseline.SystemLevelID !== 1 && baseline.AreaID === effectiveParentId && siblingValues.length > 1) {
-      return { values: siblingValues, label: `${levelName}s in ${baselineName}` };
+    if (baseline.SystemLevelID !== 1) {
+      const scopedLabel = `${levelName}s in ${baselineName}`;
+      const siblingValues = peerData.map((d) => d.Value);
+      if (baseline.AreaID === effectiveParentId && siblingValues.length > 1) {
+        return { values: siblingValues, label: scopedLabel, pending: false };
+      }
+      const ownAreas = levelId != null ? areasByLevel.get(levelId) : undefined;
+      if (ownAreas?.length && nationalData.length > 0) {
+        const areaById = new Map<number, Area>();
+        for (const areas of areasByLevel.values()) {
+          for (const a of areas) areaById.set(a.AreaID, a);
+        }
+        const inBaseline = new Set<string>();
+        for (const area of ownAreas) {
+          let current: Area | undefined = area;
+          for (let hops = 0; current && hops < 6; hops++) {
+            if (current.AreaID === baseline.AreaID) {
+              inBaseline.add(area.AreaCode);
+              break;
+            }
+            current = findKnownParentArea(current, areaById);
+          }
+        }
+        const values = nationalData.filter((d) => inBaseline.has(d.AreaCode)).map((d) => d.Value);
+        if (values.length > 1) {
+          return { values, label: scopedLabel, pending: false };
+        }
+      }
+      // Scoped values not loaded yet: hold the card rather than flash the
+      // England scope. Falls through to England once loading settles.
+      if (isLoadingNational || isLoadingAreas || isLoadingSiblings) {
+        return { values: [] as Array<number | null>, label: scopedLabel, pending: true };
+      }
     }
-    return { values: nationalData.map((d) => d.Value), label: `${levelName}s in England` };
-  }, [peerData, nationalData, baseline, effectiveParentId, baselineName, levelId]);
+    return { values: nationalData.map((d) => d.Value), label: `${levelName}s in England`, pending: false };
+  }, [peerData, nationalData, baseline, effectiveParentId, baselineName, levelId, areasByLevel, isLoadingNational, isLoadingAreas, isLoadingSiblings]);
 
   // Time period label
   const timePeriodLabel = latestPeriod?.TimePeriodName ?? '';
@@ -627,13 +674,24 @@ export default function IndicatorDetailPage() {
               trendValues={areaTrendData.map(point => point.value)}
             />
 
-            {!isEngland && (
+            <TargetCard
+              currentValue={areaData?.Value}
+              targetValue={metricTimeSeries?.TargetValue}
+              targetLabel={metricTimeSeries?.TargetLabel}
+              numerator={areaData?.Numerator}
+              denominator={areaData?.Denominator}
+              formatDisplayName={indicator.FormatDisplayName}
+              lowerIsBetter={lowerIsBetter}
+            />
+
+            {!isEngland && !peerScope.pending && (
               <PeerPositionCard
                 indicator={indicator}
                 areaName={areaName}
                 areaValue={areaData?.Value}
                 peerValues={peerScope.values}
                 scopeLabel={peerScope.label}
+                apiStats={getPersonsData(indicator)?.Data ?? null}
               />
             )}
 

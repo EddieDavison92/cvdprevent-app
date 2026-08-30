@@ -1,4 +1,4 @@
-import { fetchApi } from './client';
+import { fetchApi, fetchRelayApi } from './client';
 import type {
   Indicator,
   IndicatorRawData,
@@ -46,12 +46,19 @@ function mapRawDataItem(raw: RawDataJSONItem): IndicatorRawData {
 export async function getIndicatorData(
   indicatorId: number,
   timePeriodId: number,
-  systemLevelId: number
+  systemLevelId: number,
+  personsOnly = false
 ): Promise<IndicatorRawData[]> {
-  const response = await fetchApi<IndicatorRawDataResponse>(
-    `/indicator/${indicatorId}/rawDataJSON?timePeriodID=${timePeriodId}&systemLevelID=${systemLevelId}`,
-    'indicatorRawData'
-  );
+  const path = `/indicator/${indicatorId}/rawDataJSON?timePeriodID=${timePeriodId}&systemLevelID=${systemLevelId}`;
+  // The origin API ignores category filters, so persons-only goes through the
+  // app relay, which filters server-side. One row per area keeps PCN level
+  // (~1,300 areas) small; the unfiltered origin payload is ~16MB.
+  const response = personsOnly
+    ? await fetchRelayApi<IndicatorRawDataResponse>(
+      `${path}&metricCategoryTypeName=Sex&metricCategoryName=Persons`,
+      'indicatorRawData'
+    )
+    : await fetchApi<IndicatorRawDataResponse>(path, 'indicatorRawData');
   return response.indicatorRawData.map(mapRawDataItem);
 }
 

@@ -25,9 +25,9 @@ function cleanName(name: string) {
 export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recordedPrevalence = false }: SparklineCardProps) {
   const searchParams = useSearchParams();
 
-  const { chartData, value, overallChange, latestChange, trendDirection, trendGood } = useMemo(() => {
+  const { chartData, value, recentChange, trendDirection, trendGood } = useMemo(() => {
     const persons = getPersonsData(indicator);
-    if (!persons) return { chartData: [], value: null, overallChange: null, latestChange: null, trendDirection: null, trendGood: false };
+    if (!persons) return { chartData: [], value: null, recentChange: null, trendDirection: null, trendGood: false };
 
     const ts = persons.TimeSeries
       ?.slice()
@@ -41,14 +41,13 @@ export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recorded
     const value = persons.Data.Value;
 
     const trend = summariseTrend(ts.map((p) => p.Value));
-    const dir = trend.overall?.direction ?? null;
+    const dir = trend.latest?.direction ?? null;
     const good = lowerIsBetter ? dir === 'down' : dir === 'up';
 
     return {
       chartData,
       value,
-      overallChange: trend.overall?.change ?? null,
-      latestChange: trend.values.length > 2 ? trend.latest?.change ?? null : null,
+      recentChange: trend.latest?.change ?? null,
       trendDirection: dir,
       trendGood: good,
     };
@@ -82,11 +81,8 @@ export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recorded
                   : trendGood
                     ? 'Improving'
                     : 'Deteriorating'}
-            {overallChange !== null && trendDirection !== 'flat' ? ` ${formatDiff(overallChange, indicator.FormatDisplayName)}` : ''}
+            {recentChange !== null && trendDirection !== 'flat' ? ` ${formatDiff(recentChange, indicator.FormatDisplayName)}` : ''}
           </span>
-          {latestChange !== null && (
-            <span className="text-gray-400">· last period {formatDiff(latestChange, indicator.FormatDisplayName)}</span>
-          )}
         </div>
       </div>
 

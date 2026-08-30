@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { IndicatorCategoryData } from '@/lib/api/types';
 import {
   assessQualityImprovementRow,
+  countSuppressedCategories,
   getDefaultMarkerOption,
   getCategoryTrend,
   getMarkerGroupLabel,
@@ -56,7 +57,7 @@ describe('quality improvement calculations', () => {
       { TimePeriodID: 3, TimePeriodName: 'Three', Value: 52, Median: null, StartDate: '2025-07-01', EndDate: '2025-09-30' },
     ];
 
-    expect(getCategoryTrend(item)).toMatchObject({ latest: { change: 2, direction: 'up' }, overall: { change: 42, direction: 'up' } });
+    expect(getCategoryTrend(item)).toMatchObject({ latest: { change: 2, direction: 'up' }, overall: { change: 2, direction: 'up' } });
   });
 
   it('does not infer a trend from one observation', () => {
@@ -66,6 +67,14 @@ describe('quality improvement calculations', () => {
     ];
 
     expect(getCategoryTrend(item)).toMatchObject({ latest: null, overall: null });
+  });
+
+  it('counts disclosure-controlled values separately from missing data', () => {
+    const suppressed = category({ Value: null, ValueNote: 'Value suppressed for disclosure control' });
+    const missing = category({ Value: null, ValueNote: null });
+    const indicator = { Categories: [suppressed, missing] } as QualityImprovementRow['indicator'];
+
+    expect(countSuppressedCategories([indicator], 'all')).toBe(1);
   });
 
   it('translates API marker names without duplicating attributes', () => {

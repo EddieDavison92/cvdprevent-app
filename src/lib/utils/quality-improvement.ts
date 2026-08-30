@@ -24,9 +24,9 @@ export interface QualityImprovementRow {
   quintiles: Quintile[];
   /** Change between the latest two periods. */
   trend: number | null;
-  /** Direction across the series (see summariseTrend). */
+  /** Direction between the latest two published periods. */
   trendDirection: TrendDirection | null;
-  /** Change across the series. */
+  /** Alias of the latest change retained for presentation. */
   overallTrend: number | null;
   trendValues: number[];
 }
@@ -119,7 +119,8 @@ export function getMarkerOptions(indicators: IndicatorWithData[]): MarkerOption[
 
   for (const indicator of indicators) {
     for (const category of indicator.Categories) {
-      if (category.Data.Value === null) continue;
+      const isSuppressed = category.Data.Value === null && /suppress/i.test(category.Data.ValueNote ?? '');
+      if (category.Data.Value === null && !isSuppressed) continue;
       const value = markerKey(category);
       options.set(value, {
         value,
@@ -175,6 +176,15 @@ function selectedCategories(indicator: IndicatorWithData, marker: MarkerSelectio
   return indicator.Categories.filter((category) => markerKey(category) === marker);
 }
 
+export function countSuppressedCategories(
+  indicators: IndicatorWithData[],
+  marker: MarkerSelection,
+): number {
+  return indicators.reduce((count, indicator) => count + selectedCategories(indicator, marker)
+    .filter((category) => category.Data.Value === null && /suppress/i.test(category.Data.ValueNote ?? ''))
+    .length, 0);
+}
+
 export function buildQualityImprovementRows(
   indicators: IndicatorWithData[],
   marker: MarkerSelection,
@@ -194,8 +204,8 @@ export function buildQualityImprovementRows(
           max: category.Data.Max,
           quintiles: getQuintiles(category),
           trend: trend.latest?.change ?? null,
-          trendDirection: trend.overall?.direction ?? null,
-          overallTrend: trend.overall?.change ?? null,
+          trendDirection: trend.latest?.direction ?? null,
+          overallTrend: trend.latest?.change ?? null,
           trendValues: trend.values,
         };
       })

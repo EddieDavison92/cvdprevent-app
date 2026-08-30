@@ -5,7 +5,6 @@ import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Area } from '@/lib/api/types';
-import { SYSTEM_LEVELS } from '@/lib/api/types';
 import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
 
 interface AreaPickerProps {

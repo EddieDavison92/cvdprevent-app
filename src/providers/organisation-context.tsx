@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import type { Area, SYSTEM_LEVELS } from '@/lib/api/types';
+import type { Area } from '@/lib/api/types';
 import { fetchApi } from '@/lib/api/client';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 
@@ -109,7 +109,25 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
   const [organisation, setOrganisationState] = useState<Area | null>(null);
   const [levelId, setLevelId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [baseline, setBaselineState] = useState<Area>(ENGLAND_AREA);
+  // Lazy read is hydration-safe: baseline-dependent UI only renders once the
+  // organisation has loaded, which happens after mount
+  const [baseline, setBaselineState] = useState<Area>(() => {
+    if (typeof window === 'undefined') return ENGLAND_AREA;
+    try {
+      const stored = window.localStorage.getItem(BASELINE_STORAGE_KEY);
+      if (!stored) return ENGLAND_AREA;
+      const parsed: unknown = JSON.parse(stored);
+      if (isValidArea(parsed)) return parsed;
+    } catch {
+      // Fall through to cleanup
+    }
+    try {
+      window.localStorage.removeItem(BASELINE_STORAGE_KEY);
+    } catch {
+      // Storage unavailable
+    }
+    return ENGLAND_AREA;
+  });
 
   const { data: latestPeriod } = useLatestTimePeriod('standard');
   const latestTimePeriodId = latestPeriod?.TimePeriodID;
@@ -127,7 +145,11 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
     staleTime: Infinity,
   });
 
-  // Initialize from URL param or localStorage
+  // Initialize from URL param or localStorage. This must run post-mount:
+  // localStorage is browser-only and a lazy initializer would make the first
+  // client render differ from the server HTML (hydration mismatch), while the
+  // URL branch syncs an async fetch result.
+  /* eslint-disable react-hooks/set-state-in-effect -- SSR-safe hydration effect, see above */
   useEffect(() => {
     if (urlArea) {
       setOrganisationState(urlArea);
@@ -152,19 +174,7 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, [urlArea, hasUrlArea, isLoadingUrlArea, latestTimePeriodId]);
-
-  // Initialize baseline from localStorage
-  useEffect(() => {
-    try {
-      const storedBaseline = localStorage.getItem(BASELINE_STORAGE_KEY);
-      if (storedBaseline) {
-        const parsed: Area = JSON.parse(storedBaseline);
-        setBaselineState(parsed);
-      }
-    } catch {
-      // Invalid stored data, use default England
-    }
-  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Helper to update URL with area param
   const updateUrlWithArea = useCallback((areaId: number) => {

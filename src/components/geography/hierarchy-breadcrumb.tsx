@@ -3,7 +3,6 @@
 import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Area } from '@/lib/api/types';
-import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
 
 interface HierarchyBreadcrumbProps {
   hierarchy: { area: Area; levelId: number }[];

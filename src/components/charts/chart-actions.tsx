@@ -22,7 +22,8 @@ export function ChartActions({ chartRef, data, filename = 'chart', title }: Char
   const handleDownloadCSV = useCallback(() => {
     if (!data.length) return;
     const filtered = data.map(row => {
-      const { isHighlighted, ...rest } = row as Record<string, unknown>;
+      const rest = { ...(row as Record<string, unknown>) };
+      delete rest.isHighlighted;
       return rest;
     });
     downloadCSVFile(filtered, filename);

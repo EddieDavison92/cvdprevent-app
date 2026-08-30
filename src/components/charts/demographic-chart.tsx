@@ -13,6 +13,8 @@ interface DemographicChartData {
   orgDenominator?: number | null;
   baselineNumerator?: number | null;
   baselineDenominator?: number | null;
+  orgSuppressed?: boolean;
+  baselineSuppressed?: boolean;
 }
 
 interface DemographicChartProps {
@@ -32,8 +34,7 @@ export function DemographicChart({
   height = 200,
   barMaxWidth = 30,
 }: DemographicChartProps) {
-  // Check if any org values are missing (null when baseline has data)
-  const hasMissingData = data.some((d) => d.orgValue === null && d.baselineValue !== null);
+  const hasSuppressedData = data.some((d) => d.orgSuppressed || d.baselineSuppressed);
 
   // Shorten long category names for better display
   const shortenedData = data.map((d) => ({
@@ -71,7 +72,7 @@ export function DemographicChart({
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       formatter: (params: unknown) => {
-        const items = params as { seriesName: string; value: number | null; dataIndex: number; color: string }[];
+        const items = params as { seriesId: string; seriesName: string; value: number | null; dataIndex: number; color: string }[];
         if (!items.length) return '';
         const dataIndex = items[0].dataIndex;
         const dataItem = data[dataIndex];
@@ -80,14 +81,20 @@ export function DemographicChart({
         let html = `<strong>${displayName}</strong><br/>`;
 
         for (const item of items) {
+          if (item.seriesId === 'org-suppressed') {
+            html += `<span style="color:${item.color}">○</span> ${orgName}: <em>Suppressed (small count)</em><br/>`;
+            continue;
+          }
+          if (item.seriesId === 'baseline-suppressed') {
+            html += `<span style="color:${item.color}">□</span> ${baselineName}: <em>Suppressed (small count)</em><br/>`;
+            continue;
+          }
           const isOrg = item.seriesName === orgName;
           const value = item.value;
           const numerator = isOrg ? dataItem.orgNumerator : dataItem.baselineNumerator;
           const denominator = isOrg ? dataItem.orgDenominator : dataItem.baselineDenominator;
 
-          if (value === null || value === undefined) {
-            html += `<span style="color:${item.color}">●</span> ${item.seriesName}: <em>Suppressed</em><br/>`;
-          } else {
+          if (value !== null && value !== undefined) {
             html += `<span style="color:${item.color}">●</span> ${item.seriesName}: ${formatValue(value)}`;
             if (numerator !== null && numerator !== undefined && denominator !== null && denominator !== undefined) {
               html += ` <span style="color:#666">(${formatNumber(numerator)}/${formatNumber(denominator)})</span>`;
@@ -107,7 +114,7 @@ export function DemographicChart({
     grid: {
       left: '3%',
       right: '4%',
-      bottom: hasMissingData ? 50 : 35,
+      bottom: hasSuppressedData ? 50 : 35,
       top: 15,
       containLabel: true,
     },
@@ -137,6 +144,7 @@ export function DemographicChart({
     },
     series: [
       {
+        id: 'org-values',
         name: orgName,
         type: 'bar',
         data: shortenedData.map((d) => d.orgValue),
@@ -145,12 +153,33 @@ export function DemographicChart({
         barMaxWidth,
       },
       {
+        id: 'baseline-values',
         name: baselineName,
         type: 'bar',
         data: shortenedData.map((d) => d.baselineValue),
         itemStyle: { color: NHS_COLORS.midGrey },
         barMaxWidth,
       },
+      ...(data.some((d) => d.orgSuppressed) ? [{
+        id: 'org-suppressed',
+        name: 'Suppressed',
+        type: 'scatter',
+        data: shortenedData.map((d) => d.orgSuppressed ? 0 : null),
+        symbol: 'emptyCircle',
+        symbolSize: 10,
+        itemStyle: { color: NHS_COLORS.blue },
+        z: 12,
+      }] : []),
+      ...(data.some((d) => d.baselineSuppressed) ? [{
+        id: 'baseline-suppressed',
+        name: 'Suppressed',
+        type: 'scatter',
+        data: shortenedData.map((d) => d.baselineSuppressed ? 0 : null),
+        symbol: 'emptyRect',
+        symbolSize: 9,
+        itemStyle: { color: NHS_COLORS.darkGrey },
+        z: 12,
+      }] : []),
     ],
   };
 
@@ -162,9 +191,9 @@ export function DemographicChart({
         style={{ height, width: '100%' }}
         opts={{ renderer: 'svg' }}
       />
-      {hasMissingData && (
+      {hasSuppressedData && (
         <p className="text-xs text-gray-500 text-center mt-2">
-          Missing bars indicate suppressed data (small numbers)
+          Hollow markers show values suppressed because the underlying count is small. They do not represent 0%.
         </p>
       )}
     </div>

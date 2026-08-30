@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import type { ConditionPathway, PathwayStage } from '@/lib/constants/pathways';
 import type { IndicatorWithData } from '@/lib/api/types';
 import { formatValue, formatDiff, formatAbsDiff } from '@/lib/utils/format';
-import { ArrowRight, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, TrendingDown, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PathwayFunnelProps {
@@ -14,7 +14,6 @@ interface PathwayFunnelProps {
   indicators: IndicatorWithData[];
   baselineIndicators?: IndicatorWithData[];
   baselineName?: string;
-  areaName: string;
 }
 
 interface StageData {
@@ -38,7 +37,6 @@ export function PathwayFunnel({
   indicators,
   baselineIndicators = [],
   baselineName = 'England',
-  areaName,
 }: PathwayFunnelProps) {
   // Map indicator codes to data
   const indicatorMap = useMemo(() => {

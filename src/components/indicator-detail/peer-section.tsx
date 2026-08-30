@@ -144,27 +144,25 @@ export function PeerSection({
   // Always show region + England reference lines, avoiding duplicates
   const peerBenchmarks = useMemo(() => {
     const lines: { value: number; label: string; color: string }[] = [];
-    const seen = new Set<string>();
+    const shownNames = new Set<string>(['England']);
 
     // Region line
     if (regionValue != null && regionName) {
       lines.push({ value: regionValue, label: `${regionName}: ${formatFn(regionValue)}`, color: NHS_COLORS.aqua });
-      seen.add('region');
+      shownNames.add(regionName);
     } else if (parentValue != null && parentName) {
       // Fallback to parent if region not available
       lines.push({ value: parentValue, label: `${parentName}: ${formatFn(parentValue)}`, color: NHS_COLORS.aqua });
-      seen.add('parent');
+      shownNames.add(parentName);
     }
 
     // England line (always show if available)
     if (englandValue != null) {
       lines.push({ value: englandValue, label: `England: ${formatFn(englandValue)}`, color: NHS_COLORS.darkGrey });
-      seen.add('england');
     }
 
-    // Baseline line only if it's something different from region/England
-    if (baselineValue != null && baselineName !== 'England'
-        && !(regionName && baselineName === regionName)) {
+    // Baseline line only if it isn't already drawn as England/region/parent
+    if (baselineValue != null && !shownNames.has(baselineName)) {
       lines.push({ value: baselineValue, label: `${baselineName}: ${formatFn(baselineValue)}`, color: NHS_COLORS.warmYellow });
     }
 

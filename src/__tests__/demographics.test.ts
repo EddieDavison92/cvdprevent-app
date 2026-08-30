@@ -5,6 +5,7 @@ import {
   formatDemographicCategoryLabel,
   getAvailableDemographics,
   getDemographicCategoryNames,
+  isSuppressedDemographicValue,
 } from '@/lib/utils/demographics';
 
 function item(type: string, name: string, attribute = 'Persons'): IndicatorRawData {
@@ -60,5 +61,13 @@ describe('demographic breakdowns', () => {
     expect(formatDemographicCategoryLabel('People with SMI')).toBe('With SMI');
     expect(formatDemographicCategoryLabel('People without a diagnosed learning disability'))
       .toBe('Without learning disability');
+  });
+
+  it('distinguishes a suppressed result from a missing result', () => {
+    const suppressed = { ...item('Ethnicity', 'Mixed'), Value: null, ValueNote: 'Value suppressed for disclosure control' };
+    const missing = { ...item('Ethnicity', 'Other'), Value: null, ValueNote: null };
+
+    expect(isSuppressedDemographicValue(suppressed)).toBe(true);
+    expect(isSuppressedDemographicValue(missing)).toBe(false);
   });
 });

@@ -15,14 +15,20 @@ export function useIndicators(timePeriodId: number | undefined, systemLevelId: n
 export function useIndicatorData(
   indicatorId: number | undefined,
   timePeriodId: number | undefined,
-  systemLevelId: number | undefined
+  systemLevelId: number | undefined,
+  personsOnly = false
 ) {
   return useQuery({
-    queryKey: ['indicatorData', indicatorId, timePeriodId, systemLevelId],
-    queryFn: () => getIndicatorData(indicatorId!, timePeriodId!, systemLevelId!),
+    queryKey: ['indicatorData', indicatorId, timePeriodId, systemLevelId, personsOnly],
+    queryFn: () => getIndicatorData(indicatorId!, timePeriodId!, systemLevelId!, personsOnly),
     enabled: !!indicatorId && !!timePeriodId && !!systemLevelId,
     staleTime: 10 * 60 * 1000, // 10 minutes - data doesn't change frequently
-    placeholderData: (previousData) => previousData,
+    // Reuse previous data only within the same system level: rows from another
+    // level would masquerade as the current level's comparison set
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[3] === systemLevelId && previousQuery?.queryKey[4] === personsOnly
+        ? previousData
+        : undefined,
   });
 }
 

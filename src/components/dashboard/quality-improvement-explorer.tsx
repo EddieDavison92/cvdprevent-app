@@ -25,6 +25,7 @@ import { classifyIndicator } from '@/lib/constants/indicator-sections';
 import {
   buildQualityImprovementRows,
   assessQualityImprovementRow,
+  countSuppressedCategories,
   getDefaultMarkerOption,
   getMarkerGroupLabel,
   getMarkerOptions,
@@ -123,6 +124,10 @@ export function QualityImprovementExplorer({
     : markerOptions.find((option) => option.value === marker)?.label;
   const selectedBreakdownLabel = breakdown === 'persons' ? null : getMarkerGroupLabel(breakdown);
   const rows = useMemo(() => buildQualityImprovementRows(indicators ?? [], marker), [indicators, marker]);
+  const suppressedCount = useMemo(
+    () => countSuppressedCategories(indicators ?? [], marker),
+    [indicators, marker],
+  );
   const assessedRows = useMemo(() => rows.map((row) => ({
     row,
     assessment: assessQualityImprovementRow(row),
@@ -211,7 +216,7 @@ export function QualityImprovementExplorer({
           </div>
           <div>
             <dt className="font-semibold text-gray-800">Trend</dt>
-            <dd className="mt-0.5 text-gray-600">Direction across the published series: the average of the most recent third of periods against the earliest third, so a single unusual period does not dominate. The last-period change is shown underneath. Recorded prevalence is described as rising or falling rather than better or worse.</dd>
+            <dd className="mt-0.5 text-gray-600">Change between the latest two published periods. Recorded prevalence is described as rising or falling rather than better or worse.</dd>
           </div>
         </dl>
       )}
@@ -340,6 +345,7 @@ export function QualityImprovementExplorer({
             {selectedMarkerLabel && (
               <p className="mt-0.5 text-xs text-gray-500">
                 {rows.length} of {indicators.length} indicators publish data for {selectedMarkerLabel}
+                {suppressedCount > 0 && ` · ${suppressedCount} suppressed because counts are small`}
               </p>
             )}
           </div>
@@ -472,9 +478,6 @@ export function QualityImprovementExplorer({
                               : assessment.trendStatus === 'recording'
                                 ? `${row.trendDirection === 'up' ? 'Rising' : 'Falling'} ${formatDiff(row.overallTrend, row.indicator.FormatDisplayName)}`
                                 : `${assessment.trendStatus === 'improving' ? 'Improving' : 'Deteriorating'} ${formatDiff(row.overallTrend, row.indicator.FormatDisplayName)}`}
-                          {row.trend !== null && row.trendValues.length > 2 && (
-                            <span className="block text-[10px] font-normal text-gray-400">last period {formatDiff(row.trend, row.indicator.FormatDisplayName)}</span>
-                          )}
                         </span>
                       </span>
                     </div>

@@ -1,7 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -11,37 +10,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useOrganisation } from '@/providers/organisation-context';
-import { fetchApi } from '@/lib/api/client';
+import { buildAreaHierarchy } from '@/lib/api';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
-import { SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
+import { useAllAreas } from '@/lib/hooks/use-areas';
+import { SYSTEM_LEVEL_NAMES, SYSTEM_LEVEL_ORDER } from '@/lib/constants/geography';
 import type { Area } from '@/lib/api/types';
 import { Label } from '@/components/ui/label';
 import { Target, RotateCcw } from 'lucide-react';
 import { AreaChangeDialog } from './area-change-dialog';
-
-interface AreaDetailsResponse {
-  areaDetails: Area & { ParentAreaList?: Area[] };
-}
-
-// Fetch area details including parents
-async function fetchAreaWithParents(areaId: number, timePeriodId: number): Promise<Area[]> {
-  try {
-    const response = await fetchApi<AreaDetailsResponse>(
-      `/area/${areaId}/details?timePeriodID=${timePeriodId}`
-    );
-    const parents = response.areaDetails.ParentAreaList ?? [];
-    return parents.map((p) => ({
-      AreaCode: p.AreaCode,
-      AreaID: p.AreaID,
-      AreaName: p.AreaName,
-      Parents: [],
-      SystemLevelID: p.SystemLevelID,
-      SystemLevelName: p.SystemLevelName ?? SYSTEM_LEVEL_NAMES[p.SystemLevelID] ?? 'Unknown',
-    }));
-  } catch {
-    return [];
-  }
-}
 
 // England default
 const ENGLAND_AREA: Area = {
@@ -53,33 +29,50 @@ const ENGLAND_AREA: Area = {
   SystemLevelName: 'England',
 };
 
+const levelRank = (levelId: number) => {
+  const index = SYSTEM_LEVEL_ORDER.indexOf(levelId as (typeof SYSTEM_LEVEL_ORDER)[number]);
+  return index === -1 ? SYSTEM_LEVEL_ORDER.length : index;
+};
+
 export function BaselineSelector() {
   const { organisation, baseline, setBaseline, resetBaseline, isBaselineEngland } = useOrganisation();
   const { data: latestPeriod } = useLatestTimePeriod('standard');
   const timePeriodId = latestPeriod?.TimePeriodID;
 
-  // Fetch parent hierarchy for current organisation
-  const { data: parentAreas } = useQuery({
-    queryKey: ['areaParents', organisation?.AreaID, timePeriodId],
-    queryFn: () => fetchAreaWithParents(organisation!.AreaID, timePeriodId!),
-    enabled: !!organisation && organisation.SystemLevelID !== 1 && !!timePeriodId,
-    staleTime: Infinity,
-  });
+  const { areasByLevel, isLoading: isLoadingAreas } = useAllAreas(timePeriodId);
 
-  // Build list of available baselines (England + parents in hierarchy)
+  // Build list of available baselines: England + every ancestor
+  // (e.g. PCN -> Sub-ICB, ICB and Region), broadest level first
   const baselineOptions = useMemo(() => {
     const options: Area[] = [ENGLAND_AREA];
-    
-    if (parentAreas) {
-      // Sort by system level (Region before ICB before Sub-ICB), exclude England (already added)
-      const sorted = [...parentAreas]
-        .filter((a) => a.AreaID !== ENGLAND_AREA.AreaID)
-        .sort((a, b) => a.SystemLevelID - b.SystemLevelID);
-      options.push(...sorted);
+
+    if (organisation && organisation.SystemLevelID !== 1) {
+      const ancestors = buildAreaHierarchy(organisation.AreaCode, areasByLevel)
+        .filter((a) => a.AreaID !== organisation.AreaID && a.AreaID !== ENGLAND_AREA.AreaID)
+        .sort((a, b) => levelRank(a.SystemLevelID) - levelRank(b.SystemLevelID));
+      options.push(...ancestors);
     }
-    
+
+    // Keep the current selection renderable while the area lists load
+    if (!options.some((a) => a.AreaID === baseline.AreaID)) {
+      options.push(baseline);
+    }
+
     return options;
-  }, [parentAreas]);
+  }, [organisation, areasByLevel, baseline]);
+
+  // A persisted baseline can outlive an area change (e.g. arriving via a
+  // shared ?area= link). Once the hierarchy is known, drop any baseline
+  // that is not an ancestor of the current organisation.
+  useEffect(() => {
+    // size check: with a level list missing the hierarchy walk stops early
+    // and would wrongly reset a valid higher-level baseline
+    if (isBaselineEngland || isLoadingAreas || !organisation || areasByLevel.size < 4) return;
+    const ancestors = buildAreaHierarchy(organisation.AreaCode, areasByLevel);
+    if (!ancestors.some((a) => a.AreaID === baseline.AreaID)) {
+      resetBaseline();
+    }
+  }, [isBaselineEngland, isLoadingAreas, organisation, areasByLevel, baseline, resetBaseline]);
 
   // Get display name for an area
   const getDisplayName = (area: Area) => {
@@ -123,7 +116,8 @@ export function BaselineSelector() {
         <SelectTrigger id="baseline-select" className="h-8 w-[200px] bg-white text-sm">
           <SelectValue>{getDisplayName(baseline)}</SelectValue>
         </SelectTrigger>
-        <SelectContent>
+        {/* popper keeps the list below the trigger; item-aligned clips at the viewport top when the last item is selected */}
+        <SelectContent position="popper">
           {baselineOptions.map((area) => (
             <SelectItem key={area.AreaID} value={area.AreaID.toString()}>
               {getBaselineLabel(area)}

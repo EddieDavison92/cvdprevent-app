@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatDiff } from '@/lib/utils/format';
-import { getTrendDirection } from '@/lib/utils/trend';
+import { getTrendDirection, summariseTrend } from '@/lib/utils/trend';
 
 describe('trend presentation', () => {
   it('recognises a visible increase on a narrow percentage scale', () => {
@@ -16,5 +16,15 @@ describe('trend presentation', () => {
   it('uses the recent range for measures on a wider scale', () => {
     expect(getTrendDirection(0.2, [10, 20, 30])).toBe('flat');
     expect(getTrendDirection(1, [10, 20, 30])).toBe('up');
+  });
+
+  it('classifies change from the latest two published periods', () => {
+    const trend = summariseTrend([10, 50, 52]);
+    expect(trend.latest).toMatchObject({ change: 2, direction: 'up' });
+    expect(trend.overall).toEqual(trend.latest);
+  });
+
+  it('does not classify a single published value', () => {
+    expect(summariseTrend([48.6]).latest).toBeNull();
   });
 });

@@ -41,9 +41,7 @@ export function HeroSection({
   const trendSummary = summariseTrend(
     trendValues.length >= 2 ? trendValues : [previousData?.Value, areaData?.Value],
   );
-  const trend = trendSummary.overall?.change ?? null;
-  const latestChange = trendSummary.values.length > 2 ? trendSummary.latest?.change ?? null : null;
-  const periodCount = trendSummary.values.length;
+  const trend = trendSummary.latest?.change ?? null;
 
   const hasValue = areaData?.Value !== null && areaData?.Value !== undefined;
   const gap = areaData?.Value != null && baselineData?.Value != null
@@ -53,7 +51,7 @@ export function HeroSection({
   const gapIsGood = gap !== null && (lowerIsBetter ? gap < 0 : gap > 0);
   const gapTone = recordedPrevalence ? 'neutral' : gapIsSignificant ? (gapIsGood ? 'good' : 'bad') : 'neutral';
 
-  const trendDirection = trendSummary.overall?.direction ?? null;
+  const trendDirection = trendSummary.latest?.direction ?? null;
   const TrendIcon = trendDirection === 'up' ? TrendingUp : trendDirection === 'down' ? TrendingDown : Minus;
   const trendIsGood = trendDirection === (lowerIsBetter ? 'down' : 'up');
   const trendIsBad = trendDirection === (lowerIsBetter ? 'up' : 'down');
@@ -123,8 +121,7 @@ export function HeroSection({
             <span className={cn('text-xs', tone[trendTone].sub)}>
               {trend === null
                 ? 'Not enough history'
-                : periodCount > 2 ? `over ${periodCount} periods` : 'from previous period'}
-              {latestChange !== null && ` · last ${formatDiff(latestChange, indicator.FormatDisplayName)}`}
+                : 'from previous published period'}
             </span>
           </div>
         </CardContent>

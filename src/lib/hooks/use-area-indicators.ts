@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { getAllIndicatorsForArea, getSiblingData, getChildAreas, getChildData } from '@/lib/api';
+import { getAllIndicatorsForArea, getSiblingData, getChildAreas, getChildData, getTimeSeriesByMetric } from '@/lib/api';
 import type { IndicatorWithData } from '@/lib/api/types';
 
 // Hook to get ALL indicators with time series for a single area
@@ -75,5 +75,18 @@ export function useChildData(
     enabled: !!timePeriodId && !!areaId && !!metricId,
     staleTime: 10 * 60 * 1000,
     placeholderData: (previousData) => previousData,
+  });
+}
+
+/** Fetches the published time series and any API-defined target for one metric. */
+export function useMetricTimeSeries(
+  metricId: number | undefined,
+  areaId: number | undefined,
+) {
+  return useQuery({
+    queryKey: ['metricTimeSeries', metricId, areaId],
+    queryFn: () => getTimeSeriesByMetric(metricId!, areaId!),
+    enabled: !!metricId && !!areaId,
+    staleTime: 10 * 60 * 1000,
   });
 }

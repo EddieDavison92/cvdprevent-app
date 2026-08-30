@@ -13,6 +13,7 @@ import {
   formatDemographicCategoryLabel,
   getAvailableDemographics,
   getDemographicCategoryNames,
+  isSuppressedDemographicValue,
   type DemographicDefinition,
 } from '@/lib/utils/demographics';
 interface DemographicsGridProps {
@@ -28,11 +29,23 @@ interface DemographicsGridProps {
   lowerIsBetter: boolean;
 }
 
+interface DemographicDatum {
+  name: string;
+  orgValue: number | null;
+  baselineValue: number | null;
+  orgNumerator: number | null;
+  orgDenominator: number | null;
+  baselineNumerator: number | null;
+  baselineDenominator: number | null;
+  orgSuppressed: boolean;
+  baselineSuppressed: boolean;
+}
+
 // Find the single biggest gap to baseline across all demographics
 function findBiggestGap(
   demographicsWithData: {
     demo: DemographicDefinition;
-    chartData: { name: string; orgValue: number | null; baselineValue: number | null }[];
+    chartData: DemographicDatum[];
   }[],
   baselineName: string,
   formatDisplayName: string,
@@ -107,14 +120,16 @@ export function DemographicsGrid({ indicator, areaData, baselineData, baselineNa
             orgDenominator: item?.Denominator ?? null,
             baselineNumerator: baseItem?.Numerator ?? null,
             baselineDenominator: baseItem?.Denominator ?? null,
+            orgSuppressed: isSuppressedDemographicValue(item),
+            baselineSuppressed: isSuppressedDemographicValue(baseItem),
           };
         })
-        .filter((d) => d.orgValue !== null || d.baselineValue !== null);
+        .filter((d) => d.orgValue !== null || d.baselineValue !== null || d.orgSuppressed || d.baselineSuppressed);
 
-      const hasAreaData = chartData.some((d) => d.orgValue !== null);
+      const hasAreaData = chartData.some((d) => d.orgValue !== null || d.orgSuppressed);
 
       return { demo, chartData, hasAreaData };
-    }).filter(Boolean) as { demo: DemographicDefinition; chartData: { name: string; orgValue: number | null; baselineValue: number | null; orgNumerator: number | null; orgDenominator: number | null; baselineNumerator: number | null; baselineDenominator: number | null }[]; hasAreaData: boolean }[];
+    }).filter(Boolean) as { demo: DemographicDefinition; chartData: DemographicDatum[]; hasAreaData: boolean }[];
   }, [demographics, areaData, baselineData]);
 
   const visibleDemographics = useMemo(() => {
@@ -203,7 +218,7 @@ function DemographicCard({
   formatFn,
 }: {
   demo: DemographicDefinition;
-  chartData: { name: string; orgValue: number | null; baselineValue: number | null; orgNumerator: number | null; orgDenominator: number | null; baselineNumerator: number | null; baselineDenominator: number | null }[];
+  chartData: DemographicDatum[];
   indicator: Indicator;
   displayAreaName: string;
   areaCode?: string;
@@ -222,10 +237,10 @@ function DemographicCard({
 
   const tableData = useMemo(() => chartData.map((d) => ({
     category: DEPRIVATION_LABELS[d.name]?.full ?? formatDemographicCategoryLabel(d.name),
-    value: d.orgValue,
-    numerator: d.orgNumerator,
-    denominator: d.orgDenominator,
-    baselineValue: d.baselineValue,
+    value: d.orgSuppressed ? 'Suppressed' : d.orgValue,
+    numerator: d.orgSuppressed ? 'Suppressed' : d.orgNumerator,
+    denominator: d.orgSuppressed ? 'Suppressed' : d.orgDenominator,
+    baselineValue: d.baselineSuppressed ? 'Suppressed' : d.baselineValue,
   })), [chartData]);
 
   const comparisonChartData = useMemo(() => chartData.map((d) => ({
@@ -236,16 +251,16 @@ function DemographicCard({
   const tableColumns: TableColumn[] = useMemo(() => {
     const cols: TableColumn[] = [
       { key: 'category', header: demo.label.replace('By ', ''), align: 'left' },
-      { key: 'value', header: displayAreaName, align: 'right', format: (v) => v != null ? formatFn(v as number) : '—' },
-      { key: 'numerator', header: 'Count', align: 'right', format: (v) => v != null ? (v as number).toLocaleString() : '—' },
-      { key: 'denominator', header: 'Population', align: 'right', format: (v) => v != null ? (v as number).toLocaleString() : '—' },
+      { key: 'value', header: displayAreaName, align: 'right', format: (v) => typeof v === 'number' ? formatFn(v) : String(v ?? '—') },
+      { key: 'numerator', header: 'Count', align: 'right', format: (v) => typeof v === 'number' ? v.toLocaleString() : String(v ?? '—') },
+      { key: 'denominator', header: 'Population', align: 'right', format: (v) => typeof v === 'number' ? v.toLocaleString() : String(v ?? '—') },
     ];
     if (!isEngland) {
       cols.push({
         key: 'baselineValue',
         header: baselineName,
         align: 'right',
-        format: (v) => v != null ? formatFn(v as number) : '—',
+        format: (v) => typeof v === 'number' ? formatFn(v) : String(v ?? '—'),
       });
     }
     return cols;

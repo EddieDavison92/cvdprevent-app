@@ -76,3 +76,7 @@ export function findDemographicItem(
   }
   return matches.find((item) => !item.CategoryAttribute || item.CategoryAttribute === 'Persons') ?? matches[0];
 }
+
+export function isSuppressedDemographicValue(item: IndicatorRawData | undefined): boolean {
+  return item?.Value == null && /suppress/i.test(item?.ValueNote ?? '');
+}

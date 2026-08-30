@@ -18,6 +18,21 @@ interface PeerPositionCardProps {
   peerValues: Array<number | null | undefined>;
   /** e.g. "ICBs in England" or "ICBs in London". */
   scopeLabel: string;
+  /**
+   * Distribution for the area's level from the API (Categories[].Data).
+   * Fallback when raw peer values aren't loaded, e.g. PCNs where national
+   * data is too large to fetch. No rank in this mode.
+   */
+  apiStats?: {
+    Count: number | null;
+    Min: number | null;
+    Max: number | null;
+    Median: number | null;
+    Q20: number | null;
+    Q40: number | null;
+    Q60: number | null;
+    Q80: number | null;
+  } | null;
 }
 
 function percentile(sorted: number[], p: number): number {
@@ -34,16 +49,32 @@ function ordinal(n: number) {
 }
 
 /** Where the area sits within the selected comparison set, using the same rules as the Improvement tab. */
-export function PeerPositionCard({ indicator, areaName, areaValue, peerValues, scopeLabel }: PeerPositionCardProps) {
+export function PeerPositionCard({ indicator, areaName, areaValue, peerValues, scopeLabel, apiStats }: PeerPositionCardProps) {
   const stats = useMemo(() => {
+    if (areaValue == null) return null;
     const values = peerValues
       .filter((v): v is number => v != null && Number.isFinite(v))
       .sort((a, b) => a - b);
-    if (values.length < 2 || areaValue == null) return null;
-    // Quintile ticks only mean something with a reasonable number of peers
-    const quintileBounds = values.length >= 10 ? [0.2, 0.4, 0.6, 0.8].map((p) => percentile(values, p)) : [];
     const { lowerIsBetter, section } = classifyIndicator(indicator);
     const isRecordedPrevalence = section.id === 'prevalence';
+    if (values.length < 2) {
+      if (apiStats?.Min == null || apiStats.Max == null || apiStats.Median == null) return null;
+      const quartiles = [apiStats.Q20, apiStats.Q40, apiStats.Q60, apiStats.Q80];
+      return {
+        count: apiStats.Count,
+        min: apiStats.Min,
+        max: apiStats.Max,
+        median: apiStats.Median,
+        quintileBounds: quartiles.every((q): q is number => q != null) && (apiStats.Count ?? 10) >= 10
+          ? (quartiles as number[])
+          : [],
+        rank: null as number | null,
+        lowerIsBetter,
+        isRecordedPrevalence,
+      };
+    }
+    // Quintile ticks only mean something with a reasonable number of peers
+    const quintileBounds = values.length >= 10 ? [0.2, 0.4, 0.6, 0.8].map((p) => percentile(values, p)) : [];
     // Rank 1 = best given polarity; for recorded prevalence, rank by highest recorded rate
     const rank = (!isRecordedPrevalence && lowerIsBetter
       ? values.filter((v) => v < areaValue)
@@ -53,16 +84,16 @@ export function PeerPositionCard({ indicator, areaName, areaValue, peerValues, s
     const selfIndex = values.indexOf(areaValue);
     const others = selfIndex === -1 ? values : values.filter((_, i) => i !== selfIndex);
     return {
-      count: values.length,
+      count: values.length as number | null,
       min: values[0],
       max: values[values.length - 1],
       median: others.length > 0 ? percentile(others, 0.5) : percentile(values, 0.5),
       quintileBounds,
-      rank,
+      rank: rank as number | null,
       lowerIsBetter,
       isRecordedPrevalence,
     };
-  }, [peerValues, areaValue, indicator]);
+  }, [peerValues, areaValue, indicator, apiStats]);
 
   if (!stats || areaValue == null) return null;
 
@@ -85,7 +116,12 @@ export function PeerPositionCard({ indicator, areaName, areaValue, peerValues, s
     ? 'by recorded rate'
     : `${stats.lowerIsBetter ? 'lowest' : 'highest'} is best`;
   // Small sets: a gap to the median of a handful of values is weak evidence, so lead with rank
-  const smallSet = stats.count < 10;
+  const smallSet = stats.count != null && stats.count < 10;
+  const positionText = stats.rank == null
+    ? `${areaName} is ${gapText} of the ${stats.count != null ? `${stats.count} ` : ''}${scopeLabel}.`
+    : smallSet
+      ? `${areaName} ranks ${ordinal(stats.rank)} of the ${stats.count} ${scopeLabel} (${rankClause}) and is ${gapText}.`
+      : `${areaName} is ${gapText} of the ${stats.count} ${scopeLabel} (${ordinal(stats.rank)} of ${stats.count}, ${rankClause}).`;
 
   return (
     <Card className={cn('border-l-4 py-4', meta.stripe)}>
@@ -95,11 +131,7 @@ export function PeerPositionCard({ indicator, areaName, areaValue, peerValues, s
             <span className={cn('h-2 w-2 rounded-full', meta.dot)} aria-hidden />
             {meta.label}
           </p>
-          <p className="mt-0.5 text-xs text-gray-500">
-            {smallSet
-              ? `${areaName} ranks ${ordinal(stats.rank)} of the ${stats.count} ${scopeLabel} (${rankClause}) and is ${gapText}.`
-              : `${areaName} is ${gapText} of the ${stats.count} ${scopeLabel} (${ordinal(stats.rank)} of ${stats.count}, ${rankClause}).`}
-          </p>
+          <p className="mt-0.5 text-xs text-gray-500">{positionText}</p>
         </div>
 
         <div className="flex-1">
@@ -115,7 +147,7 @@ export function PeerPositionCard({ indicator, areaName, areaValue, peerValues, s
           />
           <div className="relative mt-1 flex justify-between text-[10px] tabular-nums text-gray-400">
             <span>Lowest {fmt(stats.min)}</span>
-            {/* Median excludes the area itself */}
+            {/* Median excludes the area itself when computed from raw values */}
             {/* Anchored under the median tick, clamped clear of the end labels */}
             <span
               className="absolute -translate-x-1/2 font-medium text-gray-500"

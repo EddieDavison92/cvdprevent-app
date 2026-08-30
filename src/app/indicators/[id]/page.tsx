@@ -504,12 +504,14 @@ export default function IndicatorExplorePage() {
 
           {/* Indicator quick-switch nav */}
           {navIndicators.length > 0 && (
-            <IndicatorNav
-              indicators={navIndicators}
-              currentId={indicatorId}
-              dataByIndicator={navDataByIndicator}
-              basePath="/indicators"
-            />
+            <div className="mb-4">
+              <IndicatorNav
+                indicators={navIndicators}
+                currentId={indicatorId}
+                dataByIndicator={navDataByIndicator}
+                basePath="/indicators"
+              />
+            </div>
           )}
 
           {/* Controls */}
