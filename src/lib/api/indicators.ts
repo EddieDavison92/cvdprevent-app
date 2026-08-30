@@ -31,6 +31,7 @@ function mapRawDataItem(raw: RawDataJSONItem): IndicatorRawData {
     TimePeriodName: raw.TimePeriodName,
     MetricCategoryTypeName: raw.MetricCategoryTypeName,
     MetricCategoryName: raw.MetricCategoryName,
+    CategoryAttribute: raw.CategoryAttribute,
     Numerator: raw.Numerator,
     Denominator: raw.Denominator,
     Value: raw.Value,
@@ -38,6 +39,7 @@ function mapRawDataItem(raw: RawDataJSONItem): IndicatorRawData {
     UpperCI: raw.UpperConfidenceLimit,
     ComparedToEnglandValue: null,
     ComparedToEnglandID: null,
+    ValueNote: raw.ValueNote,
   };
 }
 

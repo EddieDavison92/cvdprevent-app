@@ -9,8 +9,13 @@ import { NHS_COLORS } from '@/lib/constants/colors';
 import { DEPRIVATION_LABELS } from '@/lib/api/indicators';
 import type { IndicatorRawData } from '@/lib/api/types';
 import { getIndicatorCategories } from '@/lib/api/indicators';
+import {
+  computePopulationShares,
+  type CategoryShare,
+  type DemographicDefinition,
+} from '@/lib/utils/population-profile';
 
-const DEMOGRAPHICS = [
+const DEMOGRAPHICS: DemographicDefinition[] = [
   { type: 'Sex', label: 'By Sex', excludeCategories: ['Persons'] },
   { type: 'Age group', label: 'By Age Group', excludeCategories: [] },
   { type: 'Deprivation quintile', label: 'By Deprivation Quintile', excludeCategories: [] },
@@ -30,63 +35,6 @@ interface PopulationProfileProps {
   timePeriod?: string;
 }
 
-interface CategoryShare {
-  name: string;
-  shortName: string;
-  areaShare: number | null;
-  baselineShare: number | null;
-  areaDenominator: number | null;
-  baselineDenominator: number | null;
-}
-
-function computeShares(
-  demo: typeof DEMOGRAPHICS[0],
-  areaData: IndicatorRawData[],
-  baselineData: IndicatorRawData[],
-  categories: ReturnType<typeof getIndicatorCategories>,
-): CategoryShare[] | null {
-  const category = categories.find((c) => c.type === demo.type);
-  if (!category) return null;
-
-  const relevantCategories = category.categories.filter(
-    (name) => !demo.excludeCategories.includes(name)
-  );
-
-  const items = relevantCategories.map((name) => {
-    const item = areaData.find(
-      (d) => d.MetricCategoryTypeName === demo.type && d.MetricCategoryName === name
-    );
-    const baseItem = baselineData.find(
-      (d) => d.MetricCategoryTypeName === demo.type && d.MetricCategoryName === name
-    );
-    return {
-      name,
-      areaDenominator: item?.Denominator ?? null,
-      baselineDenominator: baseItem?.Denominator ?? null,
-    };
-  });
-
-  // Require area denominator data (mirrors demographics breakdown visibility)
-  const hasAreaData = items.some((d) => d.areaDenominator !== null);
-  if (!hasAreaData) return null;
-
-  const areaTotal = items.reduce((sum, d) => sum + (d.areaDenominator ?? 0), 0);
-  const baselineTotal = items.reduce((sum, d) => sum + (d.baselineDenominator ?? 0), 0);
-
-  return items.map((d) => ({
-    name: d.name,
-    shortName: DEPRIVATION_LABELS[d.name]?.short ?? d.name,
-    areaShare: areaTotal > 0 && d.areaDenominator !== null
-      ? (d.areaDenominator / areaTotal) * 100
-      : null,
-    baselineShare: baselineTotal > 0 && d.baselineDenominator !== null
-      ? (d.baselineDenominator / baselineTotal) * 100
-      : null,
-    areaDenominator: d.areaDenominator,
-    baselineDenominator: d.baselineDenominator,
-  }));
-}
-
 function ProfileChart({
   data,
   areaName,
@@ -98,7 +46,9 @@ function ProfileChart({
   baselineName: string;
   isEngland?: boolean;
 }) {
-  const categories = data.map((d) => d.shortName);
+  const categories = data.map((d) => DEPRIVATION_LABELS[d.name]?.short ?? d.name);
+  const hasAreaSuppression = data.some((d) => d.areaSuppressed);
+  const hasBaselineSuppression = data.some((d) => d.baselineSuppressed);
 
   const option = useMemo(() => ({
     ...defaultChartOptions,
@@ -106,13 +56,21 @@ function ProfileChart({
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       formatter: (params: unknown) => {
-        const items = params as { dataIndex: number; seriesName: string; value: number | null; color: string }[];
+        const items = params as { dataIndex: number; seriesId: string; seriesName: string; value: number | null; color: string }[];
         if (!items.length) return '';
         const d = data[items[0].dataIndex];
         const fullName = DEPRIVATION_LABELS[d.name]?.full ?? d.name;
         let html = `<strong>${fullName}</strong><br/>`;
         for (const item of items) {
           if (item.value == null) continue;
+          if (item.seriesId === 'area-suppressed') {
+            html += `<span style="color:${item.color}">○</span> ${areaName}: Suppressed (small count)<br/>`;
+            continue;
+          }
+          if (item.seriesId === 'baseline-suppressed') {
+            html += `<span style="color:${item.color}">○</span> ${baselineName}: Suppressed (small count)<br/>`;
+            continue;
+          }
           const denom = item.seriesName === areaName ? d.areaDenominator : d.baselineDenominator;
           html += `<span style="color:${item.color}">●</span> ${item.seriesName}: ${item.value.toFixed(1)}%`;
           if (denom != null) {
@@ -182,9 +140,29 @@ function ProfileChart({
         },
         z: 10,
       }]),
+      ...(hasAreaSuppression ? [{
+        id: 'area-suppressed',
+        name: 'Suppressed',
+        type: 'scatter',
+        data: data.map((d) => d.areaSuppressed ? 0 : null),
+        symbol: 'emptyCircle',
+        symbolSize: 10,
+        itemStyle: { color: NHS_COLORS.orange },
+        z: 12,
+      }] : []),
+      ...(!isEngland && hasBaselineSuppression ? [{
+        id: 'baseline-suppressed',
+        name: 'Suppressed',
+        type: 'scatter',
+        data: data.map((d) => d.baselineSuppressed ? 0 : null),
+        symbol: 'emptyRect',
+        symbolSize: 9,
+        itemStyle: { color: NHS_COLORS.darkGrey },
+        z: 12,
+      }] : []),
     ],
     animationDuration: 300,
-  }), [data, categories, areaName, baselineName, isEngland]);
+  }), [data, categories, areaName, baselineName, isEngland, hasAreaSuppression, hasBaselineSuppression]);
 
   return (
     <ReactECharts
@@ -209,7 +187,7 @@ function ProfileCard({
   areaCode,
   timePeriod,
 }: {
-  demo: typeof DEMOGRAPHICS[0];
+  demo: DemographicDefinition;
   shares: CategoryShare[];
   areaName: string;
   baselineName: string;
@@ -219,16 +197,19 @@ function ProfileCard({
   areaCode?: string;
   timePeriod?: string;
 }) {
-  const fmtPct = (v: unknown) => v != null ? `${(v as number).toFixed(1)}%` : '—';
-  const fmtNum = (v: unknown) => v != null ? (v as number).toLocaleString() : '—';
+  const fmtPct = (v: unknown) => typeof v === 'number' ? `${v.toFixed(1)}%` : String(v ?? '—');
+  const fmtNum = (v: unknown) => typeof v === 'number' ? v.toLocaleString() : String(v ?? '—');
+  const hasSuppression = shares.some(
+    (item) => item.areaSuppressed || (!isEngland && item.baselineSuppressed)
+  );
 
   const tableData = useMemo(() => shares.map((d) => ({
     category: DEPRIVATION_LABELS[d.name]?.full ?? d.name,
-    areaShare: d.areaShare,
-    areaDenominator: d.areaDenominator,
+    areaShare: d.areaSuppressed ? 'Suppressed' : d.areaShare,
+    areaDenominator: d.areaSuppressed ? 'Suppressed' : d.areaDenominator,
     ...(isEngland ? {} : {
-      baselineShare: d.baselineShare,
-      baselineDenominator: d.baselineDenominator,
+      baselineShare: d.baselineSuppressed ? 'Suppressed' : d.baselineShare,
+      baselineDenominator: d.baselineSuppressed ? 'Suppressed' : d.baselineDenominator,
     }),
   })), [shares, isEngland]);
 
@@ -285,6 +266,11 @@ function ProfileCard({
           columns={tableColumns}
           viewMode={viewMode}
         />
+        {hasSuppression && (
+          <p className="mt-2 text-xs leading-5 text-gray-500">
+            Hollow markers show values suppressed because the underlying count is small. They do not represent 0%.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
@@ -307,11 +293,11 @@ export function PopulationProfile({
   const profiles = useMemo(() => {
     return DEMOGRAPHICS
       .map((demo) => {
-        const shares = computeShares(demo, areaData, baselineData, categories);
+        const shares = computePopulationShares(demo, areaData, baselineData, categories);
         if (!shares) return null;
         return { demo, shares };
       })
-      .filter(Boolean) as { demo: typeof DEMOGRAPHICS[0]; shares: CategoryShare[] }[];
+      .filter(Boolean) as { demo: DemographicDefinition; shares: CategoryShare[] }[];
   }, [areaData, baselineData, categories]);
 
   if (isLoading) {

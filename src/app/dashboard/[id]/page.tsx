@@ -54,6 +54,7 @@ function convertCategoryToRawData(
     TimePeriodName: '',
     MetricCategoryTypeName: category.MetricCategoryTypeName,
     MetricCategoryName: category.MetricCategoryName,
+    CategoryAttribute: category.CategoryAttribute,
     Numerator: category.Data.Numerator,
     Denominator: category.Data.Denominator,
     Value: category.Data.Value,
@@ -61,6 +62,7 @@ function convertCategoryToRawData(
     UpperCI: category.Data.UpperConfidenceLimit,
     ComparedToEnglandValue: null,
     ComparedToEnglandID: null,
+    ValueNote: category.Data.ValueNote,
   };
 }
 

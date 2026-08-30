@@ -73,6 +73,7 @@ export interface IndicatorRawData {
   TimePeriodName: string;
   MetricCategoryTypeName: string;
   MetricCategoryName: string;
+  CategoryAttribute?: string;
   Numerator: number | null;
   Denominator: number | null;
   Value: number | null;
@@ -80,6 +81,7 @@ export interface IndicatorRawData {
   UpperCI: number | null;
   ComparedToEnglandValue: number | null;
   ComparedToEnglandID: number | null;
+  ValueNote?: string | null;
 }
 
 /** Shape returned by /indicator/<id>/rawDataJSON — uses full field names from API */
