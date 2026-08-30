@@ -18,15 +18,24 @@ Answer questions about aggregate cardiovascular prevention data in England using
 - Official CVDPREVENT site: https://www.cvdprevent.nhs.uk
 - Official API documentation: https://bmchealthdocs.atlassian.net/wiki/spaces/CP/pages/317882369/CVDPREVENT+API+Documentation
 
-Treat every API path below as relative to the Agent API route prefix. The relay retains official fields and adds `_links` containing absolute next-hop URLs. Use it because some assistants block constructed URLs that did not appear in a prior fetch result. If the relay is unavailable and direct access is allowed, use the official API origin. Field names are case-sensitive.
+Use the official API directly whenever the environment provides a shell, code execution, or an HTTP client that accepts constructed URLs. Treat route templates below as relative to `https://api.cvdprevent.nhs.uk`. Field names are case-sensitive.
 
-Start by opening this exact URL:
+Use `curl`, Python, or the environment's native HTTP client. Fetch large responses into a file or variable and parse them locally rather than printing megabytes of JSON into the conversation. For example:
+
+```bash
+curl -fsS "https://api.cvdprevent.nhs.uk/timePeriod"
+curl -fsS --get "https://api.cvdprevent.nhs.uk/area/search" \
+  --data-urlencode "partialAreaName=North West London" \
+  --data-urlencode "timePeriodID=33"
+```
+
+The Agent API relay is a compatibility fallback for assistants that cannot run commands or whose fetch tool blocks URLs not seen in an earlier response. In that case, open this exact URL and follow its `_links`:
 
 ```text
 https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=4
 ```
 
-Its `_links.timePeriods` value is the exact URL for the first data request. Follow URLs from `_links` rather than assembling them when the fetch tool has a per-URL allowlist. Do not replace, shorten, decode, or re-order a linked URL's query string.
+Do not use the relay merely for convenience when direct access works. When using it, follow returned URLs exactly without replacing, shortening, decoding, or re-ordering their query strings.
 
 Read the API field and route reference when a question needs metadata, organisation hierarchy, exports, targets, availability, pathway/group definitions, system-level comparisons, or a response field not explained in this file. It lists every route in the official API documentation and all fields observed in the live JSON responses.
 
@@ -51,11 +60,28 @@ Organisation system levels:
 | ICB | 7 |
 | Sub-ICB | 8 |
 
-Do not assume every level exists in every period. Follow the chosen period's `_links.navigation` and use only its returned `systemLevels`.
+Do not assume every level exists in every period. Direct clients call `/area/systemLevel` for the chosen period; relay clients follow the period's `_links.navigation`. Use only the returned `systemLevels`.
 
-## Start here: follow the linked route
+## Choose the route
 
-Do not explore response shapes or attempt constructed URLs before answering. Open the Agent API index, follow `_links.timePeriods`, choose the period, and then follow the exact link named below.
+For direct API access, use this sequence and construct the query parameters from IDs returned by the preceding call:
+
+| Task | Official API route |
+|---|---|
+| List periods | `/timePeriod` |
+| List valid organisation levels | `/area/systemLevel?timePeriodID={periodId}` |
+| Find an organisation | `/area/search?partialAreaName={encodedName}&timePeriodID={periodId}` |
+| List a level when search is ambiguous | `/area?timePeriodID={periodId}&systemLevelID={levelId}` |
+| Find parents and children | `/area/{areaId}/details?timePeriodID={periodId}` |
+| Find indicators | `/indicator/list?timePeriodID={periodId}&systemLevelID={levelId}` |
+| Get one indicator | `/indicator/{indicatorId}/data?timePeriodID={periodId}&areaID={areaId}` |
+| Get every indicator for one area | `/indicator?timePeriodID={periodId}&areaID={areaId}` |
+
+Start with `/timePeriod`, resolve IDs rather than guessing them, and then use the focused route that answers the question. For an organisation-wide comparison, fetch `/indicator` once for the subject and once for the comparison, select Sex / Persons categories, and join on `IndicatorCode`.
+
+### Linked relay fallback
+
+Use this only when direct API requests are unavailable or blocked. Open the Agent API index, follow `_links.timePeriods`, choose the period, and then follow the exact link named below.
 
 | User question | Linked route sequence |
 |---|---|
@@ -74,19 +100,19 @@ Do not explore response shapes or attempt constructed URLs before answering. Ope
 | Read definition or construction notes | indicator `_links.details` |
 | Check whether a breakdown is published | indicator `_links.dataAvailability` |
 
-The area row's `indicatorList` link includes its `AreaID`, so every catalogue row has an exact `data` link for that organisation. This is the preferred route for URL-constrained assistants. The `indicators` link returns every value and breakdown in one response, but it is several megabytes and may exceed assistant fetch limits.
+The area row's `indicatorList` link includes its `AreaID`, so every catalogue row has an exact `data` link for that organisation. This is the preferred relay route for URL-constrained assistants. The `allIndicatorsLarge` link returns every value and breakdown in one response, but it is several megabytes and may exceed assistant fetch limits.
 
 ## Organisation resolver
 
 Resolve organisations before fetching indicator data. Never guess an `AreaID` from an ODS code or reuse an ID from another period.
 
-1. Open the Agent API index and follow `_links.timePeriods`.
-2. Select the period and follow its `_links.navigation`. Find the requested organisation level in that response's `_links.areas` array and follow its `href`.
-3. Read candidates from `areaList`. Each candidate directly provides `AreaID`, `AreaName`, `AreaCode`, `AreaOdsCode`, `SystemLevelID`, and `SystemLevelName`, plus exact `details`, `indicatorList`, and `allIndicatorsLarge` links.
+1. Fetch `/timePeriod` from the official API and select the requested period.
+2. Fetch `/area/search` with the name and period. If needed, fetch `/area/systemLevel` and then `/area` for the requested level.
+3. Read candidates from `foundAreaList` or `areaList`. Each candidate provides `AreaID`, `AreaName`, `AreaCode`, `AreaOdsCode`, `SystemLevelID`, and `SystemLevelName`.
 4. Match the requested level as well as the name. Prefer an exact case-insensitive name after removing generic words such as `NHS`, `Integrated Care Board`, `Sub-ICB Location`, `Primary Care Network`, and `Practice`.
 5. If two candidates at the requested level remain plausible, show their names and ODS codes and ask the user to choose.
 
-Clients without per-URL restrictions may instead call:
+URL-constrained clients may instead follow the equivalent relay links. Direct clients can call:
 
    ```text
    GET /area/search?partialAreaName={URL-encoded name}&timePeriodID={periodId}
@@ -108,7 +134,7 @@ GET /area/search?partialAreaName=North%20West%20London&timePeriodID=33
 ### Resolve the requested comparison
 
 - `England`: use `AreaID=1`.
-- `parent`, `region`, or a named parent such as `London`: follow the subject area's `_links.details`, read `areaDetails.ParentAreaList`, and select by `SystemLevelID` or `AreaName`.
+- `parent`, `region`, or a named parent such as `London`: fetch the subject area's details, read `areaDetails.ParentAreaList`, and select by `SystemLevelID` or `AreaName`. Relay users follow `_links.details`.
 - another named organisation: run the organisation resolver separately for that name and level.
 - `peers`: clarify whether the user means geographic siblings or every organisation at the same level. Use the recipes below accordingly.
 
@@ -219,19 +245,21 @@ Use `IndicatorShortName` in prose, `IndicatorName` when the user asks for the de
 
 ### Organisation summary
 
-Use the compact summary when the user asks where an organisation stands across all indicators. Follow the area row's `_links.summaryVsEngland`, or follow `_links.details` and then the chosen parent row's `_links.summaryForSubject`.
+When direct access works, fetch `/indicator?timePeriodID={periodId}&areaID={areaId}` for the subject and comparison. Select each indicator's Sex / Persons category, join on `IndicatorCode`, and calculate `subject - comparison`. Treat an absolute difference of `0.5` or less as similar, apply polarity only to directional measures, and keep recorded prevalence separate.
 
-The summary returns one Sex / Persons row per indicator. `Counts` separates directional performance from recorded prevalence. `Indicators[]` contains the full indicator descriptor, the subject and comparison metric data, `Difference`, neutral `Relation` (`higher`, `lower`, or `similar`), and polarity-aware `Assessment` (`favourable`, `unfavourable`, `similar`, or null). Recorded prevalence has a null assessment and is counted under `Counts.recordedPrevalence`; describe it as higher or lower recording.
+When direct access is blocked, use the relay's compact summary. Follow the area row's `_links.summaryVsEngland`, or follow `_links.details` and then the chosen parent row's `_links.summaryForSubject`.
+
+The relay summary returns one Sex / Persons row per indicator. `Counts` separates directional performance from recorded prevalence. `Indicators[]` contains the full indicator descriptor, the subject and comparison metric data, `Difference`, neutral `Relation` (`higher`, `lower`, or `similar`), and polarity-aware `Assessment` (`favourable`, `unfavourable`, `similar`, or null). Recorded prevalence has a null assessment and is counted under `Counts.recordedPrevalence`; describe it as higher or lower recording. Direct clients calculate the same fields from the two official responses.
 
 For a useful overview:
 
-1. Resolve the latest Standard period and follow the summary link for the requested comparison.
+1. Resolve the latest Standard period and obtain both organisations' all-indicator data, directly or through the summary link.
 2. Report the comparable, missing-comparison, and unclassified counts.
 3. Summarise favourable, similar, and unfavourable directional indicators.
 4. Show the largest unfavourable percentage-point gaps. Do not rank percentage gaps with rates or counts on one scale.
 5. Report recorded prevalence separately as higher, similar, or lower recording.
 6. Resolve the latest Outcomes period separately and repeat when the user asks for all CVDPREVENT indicators. Label each period; do not merge their counts as though they were one release.
-7. Use each result's focused `_links` when the user asks for a trend, breakdown, definition, or validation.
+7. Call the focused official routes, or use each relay result's `_links`, when the user asks for a trend, breakdown, definition, or validation.
 
 The linked summary covers England and named parents. For an unrelated comparison organisation, resolve both areas and use the `Any two organisations` recipe below.
 
@@ -286,12 +314,12 @@ Other category types include `Age group`, `Ethnicity`, `Deprivation quintile`, `
 ## Query workflow
 
 1. Identify the organisation level, organisation name, indicator or condition, comparison geography, and requested period. If the organisation level is omitted, infer it only when the name is unambiguous.
-2. Follow the API index to the period list and select the needed period by `IndicatorTypeName` and latest parsed `EndDate`.
-3. Use the organisation resolver. Follow the matching area row's `_links.indicatorList` URL.
+2. Fetch `/timePeriod` and select the needed period by `IndicatorTypeName` and latest parsed `EndDate`.
+3. Use the organisation resolver, then fetch `/indicator/list?timePeriodID={periodId}&systemLevelID={levelId}`.
 4. Find the indicator by exact `IndicatorCode` first, then exact or distinctive words in `IndicatorShortName` and `IndicatorName`. If several match, show them rather than choosing silently.
-5. Follow that indicator row's `_links.data`, select the Persons category, and read `AreaData.Value`. Its `NationalData.Value` is the England comparison.
-6. For a parent or another organisation, follow its area row's `_links.indicatorList`, match the same `IndicatorCode`, then follow its `_links.data` and read `AreaData.Value`. The parent row is available through the subject area's linked details response.
-7. Retain the Persons category's `MetricID` and `_links` for trends, peers, ranks, and lower-level comparisons.
+5. Fetch `/indicator/{indicatorId}/data?timePeriodID={periodId}&areaID={areaId}`, select the Persons category, and read `AreaData.Value`. Its `NationalData.Value` is the England comparison.
+6. For a parent or another organisation, resolve its ID and level, find the same `IndicatorCode`, make its focused data request, and read `AreaData.Value`.
+7. Retain the Persons category's `MetricID` for trends, peers, ranks, and lower-level comparisons.
 8. Confirm both results have the same indicator code, period, category type, category name, and category attribute before comparing them.
 9. Calculate `subject value - comparison value`. For percentage measures, report this as percentage points (`pp`). Keep enough precision to avoid turning a small non-zero difference into a misleading `0.0pp`.
 10. State missing, suppressed, null, or differently dated data. Never estimate a missing value.
@@ -474,7 +502,7 @@ Metric trend:
 }
 ```
 
-### Worked request sequence
+### Worked relay fallback sequence
 
 For "Compare North West London's four-pillar heart failure treatment with London":
 
@@ -510,21 +538,23 @@ Follow the returned URLs exactly. Do not substitute IDs copied from this example
 
 ## Comparison recipes
 
+The recipes name `_links` for relay users. With direct access, call the corresponding official route shown in `Endpoints for focused questions` using the same IDs.
+
 ### Organisation performance overview
 
 Use the `Organisation summary` workflow above. Lead with the comparison basis and period, then the split between favourable, similar, and unfavourable directional indicators. List the largest unfavourable gaps within the same unit, and keep recorded prevalence in a separate higher/lower-recording section. Treat `ValueNote`, null values, and `Counts.missingComparison` as data gaps rather than zeroes.
 
 ### Parent organisation
 
-Follow the area's `_links.details` and read `areaDetails.ParentAreaList[]`. Select the row by `SystemLevelID`, `SystemLevelName`, or requested `AreaName`, then follow that row's `_links.indicatorList` and the matched indicator's `_links.data`. Do not assume the first numeric ID in `Parents` is always the parent level the user means.
+Fetch `/area/{areaId}/details?timePeriodID={periodId}` and read `areaDetails.ParentAreaList[]`. Select the row by `SystemLevelID`, `SystemLevelName`, or requested `AreaName`, then resolve the matched indicator for that parent's level and fetch its data. Relay users can follow the equivalent `_links`. Do not assume the first numeric ID in `Parents` is always the parent level the user means.
 
 ### Geographic peers
 
-Select the Persons category and follow `_links.geographicPeers`. Read rows from `siblingData.Data[]`; use `AreaID`, `AreaName`, and `Value`. The array includes the selected organisation and same-level organisations sharing its parent. For an ICB, this normally means the ICBs in the same region. Call them geographic peers or sibling organisations, not statistically matched peers. Remove null values before sorting.
+Select the Persons `MetricID` and call `/indicator/siblingData?timePeriodID={periodId}&areaID={areaId}&metricID={metricId}`, or follow `_links.geographicPeers`. Read rows from `siblingData.Data[]`; use `AreaID`, `AreaName`, and `Value`. The array includes the selected organisation and same-level organisations sharing its parent. For an ICB, this normally means the ICBs in the same region. Call them geographic peers or sibling organisations, not statistically matched peers. Remove null values before sorting.
 
 ### One ICB against every ICB
 
-Follow `_links.rawPersonsDataAtSystemLevel` on the indicator row already found through the area's `indicatorList`. The relay filters the response to Sex / Persons rows before returning it. Locate the selected ICB by `AreaCode` or normalized `AreaName`, remove null values, and sort `Value`. If no area-scoped catalogue is already loaded, use the period navigation's `indicatorLists` link for the required level. The same pattern works for another level.
+Call `/indicator/{indicatorId}/rawDataJSON?timePeriodID={periodId}&systemLevelID=7` and filter locally to Sex / Persons, or follow the relay's filtered `_links.rawPersonsDataAtSystemLevel`. Locate the selected ICB by `AreaCode` or normalized `AreaName`, remove null values, and sort `Value`. The same pattern works for another level.
 
 Alternatively, follow the Persons category's `_links.systemLevelComparison` for grouped system-level comparisons and medians. Inspect the returned `SystemLevelID` rather than assuming which levels are present.
 
@@ -538,7 +568,7 @@ Follow the Persons category's `_links.areaBreakdown` when the user wants a deepe
 
 ### Any two organisations
 
-Resolve both area rows and follow each `_links.indicatorList` URL for the same period. Match by `IndicatorCode`, follow each indicator's `_links.data`, and match category rows by `MetricCategoryTypeName`, `MetricCategoryName`, and `CategoryAttribute`. This supports comparisons that are neither parent-child nor siblings.
+Resolve both areas and levels for the same period. Fetch each level's indicator list, match by `IndicatorCode`, fetch the indicator data for each `AreaID`, and match category rows by `MetricCategoryTypeName`, `MetricCategoryName`, and `CategoryAttribute`. Relay users can follow the corresponding area and indicator links. This supports comparisons that are neither parent-child nor siblings.
 
 ### Combine organisations into a calculated value
 

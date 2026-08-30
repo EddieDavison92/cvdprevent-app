@@ -8,15 +8,15 @@ Official API origin: `https://api.cvdprevent.nhs.uk`
 
 Official documentation: https://bmchealthdocs.atlassian.net/wiki/spaces/CP/pages/317882369/CVDPREVENT+API+Documentation
 
-All routes use `GET`. The API needs no authentication. The Agent API base is a read-only relay for the documented JSON routes. It retains official response fields and adds `_links` with absolute URLs for related requests. Follow those exact URLs when an assistant blocks URLs that did not appear in an earlier response. Most JSON responses also contain a top-level `copyright` string. Field names are case-sensitive. Routes and fields were checked against the live API on 30 August 2026; the upstream API and documentation can change.
+All routes use `GET`. The API needs no authentication. Use the official API origin directly when the environment can run `curl`, code, or unrestricted HTTP requests. The Agent API is a compatibility fallback for assistants that block constructed URLs. It retains official response fields and adds `_links` with absolute URLs for related requests. Most JSON responses also contain a top-level `copyright` string. Field names are case-sensitive. Routes and fields were checked against the live API on 30 August 2026; the upstream API and documentation can change.
 
-Start at the versioned API index and follow `_links.timePeriods`. The version parameter prevents assistants from reusing cached pre-link responses. Direct clients can also append routes to the route prefix. For example:
+Direct clients append routes to the official origin. For example:
 
 ```text
-https://cvdprevent-explorer.app/api/cvdprevent/area/search?agentVersion=4&partialAreaName=North%20Central%20London&timePeriodID=33
+https://api.cvdprevent.nhs.uk/area/search?partialAreaName=North%20Central%20London&timePeriodID=33
 ```
 
-The relay excludes the CSV and XLSX download routes. Use the official API origin for those files.
+If direct requests are blocked, start at the versioned Agent API index and follow `_links.timePeriods`. The version parameter prevents assistants from reusing cached pre-link responses. The relay excludes CSV and XLSX downloads; use the official API origin for those files.
 
 ## Relay links
 
