@@ -1,6 +1,8 @@
 # CVDPREVENT API field and route reference
 
-Agent API base URL: `https://cvdprevent-explorer.app/api/cvdprevent`
+Agent API index: `https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=2`
+
+Agent API route prefix: `https://cvdprevent-explorer.app/api/cvdprevent`
 
 Official API origin: `https://api.cvdprevent.nhs.uk`
 
@@ -8,10 +10,10 @@ Official documentation: https://bmchealthdocs.atlassian.net/wiki/spaces/CP/pages
 
 All routes use `GET`. The API needs no authentication. The Agent API base is a read-only relay for the documented JSON routes. It retains official response fields and adds `_links` with absolute URLs for related requests. Follow those exact URLs when an assistant blocks URLs that did not appear in an earlier response. Most JSON responses also contain a top-level `copyright` string. Field names are case-sensitive. Routes and fields were checked against the live API on 30 August 2026; the upstream API and documentation can change.
 
-Start at the API base and follow `_links.timePeriods`. Direct clients can also append routes to the base. For example:
+Start at the versioned API index and follow `_links.timePeriods`. The version parameter prevents assistants from reusing cached pre-link responses. Direct clients can also append routes to the route prefix. For example:
 
 ```text
-https://cvdprevent-explorer.app/api/cvdprevent/area/search?partialAreaName=North%20Central%20London&timePeriodID=33
+https://cvdprevent-explorer.app/api/cvdprevent/area/search?agentVersion=2&partialAreaName=North%20Central%20London&timePeriodID=33
 ```
 
 The relay excludes the CSV and XLSX download routes. Use the official API origin for those files.
@@ -20,9 +22,10 @@ The relay excludes the CSV and XLSX download routes. Use the official API origin
 
 Every relayed response has top-level links for `self`, `apiIndex`, `skill`, and `apiReference`. Other `_links` are placed beside the IDs they use:
 
-- period rows: `systemLevels`, plus arrays for `areas`, `indicatorLists`, and `dataAvailability` by system level;
-- area rows: `details`, `indicators`, and `indicatorList`;
-- indicator rows: `details`, `data`, `rawDataAtSystemLevel`, and `dataAvailability` when their parameters are known;
+- period rows: `navigation`;
+- period navigation: the published `systemLevels`, plus `areas`, `indicatorLists`, and `dataAvailability` links for only those levels;
+- area rows: `details`, `indicatorList`, and `allIndicatorsLarge`; prefer `indicatorList` for assistants;
+- indicator rows: `details`, `data`, `rawDataAtSystemLevel`, `rawPersonsDataAtSystemLevel`, and `dataAvailability` when their parameters are known;
 - metric category rows: `trend`, `geographicPeers`, `immediateChildren`, `areaBreakdown`, `systemLevelComparison`, and `nationalAndArea`.
 
 The all-indicator route adds metric links only to the Sex / Persons category to keep its response below hosting limits. Follow the indicator row's `data` link to get links on every demographic category.
@@ -67,6 +70,8 @@ The `/indicator` response also returns `IndicatorTypeID` and `IndicatorTypeName`
 
 Not every endpoint returns every field. For example, the nested `Data` object in `/indicator` has `AreaID` but not `AreaName`, while sibling and child rows contain the organisation fields. A field may be `null`.
 
+In focused indicator data, `Count` normally records the number of organisations in the comparison distribution. `Min`, `Max`, `Median`, and `Q20` through `Q80` describe that distribution. These are not patient counts; `Numerator` and `Denominator` describe the eligible indicator population.
+
 ### `EmbeddedTimeSeriesPoint`
 
 `Denominator`, `EndDate`, `Factor`, `Median`, `Numerator`, `StartDate`, `TimePeriodID`, `TimePeriodName`, `Value`.
@@ -86,6 +91,10 @@ Parameters:
 Response: `timePeriodList: Period[]`.
 
 Use parsed `EndDate` to find the latest period. Standard and Outcomes periods are separate.
+
+### `/period/{timePeriodId}`
+
+Agent API relay route. It returns `TimePeriodID`, the `systemLevels` published for that period, and exact `areas`, `indicatorLists`, and `dataAvailability` links for those levels. Follow the `navigation` link added to each `/timePeriod` row rather than constructing this URL.
 
 ### `/timePeriod/systemLevels`
 
@@ -167,6 +176,7 @@ Parameters:
 
 - `timePeriodID` - required.
 - `systemLevelID` - required.
+- `areaID` - optional on the Agent API relay. It is not sent upstream; it lets each indicator row include a focused `data` link for that organisation.
 
 Response: `indicatorList: IndicatorDescriptor[]`.
 
@@ -302,9 +312,17 @@ Use this endpoint to inspect the selected area's descendants across levels, incl
 
 ### `/indicator/{indicatorId}/rawDataJSON`
 
-Parameters: required `timePeriodID` and `systemLevelID`.
+Parameters:
+
+- `timePeriodID` - required.
+- `systemLevelID` - required.
+- `metricCategoryTypeName` - optional relay-only exact-match filter.
+- `metricCategoryName` - optional relay-only exact-match filter.
+- `categoryAttribute` - optional relay-only exact-match filter.
 
 Response: `indicatorRawData[]`. Every row has `AreaCode`, `AreaName`, `CategoryAttribute`, `Denominator`, `Factor`, `HighestPriorityNotificationType`, `IndicatorCode`, `IndicatorName`, `IndicatorShortName`, `LowerConfidenceLimit`, `MetricCategoryName`, `MetricCategoryTypeName`, `NotificationCount`, `Numerator`, `TimePeriodName`, `UpperConfidenceLimit`, `Value`, and `ValueNote`.
+
+The relay applies optional category filters before returning the response. Use the linked Sex / Persons filter for all-organisation ranks so assistant fetch tools do not receive every demographic row.
 
 ### `/indicator/{indicatorId}/rawDataCSV`
 
@@ -354,10 +372,10 @@ Response: `DataAvailability[]`. Rows have `DataAvailabilityID`, `DataAvailabilit
 |---|---|---|
 | What is this organisation's parent? | `/area/{areaId}/details` | `ParentAreaList` with IDs, names, and levels |
 | How does it compare with nearby peers? | `/indicator/siblingData` | Same-level organisations sharing the selected area's parent; includes the selected area |
-| How does one ICB compare with every ICB? | `/indicator/{indicatorId}/rawDataJSON` with `systemLevelID=7` | All ICB rows for one indicator and period; filter to Persons |
+| How does one ICB compare with every ICB? | linked `rawPersonsDataAtSystemLevel` | Sex / Persons rows for all ICBs with data |
 | How does one area compare across system levels? | `/indicator/metricSystemLevelComparison/{metricId}` | Returned national and same-level comparison groups with medians |
 | What are the immediate child organisations? | `/area/{areaId}/details` plus `/indicator/childData` | `ChildAreaList` and values for one metric |
 | What are all lower-level organisations? | `/indicator/metricAreaBreakdown/{metricId}` | Descendant levels grouped in one response |
-| How do two arbitrary organisations compare? | Two `/indicator` calls | Match `IndicatorCode` and the same category fields |
+| How do two arbitrary organisations compare? | each area's linked `indicatorList`, then matched `data` links | Match `IndicatorCode` and the same category fields |
 
-`siblingData` means geographic siblings, not a matched statistical peer group. In a live ICB example it returned the five ICBs within the same region. `rawDataJSON` with ICB level returned all 42 ICBs with data. Always report the actual returned count because coverage can change by indicator and period.
+`siblingData` means geographic siblings, not a matched statistical peer group. In a live ICB example it returned the five ICBs within the same region. The filtered raw-data route returned all 42 ICBs with data. Always report the actual returned count because coverage can change by indicator and period.

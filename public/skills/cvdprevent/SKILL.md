@@ -12,17 +12,18 @@ Answer questions about aggregate cardiovascular prevention data in England using
 - Explorer: https://cvdprevent-explorer.app
 - Skill: https://cvdprevent-explorer.app/skill.md
 - API field and route reference: https://cvdprevent-explorer.app/api-reference.md
-- Agent API base URL: https://cvdprevent-explorer.app/api/cvdprevent
+- Agent API index: https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=2
+- Agent API route prefix: https://cvdprevent-explorer.app/api/cvdprevent
 - Official API origin: https://api.cvdprevent.nhs.uk
 - Official CVDPREVENT site: https://www.cvdprevent.nhs.uk
 - Official API documentation: https://bmchealthdocs.atlassian.net/wiki/spaces/CP/pages/317882369/CVDPREVENT+API+Documentation
 
-Treat every API path below as relative to the Agent API base URL. It is a read-only, same-origin relay to the official public API. It retains the official fields and adds `_links` containing absolute next-hop URLs. Use it because some assistants block constructed URLs that did not appear in a prior fetch result. If the relay is unavailable and direct access is allowed, replace the Agent API base with the official API origin. Field names are case-sensitive.
+Treat every API path below as relative to the Agent API route prefix. The relay retains official fields and adds `_links` containing absolute next-hop URLs. Use it because some assistants block constructed URLs that did not appear in a prior fetch result. If the relay is unavailable and direct access is allowed, use the official API origin. Field names are case-sensitive.
 
 Start by opening this exact URL:
 
 ```text
-https://cvdprevent-explorer.app/api/cvdprevent
+https://cvdprevent-explorer.app/api/cvdprevent?agentVersion=2
 ```
 
 Its `_links.timePeriods` value is the exact URL for the first data request. Follow URLs from `_links` rather than assembling them when the fetch tool has a per-URL allowlist. Do not replace, shorten, decode, or re-order a linked URL's query string.
@@ -50,36 +51,36 @@ Organisation system levels:
 | ICB | 7 |
 | Sub-ICB | 8 |
 
-Do not assume every level exists in every period. Follow the chosen period's `_links.systemLevels` and use only the levels returned there.
+Do not assume every level exists in every period. Follow the chosen period's `_links.navigation` and use only its returned `systemLevels`.
 
 ## Start here: follow the linked route
 
-Do not explore response shapes or attempt constructed URLs before answering. Open the Agent API base, follow `_links.timePeriods`, choose the period, and then follow the exact link named below.
+Do not explore response shapes or attempt constructed URLs before answering. Open the Agent API index, follow `_links.timePeriods`, choose the period, and then follow the exact link named below.
 
 | User question | Linked route sequence |
 |---|---|
-| Find an organisation | period `_links.areas` -> requested level -> filter `areaList` by name |
+| Find an organisation | period `_links.navigation` -> `_links.areas` -> requested level -> filter `areaList` by name |
 | Find its parent | area row `_links.details` -> `ParentAreaList` |
-| Compare indicators with England or a parent | each area row `_links.indicators` -> match `IndicatorCode` |
+| Compare indicators with England or a parent | each area row `_links.indicatorList` -> match `IndicatorCode` -> `_links.data` |
 | Compare with geographic peers | Persons category `_links.geographicPeers` |
-| Rank one ICB against all ICBs | period `_links.indicatorLists` -> ICB -> indicator `_links.rawDataAtSystemLevel` |
+| Rank one ICB against all ICBs | matched indicator `_links.rawPersonsDataAtSystemLevel` |
 | Compare immediate child organisations | Persons category `_links.immediateChildren` |
 | Find PCNs or practices below an ICB | Persons category `_links.areaBreakdown` |
 | Get a trend | category `_links.trend` |
-| Compare demographic groups | each area row `_links.indicators` -> match category fields |
-| Combine organisations into a calculated value | each area row `_links.indicators` -> aggregation rules below |
+| Compare demographic groups | each area row `_links.indicatorList` -> indicator `_links.data` -> match category fields |
+| Combine organisations into a calculated value | each area row `_links.indicatorList` -> indicator `_links.data` -> aggregation rules below |
 | Read definition or construction notes | indicator `_links.details` |
 | Check whether a breakdown is published | indicator `_links.dataAvailability` |
 
-The area row's `indicators` link returns every indicator, value, breakdown and Persons `MetricID` for that organisation. It is large but self-contained and is the preferred route for URL-constrained assistants. Its indicator row also links to the smaller focused response. Direct API clients may use `/indicator/{indicatorId}/data` when they can construct URLs.
+The area row's `indicatorList` link includes its `AreaID`, so every catalogue row has an exact `data` link for that organisation. This is the preferred route for URL-constrained assistants. The `indicators` link returns every value and breakdown in one response, but it is several megabytes and may exceed assistant fetch limits.
 
 ## Organisation resolver
 
 Resolve organisations before fetching indicator data. Never guess an `AreaID` from an ODS code or reuse an ID from another period.
 
-1. Open the Agent API base and follow `_links.timePeriods`.
-2. Select the period, then find the requested organisation level in that period row's `_links.areas` array and follow its `href`.
-3. Read candidates from `areaList`. Each candidate directly provides `AreaID`, `AreaName`, `AreaCode`, `AreaOdsCode`, `SystemLevelID`, and `SystemLevelName`, plus exact links for its details and indicator data.
+1. Open the Agent API index and follow `_links.timePeriods`.
+2. Select the period and follow its `_links.navigation`. Find the requested organisation level in that response's `_links.areas` array and follow its `href`.
+3. Read candidates from `areaList`. Each candidate directly provides `AreaID`, `AreaName`, `AreaCode`, `AreaOdsCode`, `SystemLevelID`, and `SystemLevelName`, plus exact `details`, `indicatorList`, and `allIndicatorsLarge` links.
 4. Match the requested level as well as the name. Prefer an exact case-insensitive name after removing generic words such as `NHS`, `Integrated Care Board`, `Sub-ICB Location`, `Primary Care Network`, and `Practice`.
 5. If two candidates at the requested level remain plausible, show their names and ODS codes and ask the user to choose.
 
@@ -105,7 +106,7 @@ GET /area/search?partialAreaName=North%20West%20London&timePeriodID=33
 ### Resolve the requested comparison
 
 - `England`: use `AreaID=1`.
-- `parent`, `region`, or a named parent such as `London`: call `/area/{subjectAreaId}/details?timePeriodID={periodId}` and read `areaDetails.ParentAreaList`. Select by `SystemLevelID` or `AreaName`, then use its `AreaID`.
+- `parent`, `region`, or a named parent such as `London`: follow the subject area's `_links.details`, read `areaDetails.ParentAreaList`, and select by `SystemLevelID` or `AreaName`.
 - another named organisation: run the organisation resolver separately for that name and level.
 - `peers`: clarify whether the user means geographic siblings or every organisation at the same level. Use the recipes below accordingly.
 
@@ -126,20 +127,7 @@ For a London ICB, `compare with London` normally means its parent Region row (`S
       "EndDate": "Tue, 31 Mar 2026 00:00:00 GMT",
       "IndicatorTypeName": "Standard",
       "_links": {
-        "areas": [
-          {
-            "systemLevelID": 7,
-            "systemLevelName": "ICB",
-            "href": "https://cvdprevent-explorer.app/api/cvdprevent/area?timePeriodID=33&systemLevelID=7"
-          }
-        ],
-        "indicatorLists": [
-          {
-            "systemLevelID": 7,
-            "systemLevelName": "ICB",
-            "href": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/list?timePeriodID=33&systemLevelID=7"
-          }
-        ]
+        "navigation": "https://cvdprevent-explorer.app/api/cvdprevent/period/33?agentVersion=2"
       }
     }
   ]
@@ -147,6 +135,33 @@ For a London ICB, `compare with London` normally means its parent Region row (`S
 ```
 
 Select the latest `Standard` and `Outcomes` rows independently by parsed `EndDate`. Do not assume the greatest ID is the latest or that both indicator types use the same period.
+
+Follow `navigation` to get only the system levels published for that period and their exact links:
+
+```json
+{
+  "TimePeriodID": 33,
+  "systemLevels": [
+    { "SystemLevelID": 7, "SystemLevelName": "ICB" }
+  ],
+  "_links": {
+    "areas": [
+      {
+        "systemLevelID": 7,
+        "systemLevelName": "ICB",
+        "href": "https://cvdprevent-explorer.app/api/cvdprevent/area?agentVersion=2&timePeriodID=33&systemLevelID=7"
+      }
+    ],
+    "indicatorLists": [
+      {
+        "systemLevelID": 7,
+        "systemLevelName": "ICB",
+        "href": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/list?agentVersion=2&timePeriodID=33&systemLevelID=7"
+      }
+    ]
+  }
+}
+```
 
 ### Organisations
 
@@ -164,19 +179,20 @@ Select the latest `Standard` and `Outcomes` rows independently by parsed `EndDat
       "SystemLevelName": "ICB",
       "Parents": [7669],
       "_links": {
-        "details": "https://cvdprevent-explorer.app/api/cvdprevent/area/8038/details?timePeriodID=33",
-        "indicators": "https://cvdprevent-explorer.app/api/cvdprevent/indicator?timePeriodID=33&areaID=8038"
+        "details": "https://cvdprevent-explorer.app/api/cvdprevent/area/8038/details?agentVersion=2&timePeriodID=33",
+        "indicatorList": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/list?agentVersion=2&timePeriodID=33&systemLevelID=7&areaID=8038",
+        "allIndicatorsLarge": "https://cvdprevent-explorer.app/api/cvdprevent/indicator?agentVersion=2&timePeriodID=33&areaID=8038"
       }
     }
   ]
 }
 ```
 
-Resolve names case-insensitively against `AreaName`. NHS prefixes and organisation suffixes may be present. If more than one match is plausible, show the matches and ask the user to choose. Use `Parents` to identify a parent, then resolve that ID through the area list for the expected parent level. England is `areaID=1`.
+Resolve names case-insensitively against `AreaName`. NHS prefixes and organisation suffixes may be present. If more than one match is plausible, show the matches and ask the user to choose. Follow the area's `details` link for named parent information; use the bare `Parents` IDs only as a fallback. England is `areaID=1`.
 
 ### Indicator catalogue
 
-`GET /indicator/list?timePeriodID={periodId}&systemLevelID={levelId}` returns `indicatorList`. Useful fields are:
+`GET /indicator/list?timePeriodID={periodId}&systemLevelID={levelId}&areaID={areaId}` returns `indicatorList`. `areaID` is relay-only and optional; when supplied, each row's `_links.data` points to that organisation. Useful fields are:
 
 ```json
 {
@@ -188,14 +204,15 @@ Resolve names case-insensitively against `AreaName`. NHS prefixes and organisati
   "AxisCharacter": "%",
   "IndicatorTypeName": "Standard",
   "_links": {
-    "details": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/details",
-    "rawDataAtSystemLevel": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/rawDataJSON?timePeriodID=33&systemLevelID=7",
-    "dataAvailability": "https://cvdprevent-explorer.app/api/cvdprevent/dataAvailability?timePeriodID=33&systemLevelID=7&indicatorID=58"
+    "details": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/details?agentVersion=2",
+    "data": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/data?agentVersion=2&timePeriodID=33&areaID=8038",
+    "rawPersonsDataAtSystemLevel": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/58/rawDataJSON?agentVersion=2&timePeriodID=33&systemLevelID=7&metricCategoryTypeName=Sex&metricCategoryName=Persons",
+    "dataAvailability": "https://cvdprevent-explorer.app/api/cvdprevent/dataAvailability?agentVersion=2&timePeriodID=33&systemLevelID=7&indicatorID=58"
   }
 }
 ```
 
-Use `IndicatorShortName` in prose, `IndicatorName` when the user asks for the definition, and `FormatDisplayName` or `AxisCharacter` to format the value. Do not assume every indicator is a percentage.
+Use `IndicatorShortName` in prose, `IndicatorName` when the user asks for the definition, and `FormatDisplayName` or `AxisCharacter` to format the value. Some short names already end with the indicator code in parentheses; remove that duplicate when also displaying `IndicatorCode`. Do not assume every indicator is a percentage.
 
 ### All indicators for one organisation
 
@@ -226,9 +243,9 @@ Use `IndicatorShortName` in prose, `IndicatorName` when the user asks for the de
       },
       "TimeSeries": [],
       "_links": {
-        "trend": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/timeSeriesByMetric/1493?areaID=8038",
-        "geographicPeers": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/siblingData?timePeriodID=33&areaID=8038&metricID=1493",
-        "areaBreakdown": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricAreaBreakdown/1493?timePeriodID=33&areaID=8038"
+        "trend": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/timeSeriesByMetric/1493?agentVersion=2&areaID=8038",
+        "geographicPeers": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/siblingData?agentVersion=2&timePeriodID=33&areaID=8038&metricID=1493",
+        "areaBreakdown": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricAreaBreakdown/1493?agentVersion=2&timePeriodID=33&areaID=8038"
       }
     }
   ]
@@ -241,7 +258,7 @@ The headline category is exactly:
 MetricCategoryTypeName == "Sex" AND MetricCategoryName == "Persons"
 ```
 
-Read the current value from `Categories[].Data.Value`, not from the catalogue. `Numerator` and `Denominator` describe the eligible indicator population; they are not the organisation's total population. Do not interpret `Count` as a patient count.
+Read the current value from `Categories[].Data.Value`, not from the catalogue. `Numerator` and `Denominator` describe the eligible indicator population; they are not the organisation's total population. In focused data, `Count` is normally the number of organisations in the comparison distribution, while `Min`, `Max`, `Median`, and `Q20` through `Q80` describe that distribution. They are not patient values; confirm their context before reporting them.
 
 Other category types include `Age group`, `Ethnicity`, `Deprivation quintile`, `Mental Health`, and `Learning Disability`. Enumerate the category types returned by the API rather than treating that list as exhaustive. Compare the same breakdown between organisations by `MetricCategoryTypeName`, `MetricCategoryName`, and `CategoryAttribute`; state when either side is missing.
 
@@ -249,15 +266,14 @@ Other category types include `Age group`, `Ethnicity`, `Deprivation quintile`, `
 
 1. Identify the organisation level, organisation name, indicator or condition, comparison geography, and requested period. If the organisation level is omitted, infer it only when the name is unambiguous.
 2. Follow the API index to the period list and select the needed period by `IndicatorTypeName` and latest parsed `EndDate`.
-3. Use the organisation resolver. Follow the matching area row's `_links.indicators` URL.
+3. Use the organisation resolver. Follow the matching area row's `_links.indicatorList` URL.
 4. Find the indicator by exact `IndicatorCode` first, then exact or distinctive words in `IndicatorShortName` and `IndicatorName`. If several match, show them rather than choosing silently.
-5. Select the Persons category. In the all-indicator response its value is `Categories[].Data.Value`.
-6. For England, follow the indicator row's `_links.data`; in that focused response compare `AreaData.Value` with `NationalData.Value`.
-7. For a parent or another organisation, follow its area row's `_links.indicators`, match the same `IndicatorCode` and category fields, and compare the two `Data.Value` values. The parent row is available through the subject area's linked details response.
-8. Retain the Persons category's `MetricID` and `_links` for trends, peers, ranks, and lower-level comparisons.
-9. Confirm both results have the same indicator code, period, category type, category name, and category attribute before comparing them.
-10. Calculate `subject value - comparison value`. For percentage measures, report this as percentage points (`pp`). Keep enough precision to avoid turning a small non-zero difference into a misleading `0.0pp`.
-11. State missing, suppressed, null, or differently dated data. Never estimate a missing value.
+5. Follow that indicator row's `_links.data`, select the Persons category, and read `AreaData.Value`. Its `NationalData.Value` is the England comparison.
+6. For a parent or another organisation, follow its area row's `_links.indicatorList`, match the same `IndicatorCode`, then follow its `_links.data` and read `AreaData.Value`. The parent row is available through the subject area's linked details response.
+7. Retain the Persons category's `MetricID` and `_links` for trends, peers, ranks, and lower-level comparisons.
+8. Confirm both results have the same indicator code, period, category type, category name, and category attribute before comparing them.
+9. Calculate `subject value - comparison value`. For percentage measures, report this as percentage points (`pp`). Keep enough precision to avoid turning a small non-zero difference into a misleading `0.0pp`.
+10. State missing, suppressed, null, or differently dated data. Never estimate a missing value.
 
 Focused comparison response paths:
 
@@ -322,10 +338,12 @@ Focused indicator data:
           "ValueNote": null
         },
         "_links": {
-          "trend": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/timeSeriesByMetric/1493?areaID=8038",
-          "geographicPeers": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/siblingData?timePeriodID=33&areaID=8038&metricID=1493",
-          "immediateChildren": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/childData?timePeriodID=33&areaID=8038&metricID=1493",
-          "areaBreakdown": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricAreaBreakdown/1493?timePeriodID=33&areaID=8038"
+          "trend": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/timeSeriesByMetric/1493?agentVersion=2&areaID=8038",
+          "geographicPeers": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/siblingData?agentVersion=2&timePeriodID=33&areaID=8038&metricID=1493",
+          "immediateChildren": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/childData?agentVersion=2&timePeriodID=33&areaID=8038&metricID=1493",
+          "areaBreakdown": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricAreaBreakdown/1493?agentVersion=2&timePeriodID=33&areaID=8038",
+          "systemLevelComparison": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/metricSystemLevelComparison/1493?agentVersion=2&timePeriodID=33&areaID=8038",
+          "nationalAndArea": "https://cvdprevent-explorer.app/api/cvdprevent/indicator/nationalVsAreaMetricData/1493?agentVersion=2&timePeriodID=33&areaID=8038"
         }
       }
     ]
@@ -442,9 +460,9 @@ For "Compare North West London's four-pillar heart failure treatment with London
 ```text
 1. Open the Agent API base and follow _links.timePeriods
    -> latest row where IndicatorTypeName == "Standard"
-   -> select the ICB href from that row's _links.areas
+   -> follow that row's _links.navigation
 
-2. Follow the ICB areas href
+2. Select the ICB href from navigation._links.areas and follow it
    -> areaList[]
    -> North West London row with SystemLevelID == 7
 
@@ -452,14 +470,16 @@ For "Compare North West London's four-pillar heart failure treatment with London
    -> areaDetails.ParentAreaList[]
    -> London row with SystemLevelID == 6
 
-4. Follow the North West London row's _links.indicators
+4. Follow the North West London row's _links.indicatorList
    -> indicatorList[]
    -> row with IndicatorCode == "CVDP003HF"
-   -> Sex / Persons -> Data.Value
+   -> follow that row's _links.data
+   -> Sex / Persons -> AreaData.Value
 
-5. Follow the London parent row's _links.indicators
+5. Follow the London parent row's _links.indicatorList
    -> match IndicatorCode == "CVDP003HF"
-   -> Sex / Persons -> Data.Value
+   -> follow that row's _links.data
+   -> Sex / Persons -> AreaData.Value
 
 6. Report subject value, London value, subject minus London in pp, period,
    indicator name, and CVDP003HF.
@@ -471,7 +491,7 @@ Follow the returned URLs exactly. Do not substitute IDs copied from this example
 
 ### Parent organisation
 
-Follow the area's `_links.details` and read `areaDetails.ParentAreaList[]`. Select the row by `SystemLevelID`, `SystemLevelName`, or requested `AreaName`, then follow that row's `_links.indicators`. Do not assume the first numeric ID in `Parents` is always the parent level the user means.
+Follow the area's `_links.details` and read `areaDetails.ParentAreaList[]`. Select the row by `SystemLevelID`, `SystemLevelName`, or requested `AreaName`, then follow that row's `_links.indicatorList` and the matched indicator's `_links.data`. Do not assume the first numeric ID in `Parents` is always the parent level the user means.
 
 ### Geographic peers
 
@@ -479,9 +499,9 @@ Select the Persons category and follow `_links.geographicPeers`. Read rows from 
 
 ### One ICB against every ICB
 
-From the selected period, follow the ICB entry in `_links.indicatorLists`. Find the indicator, then follow its `_links.rawDataAtSystemLevel`. Read rows from `indicatorRawData[]`, then keep rows where `MetricCategoryTypeName == "Sex"` and `MetricCategoryName == "Persons"`. Locate the selected ICB by `AreaCode` or normalized `AreaName`. Use each row's `Value`; remove null values before sorting. This is the source used by the explorer's All ICBs chart. The same linked pattern works for another level.
+Follow `_links.rawPersonsDataAtSystemLevel` on the indicator row already found through the area's `indicatorList`. The relay filters the response to Sex / Persons rows before returning it. Locate the selected ICB by `AreaCode` or normalized `AreaName`, remove null values, and sort `Value`. If no area-scoped catalogue is already loaded, use the period navigation's `indicatorLists` link for the required level. The same pattern works for another level.
 
-Alternatively, `/indicator/metricSystemLevelComparison/{metricId}?timePeriodID={periodId}&areaID={areaId}` returns grouped system-level comparisons and medians. Inspect the returned `SystemLevelID` rather than assuming which levels are present.
+Alternatively, follow the Persons category's `_links.systemLevelComparison` for grouped system-level comparisons and medians. Inspect the returned `SystemLevelID` rather than assuming which levels are present.
 
 For a rank, remove null values and sort higher-is-better measures descending or lower-is-better measures ascending. State the number of organisations with data. For recorded prevalence, describe rank as higher or lower recording, not better or worse performance.
 
@@ -493,7 +513,7 @@ Follow the Persons category's `_links.areaBreakdown` when the user wants a deepe
 
 ### Any two organisations
 
-Resolve both area rows and follow each `_links.indicators` URL for the same period. Match indicators by `IndicatorCode` and category rows by `MetricCategoryTypeName`, `MetricCategoryName`, and `CategoryAttribute`. This supports comparisons that are neither parent-child nor siblings.
+Resolve both area rows and follow each `_links.indicatorList` URL for the same period. Match by `IndicatorCode`, follow each indicator's `_links.data`, and match category rows by `MetricCategoryTypeName`, `MetricCategoryName`, and `CategoryAttribute`. This supports comparisons that are neither parent-child nor siblings.
 
 ### Combine organisations into a calculated value
 
@@ -507,26 +527,26 @@ combined denominator = sum of Denominator
 combined value = combined numerator / combined denominator * 100
 ```
 
-Confirm the indicator is a percentage proportion using `FormatDisplayName` and `AxisCharacter`; `Factor` may be null. Never average the displayed percentages. Do not combine confidence limits; calculating a valid combined interval needs the indicator's statistical method. Do not pool age-standardised values, mortality or admission rates, medians, indices, or any result without compatible numerators and denominators. If pooling is not valid, show the organisations separately.
+Confirm the indicator is a percentage proportion using `FormatDisplayName` and `AxisCharacter`; `Factor` may be null. Never average the displayed percentages. Published numerators and denominators can be rounded, often to five patients, so state that a pooled result inherits this rounding and may differ slightly from an exact calculation. Do not combine confidence limits; calculating a valid combined interval needs the indicator's statistical method. Do not pool age-standardised values, mortality or admission rates, medians, indices, or any result without compatible numerators and denominators. If pooling is not valid, show the organisations separately.
 
 Label the result `Calculated: [organisation A] + [organisation B]`, or similar, and state that it is not a published organisation value. Show each component alongside the calculation so differences are visible. If comparing the combination with a parent, resolve every component's parent and confirm the chosen parent `AreaID` is the same.
 
 ### England, region, and other reference lines
 
-England is `areaID=1` and is included as `NationalData` in a focused indicator response. Resolve a region or another parent through the linked `ParentAreaList`, then follow its indicators link. Do not compare a Standard value with an Outcomes-period value.
+England is `areaID=1` and is included as `NationalData` in a focused indicator response. Resolve a region or another parent through the linked `ParentAreaList`, then follow its `indicatorList` link. Do not compare a Standard value with an Outcomes-period value.
 
 For example, to answer "Which heart failure indicators should North West London focus on compared with London?":
 
 1. Resolve the latest Standard period.
 2. Resolve North West London at ICB level (`7`) and London at Region level (`6`).
-3. Follow both area rows' `_links.indicators` URLs for that period.
-4. Keep indicators whose code or name identifies heart failure.
-5. Match by `IndicatorCode`, extract the Persons values, apply indicator direction, and rank only unfavourable gaps.
+3. Follow both area rows' `_links.indicatorList` URLs for that period.
+4. Keep indicators whose code or name identifies heart failure, then follow each matched row's `_links.data`.
+5. Match by `IndicatorCode`, extract the Persons `AreaData` values, apply indicator direction, and rank only unfavourable gaps.
 6. Report the period, both values, difference, and indicator code. Treat recorded prevalence as higher or lower, not better or worse.
 
 ### Demographic comparison
 
-Follow each area's `_links.indicators` and match the same indicator. Build a category key from:
+Follow each area's `_links.indicatorList`, match the same indicator, and follow each `_links.data`. Build a category key from:
 
 ```text
 MetricCategoryTypeName + MetricCategoryName + CategoryAttribute
@@ -549,6 +569,7 @@ Follow the selected category's `_links.trend` and read `Data.Areas[]`. Select th
 - `GET /indicator/timeSeriesByMetric/{metricId}?areaID={areaId}` returns trend data in `Data.Areas[].TimeSeriesData`. Find the requested `AreaID`; use `TimePeriodID`, `TimePeriodName`, and `Value`. Join `TimePeriodID` to `/timePeriod` when exact date sorting is needed.
 - `GET /indicator/siblingData?timePeriodID={periodId}&areaID={areaId}&metricID={metricId}` returns peer organisations in `siblingData.Data`.
 - `GET /indicator/childData?timePeriodID={periodId}&areaID={areaId}&metricID={metricId}` returns child organisations. Use it for variation within an ICB, sub-ICB, or other parent geography.
+- The category's `systemLevelComparison` link returns same-level comparison groups and medians; `nationalAndArea` returns the selected area, England, and any target attached to the metric.
 
 Use the Persons `MetricID` for headline trends and organisation comparisons. Use the matching breakdown `MetricID` for an inequality trend or breakdown comparison.
 
