@@ -424,6 +424,7 @@ export function QualityImprovementExplorer({
                             max={row.max}
                             median={row.median}
                             quintileBounds={[row.category.Data.Q20, row.category.Data.Q40, row.category.Data.Q60, row.category.Data.Q80]}
+                            areaLabel={displayAreaName}
                             status={assessment.status}
                             formatDisplayName={row.indicator.FormatDisplayName}
                           />

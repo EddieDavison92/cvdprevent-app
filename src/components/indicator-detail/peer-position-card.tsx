@@ -109,6 +109,7 @@ export function PeerPositionCard({ indicator, areaName, areaValue, peerValues, s
             max={stats.max}
             median={stats.median}
             quintileBounds={stats.quintileBounds}
+            areaLabel={areaName}
             status={status}
             formatDisplayName={indicator.FormatDisplayName}
           />
