@@ -126,18 +126,21 @@ export default function IndicatorExplorePage() {
   );
 
   // --- Time periods ---
-  const { data: stdPeriod } = useLatestTimePeriod('standard');
-  const { data: outPeriod } = useLatestTimePeriod('outcome');
+  const { data: stdPeriod, isPending: isPendingStdPeriod } = useLatestTimePeriod('standard');
+  const { data: outPeriod, isPending: isPendingOutPeriod } = useLatestTimePeriod('outcome');
 
   // --- England data (all indicators, one call per period type) ---
-  const { data: engStdInds, isLoading: isLoadingEngStd } = useAreaIndicators(stdPeriod?.TimePeriodID, 1);
-  const { data: engOutInds, isLoading: isLoadingEngOut } = useAreaIndicators(outPeriod?.TimePeriodID, 1);
+  const { data: engStdInds, isPending: isPendingEngStd } = useAreaIndicators(stdPeriod?.TimePeriodID, 1);
+  const { data: engOutInds, isPending: isPendingEngOut } = useAreaIndicators(outPeriod?.TimePeriodID, 1);
 
   const allEnglandInds = useMemo(
     () => [...(engStdInds ?? []), ...(engOutInds ?? [])],
     [engStdInds, engOutInds],
   );
-  const isLoadingEngland = isLoadingEngStd || isLoadingEngOut;
+  const isResolvingIndicator = isPendingStdPeriod
+    || isPendingOutPeriod
+    || (!!stdPeriod && isPendingEngStd)
+    || (!!outPeriod && isPendingEngOut);
 
   // --- Current indicator ---
   const indicator = useMemo(
@@ -434,7 +437,7 @@ export default function IndicatorExplorePage() {
   const requiresScoping = isPcn && !scopeParentId;
 
   // --- Loading / not found ---
-  if (isLoadingEngland && !indicator) {
+  if (isResolvingIndicator && !indicator) {
     return (
       <div className="flex min-h-screen flex-col">
         <Header />
