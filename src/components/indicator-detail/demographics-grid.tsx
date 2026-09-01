@@ -16,6 +16,17 @@ import {
   isSuppressedDemographicValue,
   type DemographicDefinition,
 } from '@/lib/utils/demographics';
+
+function cleanIndicatorName(name: string): string {
+  return name.replace(/\s*\(CVDP?\d+[A-Z]*\)\s*$/i, '').trim();
+}
+
+function resultChartTitle(label: string): string {
+  const groupLabel = label.replace(/^By /, '');
+  const isAgeStandardised = /\s*\(Age-standardised\)$/i.test(groupLabel);
+  const groupName = groupLabel.replace(/\s*\(Age-standardised\)$/i, '').toLowerCase();
+  return `${isAgeStandardised ? 'Age-standardised result' : 'Result'} by ${groupName}`;
+}
 interface DemographicsGridProps {
   indicator: Indicator;
   areaData: IndicatorRawData[];
@@ -151,7 +162,9 @@ export function DemographicsGrid({ indicator, areaData, baselineData, baselineNa
         {demographics.slice(0, 4).map((demo) => (
           <Card key={demo.type} className="gap-2 py-4">
             <CardHeader className="gap-1">
-              <CardTitle className="text-base">{demo.label}</CardTitle>
+              <CardTitle className="text-base">
+                {resultChartTitle(demo.label)}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex h-[150px] items-center justify-center text-gray-400">
@@ -227,6 +240,10 @@ function DemographicCard({
   isEngland?: boolean;
   formatFn: (v: number) => string;
 }) {
+  const cardTitle = resultChartTitle(demo.label);
+  const resultAxisLabel = indicator.AxisCharacter
+    ? `Indicator result (${indicator.AxisCharacter})`
+    : 'Indicator result';
   const simpleChartData = useMemo(() => chartData.map((d) => ({
     name: DEPRIVATION_LABELS[d.name]?.short ?? formatDemographicCategoryLabel(d.name),
     tooltipName: DEPRIVATION_LABELS[d.name]?.full,
@@ -251,14 +268,14 @@ function DemographicCard({
   const tableColumns: TableColumn[] = useMemo(() => {
     const cols: TableColumn[] = [
       { key: 'category', header: demo.label.replace('By ', ''), align: 'left' },
-      { key: 'value', header: displayAreaName, align: 'right', format: (v) => typeof v === 'number' ? formatFn(v) : String(v ?? '—') },
+      { key: 'value', header: `${displayAreaName} result`, align: 'right', format: (v) => typeof v === 'number' ? formatFn(v) : String(v ?? '—') },
       { key: 'numerator', header: 'Count', align: 'right', format: (v) => typeof v === 'number' ? v.toLocaleString() : String(v ?? '—') },
-      { key: 'denominator', header: 'Population', align: 'right', format: (v) => typeof v === 'number' ? v.toLocaleString() : String(v ?? '—') },
+      { key: 'denominator', header: 'Eligible population', align: 'right', format: (v) => typeof v === 'number' ? v.toLocaleString() : String(v ?? '—') },
     ];
     if (!isEngland) {
       cols.push({
         key: 'baselineValue',
-        header: baselineName,
+        header: `${baselineName} result`,
         align: 'right',
         format: (v) => typeof v === 'number' ? formatFn(v) : String(v ?? '—'),
       });
@@ -272,17 +289,18 @@ function DemographicCard({
     columns: tableColumns,
     filename: `${indicator.IndicatorCode}-${demo.type.replace(/\s+/g, '-').toLowerCase()}${areaCode ? `-${areaCode}` : ''}${periodSlug ? `-${periodSlug}` : ''}`,
     metadata: [
-      ['Indicator', `${indicator.IndicatorShortName} (${indicator.IndicatorCode})`],
+      ['Indicator', `${cleanIndicatorName(indicator.IndicatorShortName)} (${indicator.IndicatorCode})`],
       ['Area', areaCode ? `${displayAreaName} (${areaCode})` : displayAreaName],
-      ['Breakdown', demo.label],
+      ['Breakdown', cardTitle],
       ...(timePeriod ? [['Period', timePeriod] as [string, string]] : []),
     ],
     fullscreen: {
-      title: demo.label,
-      description: `${indicator.IndicatorShortName}${isEngland ? '' : ` — ${displayAreaName} compared with ${baselineName}`}`,
+      title: cardTitle,
+      description: `Result for ${cleanIndicatorName(indicator.IndicatorShortName)} · ${indicator.IndicatorCode}${isEngland ? '' : `. ${displayAreaName} compared with ${baselineName}`}`,
       chart: isEngland ? (
         <BarChart
           data={simpleChartData}
+          yAxisLabel={resultAxisLabel}
           formatValue={formatFn}
           height="100%"
           barMaxWidth={96}
@@ -292,6 +310,7 @@ function DemographicCard({
           data={comparisonChartData}
           orgName={displayAreaName}
           baselineName={baselineName}
+          yAxisLabel={resultAxisLabel}
           formatValue={formatFn}
           height="100%"
           barMaxWidth={96}
@@ -304,11 +323,11 @@ function DemographicCard({
     <Card className="gap-2 py-4">
       <CardHeader className="gap-1">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">{demo.label}</CardTitle>
+          <CardTitle className="text-base">{cardTitle}</CardTitle>
           {chartData.length > 0 && actions}
         </div>
         <CardDescription className="text-xs">
-          {indicator.IndicatorShortName}
+          {cleanIndicatorName(indicator.IndicatorShortName)} · {indicator.IndicatorCode}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -322,6 +341,7 @@ function DemographicCard({
               isEngland ? (
                 <BarChart
                   data={simpleChartData}
+                  yAxisLabel={resultAxisLabel}
                   formatValue={formatFn}
                   height={200}
                 />
@@ -330,6 +350,7 @@ function DemographicCard({
                   data={comparisonChartData}
                   orgName={displayAreaName}
                   baselineName={baselineName}
+                  yAxisLabel={resultAxisLabel}
                   formatValue={formatFn}
                   height={200}
                 />
