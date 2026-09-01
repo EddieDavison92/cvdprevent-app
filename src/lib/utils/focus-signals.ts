@@ -5,7 +5,7 @@ import {
 } from '@/lib/constants/indicator-sections';
 import { summariseTrend, type TrendDirection } from '@/lib/utils/trend';
 
-export type FocusReason = 'worst-peer-fifth' | 'second-worst-peer-fifth' | 'comparison' | 'deteriorating';
+export type FocusPeerBand = 'worst' | 'second-worst';
 
 export interface FocusSignal {
   indicator: IndicatorWithData;
@@ -21,8 +21,9 @@ export interface FocusSignal {
   lowerIsBetter: boolean;
   isRecordedPrevalence: boolean;
   usesAgeStandardised: boolean;
-  score: number;
-  reasons: FocusReason[];
+  peerBand: FocusPeerBand;
+  comparisonIsClear: boolean;
+  deteriorating: boolean;
   peerSeverity: number;
 }
 
@@ -108,24 +109,23 @@ function getPeerEvidence(
   const value = category.Data.Value;
   const { Median: median, Q20: q20, Q40: q40, Q60: q60, Q80: q80 } = category.Data;
   if (value === null || median === null || [q20, q40, q60, q80].some(boundary => boundary === null)) {
-    return { points: 0, belowMedian: false, severity: 0 };
+    return { band: null, severity: 0 };
   }
 
-  const belowMedian = isUnfavourable(value, median, lowerIsBetter);
-  let points = 0;
+  let band: FocusPeerBand | null = null;
   if (lowerIsBetter) {
-    if (value > q80!) points = 2;
-    else if (value > q60!) points = 1;
+    if (value > q80!) band = 'worst';
+    else if (value > q60!) band = 'second-worst';
   } else {
-    if (value < q20!) points = 2;
-    else if (value < q40!) points = 1;
+    if (value < q20!) band = 'worst';
+    else if (value < q40!) band = 'second-worst';
   }
 
   const peerSpan = Math.abs(q80! - q20!);
   const severity = peerSpan === 0
     ? 0
     : Math.max(0, lowerIsBetter ? (value - median) / peerSpan : (median - value) / peerSpan);
-  return { points, belowMedian, severity };
+  return { band, severity };
 }
 
 function getTrend(category: IndicatorCategoryData, lowerIsBetter: boolean) {
@@ -171,27 +171,17 @@ export function buildFocusSignals(
     if (value === null) continue;
     const baselineValue = baselineCategory?.Data.Value ?? null;
     const peer = getPeerEvidence(category, classification.lowerIsBetter);
-    if (!peer.belowMedian) continue;
+    if (peer.band === null) continue;
 
-    const comparisonPoint = baselineCategory && baselineValue !== null
+    const comparisonIsClear = Boolean(baselineCategory && baselineValue !== null
       && isUnfavourable(value, baselineValue, classification.lowerIsBetter)
-      && confidenceIntervalsDoNotOverlap(category, baselineCategory)
-      ? 1
-      : 0;
+      && confidenceIntervalsDoNotOverlap(category, baselineCategory));
     const trend = getTrend(category, classification.lowerIsBetter);
-    const trendPoint = trend.deteriorating ? 1 : 0;
-    const score = peer.points + comparisonPoint + trendPoint;
 
     // Recorded prevalence is a possible detection signal, not a direct measure
     // of care quality. Only promote it when its age-standardised rate is in the
     // worst peer fifth.
-    if (score < 2 || (isRecordedPrevalence && peer.points < 2)) continue;
-
-    const reasons: FocusReason[] = [];
-    if (peer.points === 2) reasons.push('worst-peer-fifth');
-    else if (peer.points === 1) reasons.push('second-worst-peer-fifth');
-    if (comparisonPoint) reasons.push('comparison');
-    if (trendPoint) reasons.push('deteriorating');
+    if (isRecordedPrevalence && peer.band !== 'worst') continue;
 
     signals.push({
       indicator,
@@ -207,15 +197,16 @@ export function buildFocusSignals(
       lowerIsBetter: classification.lowerIsBetter,
       isRecordedPrevalence,
       usesAgeStandardised,
-      score,
-      reasons,
+      peerBand: peer.band,
+      comparisonIsClear,
+      deteriorating: trend.deteriorating,
       peerSeverity: peer.severity,
     });
   }
 
   return signals
     .sort((a, b) => (
-      b.score - a.score
+      (a.peerBand === b.peerBand ? 0 : a.peerBand === 'worst' ? -1 : 1)
       || b.peerSeverity - a.peerSeverity
       || a.indicator.IndicatorCode.localeCompare(b.indicator.IndicatorCode)
     ))

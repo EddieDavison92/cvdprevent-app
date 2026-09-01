@@ -48,7 +48,7 @@ export function PrioritiesCard({
             )}
           </div>
           <p className="mt-0.5 text-xs text-gray-500">
-            Indicators with the strongest combined evidence of potential improvement.
+            Indicators with the most unfavourable positions among same-level peers.
           </p>
         </div>
         <details className="group relative text-xs">
@@ -58,20 +58,20 @@ export function PrioritiesCard({
           </summary>
           <div className="absolute right-0 z-20 mt-2 w-[min(34rem,calc(100vw-3rem))] rounded-lg border border-gray-200 bg-white p-4 text-gray-600 shadow-lg">
             <p className="text-gray-700">
-              Focus signals are screening prompts, not clinical priority scores. An indicator must be on the unfavourable side of the peer median and collect at least 2 evidence points.
+              Focus signals are screening prompts, not clinical priorities. They show indicators in the worst or second-worst fifth of same-level peers.
             </p>
             <dl className="mt-3 grid gap-3 sm:grid-cols-3">
               <div>
                 <dt className="font-semibold text-gray-800">Peer position</dt>
-                <dd className="mt-0.5">2 points for the worst fifth of same-level peers, or 1 for the second-worst fifth.</dd>
+                <dd className="mt-0.5">The worst fifth appears first, followed by the second-worst fifth.</dd>
               </div>
               <div>
                 <dt className="font-semibold text-gray-800">Selected comparison</dt>
-                <dd className="mt-0.5">1 point when the result is unfavourable and the confidence intervals do not overlap.</dd>
+                <dd className="mt-0.5">The comparison with {baselineName} adds context but does not decide which indicators appear.</dd>
               </div>
               <div>
                 <dt className="font-semibold text-gray-800">Recent change</dt>
-                <dd className="mt-0.5">1 point when the latest 2 published values move in an unfavourable direction.</dd>
+                <dd className="mt-0.5">Change across the latest 2 published values adds context but does not affect selection.</dd>
               </div>
             </dl>
             <p className="mt-3 text-gray-500">
@@ -102,12 +102,11 @@ export function PrioritiesCard({
             <span />
           </div>
           <ul className="divide-y divide-gray-100">
-            {priorities.map(({ indicator, category, value, baselineValue, gap, trend, trendDirection, trendValues, reasons, section, lowerIsBetter, isRecordedPrevalence, usesAgeStandardised }) => {
+            {priorities.map(({ indicator, category, value, baselineValue, gap, trend, trendDirection, trendValues, peerBand, comparisonIsClear, section, lowerIsBetter, isRecordedPrevalence, usesAgeStandardised }) => {
               const fmt = indicator.FormatDisplayName;
               const gapIsBad = gap !== null && (lowerIsBetter ? gap > 0 : gap < 0);
               const trendIsBad = trend !== null && (lowerIsBetter ? trend > 0 : trend < 0);
-              const peerLabel = reasons.includes('worst-peer-fifth') ? 'Worst fifth' : 'Second-worst fifth';
-              const comparisonIsClear = reasons.includes('comparison');
+              const peerLabel = peerBand === 'worst' ? 'Worst fifth' : 'Second-worst fifth';
 
               return (
                 <li key={indicator.IndicatorID}>
@@ -148,7 +147,7 @@ export function PrioritiesCard({
                       />
                       <span className={cn(
                         'mt-0.5 block text-[10px] font-medium',
-                        reasons.includes('worst-peer-fifth') ? 'text-nhs-red' : 'text-amber-700',
+                        peerBand === 'worst' ? 'text-nhs-red' : 'text-amber-700',
                       )}>{peerLabel}</span>
                     </div>
                   </div>
@@ -202,7 +201,7 @@ export function PrioritiesCard({
               );
             })}
           </ul>
-          <p className="border-t border-gray-100 px-4 py-2 text-right text-[11px] text-gray-400">Ordered by strength of evidence.</p>
+          <p className="border-t border-gray-100 px-4 py-2 text-right text-[11px] text-gray-400">Ordered by peer position.</p>
         </>
       )}
     </section>

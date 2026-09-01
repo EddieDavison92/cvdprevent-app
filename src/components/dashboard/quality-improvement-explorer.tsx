@@ -36,7 +36,7 @@ import { cn } from '@/lib/utils';
 
 type ChangeFilter = 'all' | 'deteriorating' | 'improving' | 'stable' | 'history';
 type StatusFilter = 'all' | PerformanceStatus;
-type SortOption = 'priority' | 'gap' | 'change' | 'name';
+type SortOption = 'peer' | 'gap' | 'change' | 'name';
 
 interface QualityImprovementExplorerProps {
   indicators: IndicatorWithData[] | undefined;
@@ -57,7 +57,7 @@ const CHANGE_FILTERS: Array<{ value: ChangeFilter; label: string }> = [
 const STATUS_ORDER: PerformanceStatus[] = ['unfavourable', 'similar', 'favourable', 'recording'];
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
-  { value: 'priority', label: 'Needs attention first' },
+  { value: 'peer', label: 'Most unfavourable peer position' },
   { value: 'gap', label: 'Largest gap first' },
   { value: 'change', label: 'Largest trend change' },
   { value: 'name', label: 'Indicator name' },
@@ -93,7 +93,7 @@ export function QualityImprovementExplorer({
   const [changeFilter, setChangeFilter] = useState<ChangeFilter>('all');
   const [sectionFilter, setSectionFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('priority');
+  const [sortBy, setSortBy] = useState<SortOption>('peer');
   const [query, setQuery] = useState('');
   const [showDefinitions, setShowDefinitions] = useState(false);
 
@@ -141,7 +141,20 @@ export function QualityImprovementExplorer({
 
   const visibleRows = useMemo(() => {
     const normalisedQuery = query.trim().toLowerCase();
-    const statusPriority = { unfavourable: 0, similar: 1, recording: 2, favourable: 3, unavailable: 4 } as const;
+    const peerPosition = ({ row, assessment }: (typeof assessedRows)[number]) => {
+      const { lowerIsBetter } = classifyIndicator(row.indicator);
+      const rawQuintile = row.quintiles.length
+        ? (lowerIsBetter ? Math.max(...row.quintiles) : Math.min(...row.quintiles))
+        : null;
+      const directionalQuintile = rawQuintile === null
+        ? 6
+        : lowerIsBetter ? 6 - rawQuintile : rawQuintile;
+      const peerSpan = row.category.Data.Q80 !== null && row.category.Data.Q20 !== null
+        ? Math.abs(row.category.Data.Q80 - row.category.Data.Q20)
+        : 0;
+      const relativeGap = peerSpan > 0 ? (assessment.performanceGap ?? 0) / peerSpan : 0;
+      return { directionalQuintile, relativeGap };
+    };
     return assessedRows.filter(({ row, assessment }) => {
       const matchesQuery = !normalisedQuery
         || row.indicator.IndicatorCode.toLowerCase().includes(normalisedQuery)
@@ -155,8 +168,10 @@ export function QualityImprovementExplorer({
       if (sortBy === 'name') return a.row.indicator.IndicatorShortName.localeCompare(b.row.indicator.IndicatorShortName);
       if (sortBy === 'change') return Math.abs(b.row.overallTrend ?? 0) - Math.abs(a.row.overallTrend ?? 0);
       if (sortBy === 'gap') return Math.abs(b.assessment.gap ?? 0) - Math.abs(a.assessment.gap ?? 0);
-      return statusPriority[a.assessment.status] - statusPriority[b.assessment.status]
-        || Math.abs(b.assessment.performanceGap ?? 0) - Math.abs(a.assessment.performanceGap ?? 0);
+      const aPosition = peerPosition(a);
+      const bPosition = peerPosition(b);
+      return aPosition.directionalQuintile - bPosition.directionalQuintile
+        || aPosition.relativeGap - bPosition.relativeGap;
     });
   }, [assessedRows, query, changeFilter, sectionFilter, statusFilter, sortBy]);
 
@@ -168,7 +183,7 @@ export function QualityImprovementExplorer({
     setChangeFilter('all');
     setSectionFilter('all');
     setStatusFilter('all');
-    setSortBy('priority');
+    setSortBy('peer');
   };
 
   if (isLoading) return <ExplorerSkeleton />;
@@ -357,7 +372,7 @@ export function QualityImprovementExplorer({
               </button>
             )}
             <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
-              <SelectTrigger className="h-8 w-44 bg-white text-xs" aria-label="Sort indicators">
+              <SelectTrigger className="h-8 w-64 max-w-full bg-white text-xs" aria-label="Sort indicators">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

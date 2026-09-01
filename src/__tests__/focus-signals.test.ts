@@ -136,8 +136,7 @@ describe('focus signal selection', () => {
       value: 15,
       isRecordedPrevalence: true,
       usesAgeStandardised: true,
-      score: 2,
-      reasons: ['worst-peer-fifth'],
+      peerBand: 'worst',
     });
   });
 
@@ -149,18 +148,16 @@ describe('focus signal selection', () => {
     expect(buildFocusSignals([source], [])).toHaveLength(1);
   });
 
-  it('requires corroboration for a result in the second-worst peer fifth', () => {
+  it('includes a result in the second-worst peer fifth without corroboration', () => {
     const source = indicator('CVDP002AF', [
-      category({ value: 80, median: 85, q20: 75, q40: 82, q60: 87, q80: 91, timeSeries: [82, 80] }),
-    ]);
-    const baseline = baselineFor(source, [
-      category({ value: 86, median: 86, q20: 80, q40: 84, q60: 88, q80: 92, lower: 85.8, upper: 86.2 }),
+      category({ value: 80, median: 85, q20: 75, q40: 82, q60: 87, q80: 91, timeSeries: [79, 80] }),
     ]);
 
-    const [signal] = buildFocusSignals([source], [baseline]);
+    const [signal] = buildFocusSignals([source], []);
     expect(signal).toMatchObject({
-      score: 3,
-      reasons: ['second-worst-peer-fifth', 'comparison', 'deteriorating'],
+      peerBand: 'second-worst',
+      comparisonIsClear: false,
+      deteriorating: false,
     });
   });
 
@@ -175,11 +172,31 @@ describe('focus signal selection', () => {
     expect(buildFocusSignals([source], [baseline])).toEqual([]);
   });
 
-  it('does not infer deterioration from a single published value', () => {
+  it('includes peer position without inferring deterioration from one value', () => {
     const source = indicator('CVDP002AF', [
       category({ value: 80, median: 85, q20: 75, q40: 82, q60: 87, q80: 91, timeSeries: [80] }),
     ]);
 
-    expect(buildFocusSignals([source], [])).toEqual([]);
+    const [signal] = buildFocusSignals([source], []);
+    expect(signal).toMatchObject({
+      peerBand: 'second-worst',
+      deteriorating: false,
+      trend: null,
+    });
+  });
+
+  it('orders the worst peer fifth before contextual comparison or change', () => {
+    const worst = indicator('CVDP002AF', [
+      category({ value: 70, median: 85, q20: 75, q40: 82, q60: 87, q80: 91, timeSeries: [70, 71] }),
+    ]);
+    const secondWorst = indicator('CVDP005AF', [
+      category({ value: 80, median: 85, q20: 75, q40: 82, q60: 87, q80: 91, timeSeries: [82, 80] }),
+    ]);
+    const baseline = baselineFor(secondWorst, [
+      category({ value: 86, median: 86, q20: 80, q40: 84, q60: 88, q80: 92, lower: 85.8, upper: 86.2 }),
+    ]);
+
+    const signals = buildFocusSignals([secondWorst, worst], [baseline]);
+    expect(signals.map((signal) => signal.peerBand)).toEqual(['worst', 'second-worst']);
   });
 });
