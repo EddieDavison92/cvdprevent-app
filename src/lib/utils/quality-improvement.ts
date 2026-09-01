@@ -31,6 +31,43 @@ export interface QualityImprovementRow {
   trendValues: number[];
 }
 
+export const POPULATION_DIMENSIONS = [
+  'Age group',
+  'Deprivation quintile',
+  'Deprivation quintile - Age Standardised',
+  'Ethnicity',
+  'Ethnicity (broad)',
+  'Learning Disability',
+  'Mental Health',
+  'Sex',
+  'Sex - Age Standardised',
+] as const;
+
+export type PopulationDimension = typeof POPULATION_DIMENSIONS[number];
+
+export interface PopulationVariationGroup {
+  category: IndicatorCategoryData;
+  label: string;
+  value: number;
+}
+
+export interface PopulationVariationRow {
+  indicator: IndicatorWithData;
+  dimension: PopulationDimension;
+  dimensionLabel: string;
+  overallCategory: IndicatorCategoryData;
+  overallValue: number;
+  groups: PopulationVariationGroup[];
+  mostUnfavourable: PopulationVariationGroup;
+  gap: number;
+  /** Positive means favourable; negative means unfavourable. Descriptive for recorded prevalence. */
+  performanceGap: number;
+  /** Unitless magnitude used only to order unlike indicator formats. */
+  relativeGap: number;
+  suppressedCount: number;
+  isRecordedPrevalence: boolean;
+}
+
 export type PerformanceStatus = 'favourable' | 'unfavourable' | 'similar' | 'recording' | 'unavailable';
 
 export interface QualityImprovementAssessment {
@@ -138,6 +175,86 @@ export function getMarkerOptions(indicators: IndicatorWithData[]): MarkerOption[
 
 export function getDefaultMarkerOption(options: MarkerOption[]): MarkerOption | undefined {
   return options.find((option) => option.isPersons) ?? options[0];
+}
+
+function isAgeStandardisedDimension(dimension: string) {
+  return /Age Standardised/i.test(dimension);
+}
+
+function getOverallCategory(indicator: IndicatorWithData, dimension: PopulationDimension) {
+  const type = isAgeStandardisedDimension(dimension) ? 'Sex - Age Standardised' : 'Sex';
+  return indicator.Categories.find((category) => (
+    category.MetricCategoryTypeName === type
+    && category.MetricCategoryName === 'Persons'
+    && category.Data.Value !== null
+  ));
+}
+
+function isDimensionGroup(category: IndicatorCategoryData, dimension: PopulationDimension) {
+  if (category.MetricCategoryTypeName !== dimension || category.MetricCategoryName === 'Persons') return false;
+  if (dimension.startsWith('Sex')) return true;
+  return !category.CategoryAttribute || category.CategoryAttribute === 'Persons';
+}
+
+export function buildPopulationVariationRows(
+  indicators: IndicatorWithData[],
+  selectedDimension: PopulationDimension | 'all' = 'all',
+): PopulationVariationRow[] {
+  return indicators.flatMap((indicator) => {
+    const classification = classifyIndicator(indicator);
+    const isRecordedPrevalence = classification.section.id === 'prevalence';
+    const dimensions = selectedDimension === 'all' ? POPULATION_DIMENSIONS : [selectedDimension];
+    const candidates = dimensions.flatMap((dimension): PopulationVariationRow[] => {
+      const overallCategory = getOverallCategory(indicator, dimension);
+      const overallValue = overallCategory?.Data.Value;
+      if (!overallCategory || overallValue === null || overallValue === undefined) return [];
+
+      const categories = indicator.Categories.filter((category) => isDimensionGroup(category, dimension));
+      const groups = categories
+        .filter((category) => category.Data.Value !== null)
+        .map((category) => ({
+          category,
+          label: getMarkerLabel(category),
+          value: category.Data.Value!,
+        }));
+      if (groups.length < 2) return [];
+
+      const mostUnfavourable = isRecordedPrevalence
+        ? groups.reduce((selected, group) => (
+          Math.abs(group.value - overallValue) > Math.abs(selected.value - overallValue) ? group : selected
+        ))
+        : groups.reduce((selected, group) => {
+          if (classification.lowerIsBetter) return group.value > selected.value ? group : selected;
+          return group.value < selected.value ? group : selected;
+        });
+      const gap = mostUnfavourable.value - overallValue;
+      const performanceGap = classification.lowerIsBetter ? -gap : gap;
+      const relativeGap = Math.abs(gap) / Math.max(Math.abs(overallValue), 1);
+      const suppressedCount = categories.filter((category) => (
+        category.Data.Value === null && /suppress/i.test(category.Data.ValueNote ?? '')
+      )).length;
+
+      return [{
+        indicator,
+        dimension,
+        dimensionLabel: getMarkerGroupLabel(dimension),
+        overallCategory,
+        overallValue,
+        groups,
+        mostUnfavourable,
+        gap,
+        performanceGap,
+        relativeGap,
+        suppressedCount,
+        isRecordedPrevalence,
+      }];
+    });
+
+    if (selectedDimension !== 'all' || candidates.length < 2) return candidates;
+    return [candidates.reduce((largest, row) => (
+      row.relativeGap > largest.relativeGap ? row : largest
+    ))];
+  });
 }
 
 export function getQuintiles(category: IndicatorCategoryData): Quintile[] {

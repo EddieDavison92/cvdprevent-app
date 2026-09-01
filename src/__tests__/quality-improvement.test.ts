@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { IndicatorCategoryData } from '@/lib/api/types';
 import {
   assessQualityImprovementRow,
+  buildPopulationVariationRows,
   countSuppressedCategories,
   getDefaultMarkerOption,
   getCategoryTrend,
@@ -151,6 +152,57 @@ describe('quality improvement calculations', () => {
     expect(assessQualityImprovementRow(row)).toMatchObject({
       status: 'recording',
       trendStatus: 'recording',
+    });
+  });
+
+  it('finds the population group with the most unfavourable result', () => {
+    const overall = category({ Value: 80 });
+    const younger = category({ Value: 60 });
+    younger.MetricCategoryTypeName = 'Age group';
+    younger.MetricCategoryName = '18-39';
+    const older = category({ Value: 90 });
+    older.MetricCategoryTypeName = 'Age group';
+    older.MetricCategoryName = '80+';
+    const indicator = {
+      IndicatorID: 1,
+      IndicatorCode: 'CVDP002AF',
+      IndicatorName: 'Treatment',
+      IndicatorShortName: 'AF: Treated with anticoagulants',
+      FormatDisplayName: 'Proportion %',
+      Categories: [overall, younger, older],
+    } as QualityImprovementRow['indicator'];
+
+    const [row] = buildPopulationVariationRows([indicator], 'Age group');
+    expect(row).toMatchObject({
+      overallValue: 80,
+      mostUnfavourable: { label: '18–39', value: 60 },
+      gap: -20,
+      performanceGap: -20,
+    });
+  });
+
+  it('treats recorded prevalence differences as descriptive variation', () => {
+    const overall = category({ Value: 20 });
+    const younger = category({ Value: 5 });
+    younger.MetricCategoryTypeName = 'Age group';
+    younger.MetricCategoryName = '18-39';
+    const older = category({ Value: 50 });
+    older.MetricCategoryTypeName = 'Age group';
+    older.MetricCategoryName = '80+';
+    const indicator = {
+      IndicatorID: 1,
+      IndicatorCode: 'CVDP001HYP',
+      IndicatorName: 'Recorded prevalence',
+      IndicatorShortName: 'Hypertension: Prevalence',
+      FormatDisplayName: 'Proportion %',
+      Categories: [overall, younger, older],
+    } as QualityImprovementRow['indicator'];
+
+    const [row] = buildPopulationVariationRows([indicator], 'Age group');
+    expect(row).toMatchObject({
+      isRecordedPrevalence: true,
+      mostUnfavourable: { label: '80+', value: 50 },
+      gap: 30,
     });
   });
 });

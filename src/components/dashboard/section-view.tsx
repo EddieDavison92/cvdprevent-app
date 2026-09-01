@@ -98,12 +98,13 @@ export function SectionView({
       })
       .filter((row): row is IndicatorRow => row !== null && row.value !== null);
 
-    // Worst first: by trend for England, by gap otherwise
+    // Recorded prevalence is descriptive, so order it by the largest absolute difference.
     if (isEngland) {
       rows.sort((a, b) => {
         if (a.trend === null && b.trend === null) return 0;
         if (a.trend === null) return 1;
         if (b.trend === null) return -1;
+        if (isRecordedPrevalence) return Math.abs(b.trend) - Math.abs(a.trend);
         const aSeverity = a.lowerIsBetter ? a.trend : -a.trend;
         const bSeverity = b.lowerIsBetter ? b.trend : -b.trend;
         return bSeverity - aSeverity;
@@ -113,6 +114,7 @@ export function SectionView({
         if (a.gap === null && b.gap === null) return 0;
         if (a.gap === null) return 1;
         if (b.gap === null) return -1;
+        if (isRecordedPrevalence) return Math.abs(b.gap) - Math.abs(a.gap);
         const aSeverity = a.lowerIsBetter ? a.gap : -a.gap;
         const bSeverity = b.lowerIsBetter ? b.gap : -b.gap;
         return bSeverity - aSeverity;
@@ -120,20 +122,25 @@ export function SectionView({
     }
 
     return rows;
-  }, [section.indicatorCodes, indicators, baselineMap, isEngland]);
+  }, [section.indicatorCodes, indicators, baselineMap, isEngland, isRecordedPrevalence]);
 
   const filteredIndicators = useMemo(() => {
-    if (!showBelowOnly) return sectionIndicators;
+    if (!showBelowOnly || isRecordedPrevalence) return sectionIndicators;
     return sectionIndicators.filter(row => {
       if (row.gap === null) return false;
       return row.lowerIsBetter ? row.gap > COMPARISON_TOLERANCE : row.gap < -COMPARISON_TOLERANCE;
     });
-  }, [sectionIndicators, showBelowOnly]);
+  }, [sectionIndicators, showBelowOnly, isRecordedPrevalence]);
 
   const summary = useMemo(() => {
     if (isEngland) {
       const withTrends = sectionIndicators.filter(r => r.trend !== null);
       if (withTrends.length === 0) return null;
+      if (isRecordedPrevalence) {
+        const rising = withTrends.filter(row => getTrendDirection(row.trend!, row.trendValues) === 'up').length;
+        const falling = withTrends.filter(row => getTrendDirection(row.trend!, row.trendValues) === 'down').length;
+        return { good: rising, bad: falling, total: withTrends.length, goodLabel: 'rising', badLabel: 'falling' };
+      }
       const improving = withTrends.filter(row => {
         const direction = getTrendDirection(row.trend!, row.trendValues);
         return row.lowerIsBetter ? direction === 'down' : direction === 'up';
@@ -181,9 +188,9 @@ export function SectionView({
             <Skeleton className="h-5 w-28" />
           ) : summary && (
             <p className="shrink-0 whitespace-nowrap text-xs tabular-nums text-gray-500">
-              <span className={cn('font-semibold', summary.bad > 0 ? 'text-nhs-red' : 'text-gray-700')}>{summary.bad}</span> {summary.badLabel}
+              <span className={cn('font-semibold', isRecordedPrevalence ? 'text-slate-600' : summary.bad > 0 ? 'text-nhs-red' : 'text-gray-700')}>{summary.bad}</span> {summary.badLabel}
               <span className="mx-1.5 text-gray-300">·</span>
-              <span className="font-semibold text-nhs-green">{summary.good}</span> {summary.goodLabel}
+              <span className={cn('font-semibold', isRecordedPrevalence ? 'text-slate-600' : 'text-nhs-green')}>{summary.good}</span> {summary.goodLabel}
             </p>
           )}
         </div>
@@ -194,9 +201,9 @@ export function SectionView({
             role="img"
             aria-label={`${summary.good} ${summary.goodLabel}, ${summary.bad} ${summary.badLabel} of ${summary.total}${isEngland ? '' : ` compared with ${baselineName}`}`}
           >
-            <span className="bg-nhs-green" style={{ width: `${(summary.good / summary.total) * 100}%` }} />
+            <span className={isRecordedPrevalence ? 'bg-slate-400' : 'bg-nhs-green'} style={{ width: `${(summary.good / summary.total) * 100}%` }} />
             <span className="bg-gray-300" style={{ width: `${((summary.total - summary.good - summary.bad) / summary.total) * 100}%` }} />
-            <span className="bg-nhs-red" style={{ width: `${(summary.bad / summary.total) * 100}%` }} />
+            <span className={isRecordedPrevalence ? 'bg-slate-600' : 'bg-nhs-red'} style={{ width: `${(summary.bad / summary.total) * 100}%` }} />
           </div>
         )}
       </header>
@@ -250,8 +257,8 @@ export function SectionView({
                 ) : gap !== null ? (
                   <span className={cn(
                     'text-xs font-medium tabular-nums sm:text-right',
-                    gapDirection === 'ahead' && 'text-nhs-green',
-                    gapDirection === 'behind' && 'text-nhs-red',
+                    gapDirection === 'ahead' && (isRecordedPrevalence ? 'text-slate-600' : 'text-nhs-green'),
+                    gapDirection === 'behind' && (isRecordedPrevalence ? 'text-slate-600' : 'text-nhs-red'),
                     gapDirection === 'at' && 'text-gray-500',
                   )}>
                     {gapLabel}
@@ -261,7 +268,10 @@ export function SectionView({
                 <TrendIcon
                   className={cn(
                     'h-4 w-4 justify-self-end',
-                    trend === null ? 'text-gray-200' : trendDirection === 'flat' ? 'text-gray-400' : trendGood ? 'text-nhs-green' : 'text-nhs-red',
+                    trend === null ? 'text-gray-200'
+                      : isRecordedPrevalence ? 'text-slate-500'
+                        : trendDirection === 'flat' ? 'text-gray-400'
+                          : trendGood ? 'text-nhs-green' : 'text-nhs-red',
                   )}
                   aria-label={trendLabel}
                   role="img"
