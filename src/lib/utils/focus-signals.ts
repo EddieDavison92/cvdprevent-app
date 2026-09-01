@@ -177,13 +177,10 @@ export function buildFocusSignals(
     const peer = getPeerEvidence(category, classification.lowerIsBetter);
     if (peer.band === null) continue;
 
-    const comparisonIsUnfavourable = baselineValue !== null
-      && isUnfavourable(value, baselineValue, classification.lowerIsBetter);
-    if (hasSelectedComparison && !comparisonIsUnfavourable) continue;
-
     const comparisonIsClear = Boolean(baselineCategory && baselineValue !== null
       && isUnfavourable(value, baselineValue, classification.lowerIsBetter)
       && confidenceIntervalsDoNotOverlap(category, baselineCategory));
+    if (hasSelectedComparison && !comparisonIsClear) continue;
     const trend = getTrend(category, classification.lowerIsBetter);
 
     signals.push({

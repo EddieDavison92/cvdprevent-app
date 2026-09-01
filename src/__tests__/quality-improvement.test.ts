@@ -178,6 +178,7 @@ describe('quality improvement calculations', () => {
       mostUnfavourable: { label: '18–39', value: 60 },
       gap: -20,
       performanceGap: -20,
+      isMaterialDifference: true,
     });
   });
 
@@ -204,5 +205,108 @@ describe('quality improvement calculations', () => {
       mostUnfavourable: { label: '80+', value: 50 },
       gap: 30,
     });
+  });
+
+  it('does not rank unclassified ethnicity as the least favourable ethnic group', () => {
+    const overall = category({ Value: 70 });
+    const asian = category({ Value: 75 });
+    asian.MetricCategoryTypeName = 'Ethnicity';
+    asian.MetricCategoryName = 'Asian';
+    const black = category({ Value: 65 });
+    black.MetricCategoryTypeName = 'Ethnicity';
+    black.MetricCategoryName = 'Black';
+    const missing = category({ Value: 20 });
+    missing.MetricCategoryTypeName = 'Ethnicity';
+    missing.MetricCategoryName = 'Missing';
+    const indicator = {
+      IndicatorID: 1,
+      IndicatorCode: 'CVDP002AF',
+      IndicatorName: 'Treatment',
+      IndicatorShortName: 'AF: Treated with anticoagulants',
+      FormatDisplayName: 'Proportion %',
+      Categories: [overall, asian, black, missing],
+    } as QualityImprovementRow['indicator'];
+
+    const [row] = buildPopulationVariationRows([indicator], 'Ethnicity');
+    expect(row).toMatchObject({
+      mostUnfavourable: { label: 'Black', value: 65, isUnclassified: false },
+      gap: -5,
+    });
+    expect(row.groups.find((group) => group.label === 'Missing')).toMatchObject({
+      value: 20,
+      isUnclassified: true,
+      isHighlighted: false,
+    });
+  });
+
+  it('does not highlight a small percentage-point difference', () => {
+    const overall = category({ Value: 1 });
+    const first = category({ Value: 1.2 });
+    first.MetricCategoryTypeName = 'Deprivation quintile';
+    first.MetricCategoryName = '1 - most deprived';
+    const fifth = category({ Value: 0.9 });
+    fifth.MetricCategoryTypeName = 'Deprivation quintile';
+    fifth.MetricCategoryName = '5 - least deprived';
+    const indicator = {
+      IndicatorID: 1,
+      IndicatorCode: 'CVDP005HYP',
+      IndicatorName: 'Detection gap',
+      IndicatorShortName: 'Hypertension: High risk',
+      FormatDisplayName: 'Proportion %',
+      Categories: [overall, first, fifth],
+    } as QualityImprovementRow['indicator'];
+
+    const [row] = buildPopulationVariationRows([indicator], 'Deprivation quintile');
+    expect(row.isMaterialDifference).toBe(false);
+    expect(row.groups.some((group) => group.isHighlighted)).toBe(false);
+  });
+
+  it('requires a five per cent relative difference for percentage results', () => {
+    const overall = category({ Value: 80 });
+    const first = category({ Value: 77 });
+    first.MetricCategoryTypeName = 'Deprivation quintile';
+    first.MetricCategoryName = '1 - most deprived';
+    const fifth = category({ Value: 82 });
+    fifth.MetricCategoryTypeName = 'Deprivation quintile';
+    fifth.MetricCategoryName = '5 - least deprived';
+    const indicator = {
+      IndicatorID: 1,
+      IndicatorCode: 'CVDP002AF',
+      IndicatorName: 'Treatment',
+      IndicatorShortName: 'AF: Treated with anticoagulants',
+      FormatDisplayName: 'Proportion %',
+      Categories: [overall, first, fifth],
+    } as QualityImprovementRow['indicator'];
+
+    const [row] = buildPopulationVariationRows([indicator], 'Deprivation quintile');
+    expect(row.isMaterialDifference).toBe(false);
+    expect(row.groups.some((group) => group.isHighlighted)).toBe(false);
+  });
+
+  it('highlights materially unfavourable groups that are effectively tied', () => {
+    const overall = category({ Value: 70 });
+    const asian = category({ Value: 65 });
+    asian.MetricCategoryTypeName = 'Ethnicity';
+    asian.MetricCategoryName = 'Asian';
+    const black = category({ Value: 65.4 });
+    black.MetricCategoryTypeName = 'Ethnicity';
+    black.MetricCategoryName = 'Black';
+    const white = category({ Value: 69 });
+    white.MetricCategoryTypeName = 'Ethnicity';
+    white.MetricCategoryName = 'White';
+    const indicator = {
+      IndicatorID: 1,
+      IndicatorCode: 'CVDP002AF',
+      IndicatorName: 'Treatment',
+      IndicatorShortName: 'AF: Treated with anticoagulants',
+      FormatDisplayName: 'Proportion %',
+      Categories: [overall, asian, black, white],
+    } as QualityImprovementRow['indicator'];
+
+    const [row] = buildPopulationVariationRows([indicator], 'Ethnicity');
+    expect(row.groups.filter((group) => group.isHighlighted).map((group) => group.label)).toEqual([
+      'Asian',
+      'Black',
+    ]);
   });
 });

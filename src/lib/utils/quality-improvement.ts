@@ -49,6 +49,8 @@ export interface PopulationVariationGroup {
   category: IndicatorCategoryData;
   label: string;
   value: number;
+  isUnclassified: boolean;
+  isHighlighted: boolean;
 }
 
 export interface PopulationVariationRow {
@@ -62,8 +64,10 @@ export interface PopulationVariationRow {
   gap: number;
   /** Positive means favourable; negative means unfavourable. Descriptive for recorded prevalence. */
   performanceGap: number;
-  /** Unitless magnitude used only to order unlike indicator formats. */
-  relativeGap: number;
+  /** Whether the named-group difference clears the screening threshold. */
+  isMaterialDifference: boolean;
+  /** Difference expressed as multiples of the screening threshold. */
+  variationScore: number;
   suppressedCount: number;
   isRecordedPrevalence: boolean;
 }
@@ -196,6 +200,27 @@ function isDimensionGroup(category: IndicatorCategoryData, dimension: Population
   return !category.CategoryAttribute || category.CategoryAttribute === 'Persons';
 }
 
+function isUnclassifiedGroup(category: IndicatorCategoryData, dimension: PopulationDimension) {
+  if (!dimension.startsWith('Ethnicity')) return false;
+  return /^(missing|not stated|unknown|not known|not recorded)$/i.test(category.MetricCategoryName.trim());
+}
+
+function isPercentageFormat(formatDisplayName: string) {
+  return /%|percent|proportion/i.test(formatDisplayName);
+}
+
+function variationThresholds(formatDisplayName: string, overallValue: number) {
+  const scale = Math.max(Math.abs(overallValue), Number.EPSILON);
+  if (isPercentageFormat(formatDisplayName)) {
+    return {
+      material: Math.max(1, scale * 0.05),
+      equivalent: Math.max(COMPARISON_TOLERANCE, scale * 0.025),
+    };
+  }
+
+  return { material: scale * 0.05, equivalent: scale * 0.025 };
+}
+
 export function buildPopulationVariationRows(
   indicators: IndicatorWithData[],
   selectedDimension: PopulationDimension | 'all' = 'all',
@@ -216,20 +241,46 @@ export function buildPopulationVariationRows(
           category,
           label: getMarkerLabel(category),
           value: category.Data.Value!,
+          isUnclassified: isUnclassifiedGroup(category, dimension),
+          isHighlighted: false,
         }));
-      if (groups.length < 2) return [];
+      const comparableGroups = groups.filter((group) => !group.isUnclassified);
+      if (comparableGroups.length < 2) return [];
 
-      const mostUnfavourable = isRecordedPrevalence
-        ? groups.reduce((selected, group) => (
+      const selectedGroup = isRecordedPrevalence
+        ? comparableGroups.reduce((selected, group) => (
           Math.abs(group.value - overallValue) > Math.abs(selected.value - overallValue) ? group : selected
         ))
-        : groups.reduce((selected, group) => {
+        : comparableGroups.reduce((selected, group) => {
           if (classification.lowerIsBetter) return group.value > selected.value ? group : selected;
           return group.value < selected.value ? group : selected;
         });
-      const gap = mostUnfavourable.value - overallValue;
+      const gap = selectedGroup.value - overallValue;
       const performanceGap = classification.lowerIsBetter ? -gap : gap;
-      const relativeGap = Math.abs(gap) / Math.max(Math.abs(overallValue), 1);
+      const thresholds = variationThresholds(indicator.FormatDisplayName, overallValue);
+      const materialDifference = isRecordedPrevalence
+        ? Math.abs(gap) >= thresholds.material
+        : performanceGap <= -thresholds.material;
+      const groupsWithHighlights = groups.map((group) => {
+        if (group.isUnclassified || !materialDifference) return group;
+        const groupGap = group.value - overallValue;
+        if (isRecordedPrevalence) {
+          return {
+            ...group,
+            isHighlighted: Math.abs(groupGap) >= Math.abs(gap) - thresholds.equivalent,
+          };
+        }
+        const groupPerformanceGap = classification.lowerIsBetter ? -groupGap : groupGap;
+        return {
+          ...group,
+          isHighlighted: groupPerformanceGap <= performanceGap + thresholds.equivalent,
+        };
+      });
+      const mostUnfavourable = groupsWithHighlights.find((group) => (
+        group.category === selectedGroup.category
+      ))!;
+      const variationScore = (isRecordedPrevalence ? Math.abs(gap) : Math.max(0, -performanceGap))
+        / thresholds.material;
       const suppressedCount = categories.filter((category) => (
         category.Data.Value === null && /suppress/i.test(category.Data.ValueNote ?? '')
       )).length;
@@ -240,11 +291,12 @@ export function buildPopulationVariationRows(
         dimensionLabel: getMarkerGroupLabel(dimension),
         overallCategory,
         overallValue,
-        groups,
+        groups: groupsWithHighlights,
         mostUnfavourable,
         gap,
         performanceGap,
-        relativeGap,
+        isMaterialDifference: materialDifference,
+        variationScore,
         suppressedCount,
         isRecordedPrevalence,
       }];
@@ -252,7 +304,7 @@ export function buildPopulationVariationRows(
 
     if (selectedDimension !== 'all' || candidates.length < 2) return candidates;
     return [candidates.reduce((largest, row) => (
-      row.relativeGap > largest.relativeGap ? row : largest
+      row.variationScore > largest.variationScore ? row : largest
     ))];
   });
 }
