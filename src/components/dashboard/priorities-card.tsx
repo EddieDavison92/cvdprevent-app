@@ -48,7 +48,7 @@ export function PrioritiesCard({
             )}
           </div>
           <p className="mt-0.5 text-xs text-gray-500">
-            Indicators with the most unfavourable positions among same-level peers.
+            Indicators that are unfavourable against {baselineName} and sit in the lowest-performing peer fifths.
           </p>
         </div>
         <details className="group relative text-xs">
@@ -58,7 +58,7 @@ export function PrioritiesCard({
           </summary>
           <div className="absolute right-0 z-20 mt-2 w-[min(34rem,calc(100vw-3rem))] rounded-lg border border-gray-200 bg-white p-4 text-gray-600 shadow-lg">
             <p className="text-gray-700">
-              Focus signals are screening prompts, not clinical priorities. They show indicators in the worst or second-worst fifth of same-level peers.
+              Focus signals are screening prompts, not clinical priorities. They combine the selected comparison with position among same-level peers.
             </p>
             <dl className="mt-3 grid gap-3 sm:grid-cols-3">
               <div>
@@ -67,16 +67,14 @@ export function PrioritiesCard({
               </div>
               <div>
                 <dt className="font-semibold text-gray-800">Selected comparison</dt>
-                <dd className="mt-0.5">The comparison with {baselineName} adds context but does not decide which indicators appear.</dd>
+                <dd className="mt-0.5">Only results that are unfavourable against {baselineName} are included. Changing the comparison can change the signals.</dd>
               </div>
               <div>
                 <dt className="font-semibold text-gray-800">Recent change</dt>
                 <dd className="mt-0.5">Change across the latest 2 published values adds context but does not affect selection.</dd>
               </div>
             </dl>
-            <p className="mt-3 text-gray-500">
-              Recorded prevalence uses age-standardised results and only appears when it is in the worst peer fifth.
-            </p>
+            <p className="mt-3 text-gray-500">Recorded prevalence is excluded because higher or lower recording is not, by itself, good or bad.</p>
           </div>
         </details>
       </div>

@@ -126,18 +126,12 @@ describe('focus signal selection', () => {
     expect(buildFocusSignals([source], [baseline])).toEqual([]);
   });
 
-  it('flags age-standardised recorded prevalence only in the worst peer fifth', () => {
+  it('does not rank recorded prevalence as good or bad', () => {
     const source = indicator('CVDP001HYP', [
       category({ type: 'Sex - Age Standardised', value: 15, median: 19.5, q20: 17, q40: 18.5, q60: 19.6, q80: 20.7 }),
     ]);
 
-    const [signal] = buildFocusSignals([source], []);
-    expect(signal).toMatchObject({
-      value: 15,
-      isRecordedPrevalence: true,
-      usesAgeStandardised: true,
-      peerBand: 'worst',
-    });
+    expect(buildFocusSignals([source], [])).toEqual([]);
   });
 
   it('flags a treatment result in the worst peer fifth without relying on raw units', () => {
@@ -192,11 +186,31 @@ describe('focus signal selection', () => {
     const secondWorst = indicator('CVDP005AF', [
       category({ value: 80, median: 85, q20: 75, q40: 82, q60: 87, q80: 91, timeSeries: [82, 80] }),
     ]);
-    const baseline = baselineFor(secondWorst, [
-      category({ value: 86, median: 86, q20: 80, q40: 84, q60: 88, q80: 92, lower: 85.8, upper: 86.2 }),
+    const baseline = [
+      baselineFor(secondWorst, [
+        category({ value: 86, median: 86, q20: 80, q40: 84, q60: 88, q80: 92, lower: 85.8, upper: 86.2 }),
+      ]),
+      baselineFor(worst, [
+        category({ value: 86, median: 86, q20: 80, q40: 84, q60: 88, q80: 92 }),
+      ]),
+    ];
+
+    const signals = buildFocusSignals([secondWorst, worst], baseline);
+    expect(signals.map((signal) => signal.peerBand)).toEqual(['worst', 'second-worst']);
+  });
+
+  it('changes signals when the selected comparison changes', () => {
+    const source = indicator('CVDP002AF', [
+      category({ value: 80, median: 85, q20: 75, q40: 82, q60: 87, q80: 91 }),
+    ]);
+    const higherBaseline = baselineFor(source, [
+      category({ value: 90, median: 90, q20: 84, q40: 87, q60: 91, q80: 94 }),
+    ]);
+    const lowerBaseline = baselineFor(source, [
+      category({ value: 70, median: 70, q20: 65, q40: 68, q60: 72, q80: 75 }),
     ]);
 
-    const signals = buildFocusSignals([secondWorst, worst], [baseline]);
-    expect(signals.map((signal) => signal.peerBand)).toEqual(['worst', 'second-worst']);
+    expect(buildFocusSignals([source], [higherBaseline])).toHaveLength(1);
+    expect(buildFocusSignals([source], [lowerBaseline])).toEqual([]);
   });
 });

@@ -152,6 +152,7 @@ export function buildFocusSignals(
   maxItems = 5,
 ): FocusSignal[] {
   const baselineMap = new Map(baselineIndicators.map(indicator => [indicator.IndicatorCode, indicator]));
+  const hasSelectedComparison = baselineIndicators.length > 0;
   const signals: FocusSignal[] = [];
 
   for (const indicator of indicators) {
@@ -159,6 +160,9 @@ export function buildFocusSignals(
     if (classification.section.id === 'other') continue;
 
     const isRecordedPrevalence = classification.section.id === 'prevalence';
+    // Recorded prevalence describes diagnosed or recorded need. It is not a
+    // direct good-or-bad care measure, so it does not enter the focus ranking.
+    if (isRecordedPrevalence) continue;
     const selection = selectCategories(
       indicator,
       baselineMap.get(indicator.IndicatorCode),
@@ -173,15 +177,14 @@ export function buildFocusSignals(
     const peer = getPeerEvidence(category, classification.lowerIsBetter);
     if (peer.band === null) continue;
 
+    const comparisonIsUnfavourable = baselineValue !== null
+      && isUnfavourable(value, baselineValue, classification.lowerIsBetter);
+    if (hasSelectedComparison && !comparisonIsUnfavourable) continue;
+
     const comparisonIsClear = Boolean(baselineCategory && baselineValue !== null
       && isUnfavourable(value, baselineValue, classification.lowerIsBetter)
       && confidenceIntervalsDoNotOverlap(category, baselineCategory));
     const trend = getTrend(category, classification.lowerIsBetter);
-
-    // Recorded prevalence is a possible detection signal, not a direct measure
-    // of care quality. Only promote it when its age-standardised rate is in the
-    // worst peer fifth.
-    if (isRecordedPrevalence && peer.band !== 'worst') continue;
 
     signals.push({
       indicator,

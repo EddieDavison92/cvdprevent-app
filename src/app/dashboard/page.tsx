@@ -24,7 +24,7 @@ import { useOrganisation } from '@/providers/organisation-context';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAreaIndicators, getPersonsData } from '@/lib/hooks/use-area-indicators';
 import { extractCondition } from '@/lib/utils/format';
-import { getDashboardSections, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
+import { classifyIndicator, getDashboardSections, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
 import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
 import type { IndicatorCategoryData, IndicatorWithData } from '@/lib/api/types';
 import { ApiUnavailable } from '@/components/api-status-banner';
@@ -193,6 +193,7 @@ export default function DashboardPage() {
 
       const personsCategory = getPersonsData(indicator);
       if (!personsCategory) return;
+      const isRecordedPrevalence = classifyIndicator(indicator).section.id === 'prevalence';
 
       const currentData = convertToRawDataFormat(personsCategory, indicator);
       dataMap.set(indicator.IndicatorID, currentData);
@@ -211,7 +212,7 @@ export default function DashboardPage() {
       }
 
       // Count trends for England mode
-      if (isEngland && orgValue !== null) {
+      if (isEngland && orgValue !== null && !isRecordedPrevalence) {
         const prevData = prevMap.get(indicator.IndicatorID);
         if (prevData?.Value !== null && prevData?.Value !== undefined) {
           const change = orgValue - prevData.Value;
@@ -241,7 +242,7 @@ export default function DashboardPage() {
         }
       }
 
-      if (orgValue !== null && baselineValue !== null && !isEngland) {
+      if (orgValue !== null && baselineValue !== null && !isEngland && !isRecordedPrevalence) {
         const diff = orgValue - baselineValue;
         const effectiveDiff = isLowerBetterIndicator(indicator.IndicatorCode, indicator) ? -diff : diff;
         const isSignificant = Math.abs(diff) > COMPARISON_TOLERANCE;
@@ -351,7 +352,7 @@ export default function DashboardPage() {
                           onCheckedChange={setShowBelowOnly}
                         />
                         <Label htmlFor="below-only" className="cursor-pointer text-sm text-gray-600">
-                          Behind {baselineName} only
+                          Unfavourable vs {baselineName} only
                         </Label>
                       </div>
                     </div>
