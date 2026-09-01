@@ -6,9 +6,10 @@ import { useSearchParams } from 'next/navigation';
 import type { IndicatorWithData } from '@/lib/api/types';
 import { formatValue, formatAbsDiff } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
-import { CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Info, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { buildFocusSignals, type FocusReason } from '@/lib/utils/focus-signals';
+import { buildFocusSignals } from '@/lib/utils/focus-signals';
+import { PeerRangeBar } from '@/components/dashboard/peer-range-bar';
 
 interface PrioritiesCardProps {
   indicators: IndicatorWithData[];
@@ -20,13 +21,6 @@ interface PrioritiesCardProps {
 
 function cleanName(name: string) {
   return name.replace(/\s*\(CVDP\d+[A-Z]+\)/, '').trim();
-}
-
-function reasonLabel(reason: FocusReason, baselineName: string) {
-  if (reason === 'worst-peer-fifth') return 'Worst peer fifth';
-  if (reason === 'second-worst-peer-fifth') return 'Second-worst peer fifth';
-  if (reason === 'comparison') return `Worse than ${baselineName}`;
-  return 'Worsening';
 }
 
 export function PrioritiesCard({
@@ -43,95 +37,173 @@ export function PrioritiesCard({
     [indicators, baselineIndicators, maxItems],
   );
 
-  const criteria = 'Combines peer position, the selected comparison and change over the latest two periods. Recorded prevalence uses age-standardised results.';
-
   return (
     <section aria-labelledby="priorities-heading" className="rounded-lg border border-gray-200 bg-white">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-gray-100 px-4 py-3">
-        <div className="flex items-baseline gap-2">
-          <h2 id="priorities-heading" className="text-base font-semibold text-gray-900">Focus signals</h2>
-          {!isLoadingBaseline && priorities.length > 0 && (
-            <span className="text-sm text-gray-500">{priorities.length} to review</span>
-          )}
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 px-4 py-3">
+        <div>
+          <div className="flex items-baseline gap-2">
+            <h2 id="priorities-heading" className="text-base font-semibold text-gray-900">Focus signals</h2>
+            {!isLoadingBaseline && priorities.length > 0 && (
+              <span className="text-sm tabular-nums text-gray-500">{priorities.length} signals</span>
+            )}
+          </div>
+          <p className="mt-0.5 text-xs text-gray-500">
+            Indicators with the strongest combined evidence of potential improvement.
+          </p>
         </div>
-        <p className="text-xs text-gray-500">{criteria}</p>
+        <details className="group relative text-xs">
+          <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded px-2 py-1 font-medium text-nhs-blue hover:bg-nhs-pale-grey focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue [&::-webkit-details-marker]:hidden">
+            <Info className="h-3.5 w-3.5" aria-hidden="true" />
+            How signals are chosen
+          </summary>
+          <div className="absolute right-0 z-20 mt-2 w-[min(34rem,calc(100vw-3rem))] rounded-lg border border-gray-200 bg-white p-4 text-gray-600 shadow-lg">
+            <p className="text-gray-700">
+              Focus signals are screening prompts, not clinical priority scores. An indicator must be on the unfavourable side of the peer median and collect at least 2 evidence points.
+            </p>
+            <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div>
+                <dt className="font-semibold text-gray-800">Peer position</dt>
+                <dd className="mt-0.5">2 points for the worst fifth of same-level peers, or 1 for the second-worst fifth.</dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-gray-800">Selected comparison</dt>
+                <dd className="mt-0.5">1 point when the result is unfavourable and the confidence intervals do not overlap.</dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-gray-800">Recent change</dt>
+                <dd className="mt-0.5">1 point when the latest 2 published values move in an unfavourable direction.</dd>
+              </div>
+            </dl>
+            <p className="mt-3 text-gray-500">
+              Recorded prevalence uses age-standardised results and only appears when it is in the worst peer fifth.
+            </p>
+          </div>
+        </details>
       </div>
 
       {isLoadingBaseline ? (
         <div className="flex items-center gap-2 px-4 py-4 text-sm text-gray-500">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           Comparing with {baselineName}…
         </div>
       ) : priorities.length === 0 ? (
         <div className="flex items-center gap-2 px-4 py-4 text-sm text-nhs-green">
-          <CheckCircle2 className="h-4 w-4" />
+          <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
           No indicators meet the focus-signal criteria.
         </div>
       ) : (
-        <ol className="divide-y divide-gray-100">
-          {priorities.map(({ indicator, value, baselineValue, gap, trend, reasons, section, lowerIsBetter, isRecordedPrevalence, usesAgeStandardised }, i) => {
-            const fmt = indicator.FormatDisplayName;
-            const gapIsBad = gap !== null && (lowerIsBetter ? gap > 0 : gap < 0);
-            const trendIsBad = trend !== null && (lowerIsBetter ? trend > 0 : trend < 0);
-            const showTrend = reasons.includes('deteriorating');
+        <>
+          <div className="hidden grid-cols-[minmax(14rem,1fr)_7rem_10rem_9rem_10rem_1rem] gap-4 border-b border-gray-100 bg-gray-50/60 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-gray-500 lg:grid">
+            <span>Indicator</span>
+            <span className="text-right">Area result</span>
+            <span>Peer range</span>
+            <span>Against {baselineName}</span>
+            <span>Recent change</span>
+            <span />
+          </div>
+          <ul className="divide-y divide-gray-100">
+            {priorities.map(({ indicator, category, value, baselineValue, gap, trend, trendDirection, trendValues, reasons, section, lowerIsBetter, isRecordedPrevalence, usesAgeStandardised }) => {
+              const fmt = indicator.FormatDisplayName;
+              const gapIsBad = gap !== null && (lowerIsBetter ? gap > 0 : gap < 0);
+              const trendIsBad = trend !== null && (lowerIsBetter ? trend > 0 : trend < 0);
+              const peerLabel = reasons.includes('worst-peer-fifth') ? 'Worst fifth' : 'Second-worst fifth';
+              const comparisonIsClear = reasons.includes('comparison');
 
-            return (
-              <li key={indicator.IndicatorID}>
+              return (
+                <li key={indicator.IndicatorID}>
                 <Link
                   href={buildUrl(`/dashboard/${indicator.IndicatorID}`, searchParams)}
-                  className="group grid items-center gap-x-4 gap-y-1 px-4 py-2.5 hover:bg-nhs-pale-grey/40 focus-visible:bg-nhs-pale-grey/40 focus-visible:outline-none sm:grid-cols-[1.5rem_minmax(0,1fr)_auto_auto_1rem]"
+                  className="group grid gap-3 px-4 py-3 hover:bg-nhs-pale-grey/40 focus-visible:bg-nhs-pale-grey/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-nhs-blue lg:grid-cols-[minmax(14rem,1fr)_7rem_10rem_9rem_10rem_1rem] lg:items-center lg:gap-4"
                 >
-                  <span className="hidden text-sm font-semibold tabular-nums text-gray-400 sm:block">{i + 1}</span>
-
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-gray-900 group-hover:text-nhs-blue">
                       {cleanName(indicator.IndicatorShortName)}
                     </p>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-500">
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-500">
                       <span className="flex items-center gap-1">
                         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: section.color }} aria-hidden />
                         {section.name}
                       </span>
                       {usesAgeStandardised && <span>Age-standardised</span>}
-                      {gap !== null && (
-                        <span className={cn(gapIsBad ? 'text-nhs-red' : 'text-nhs-green')}>
-                          {formatAbsDiff(gap, fmt)} {isRecordedPrevalence
-                            ? `${gap < 0 ? 'lower than' : 'higher than'} ${baselineName}`
-                            : `${gapIsBad ? 'behind' : 'ahead of'} ${baselineName}`}
-                        </span>
-                      )}
-                      {showTrend && (
-                        <span className={cn(trendIsBad ? 'text-nhs-red' : 'text-nhs-green')}>
-                          {trend! > 0 ? '↑' : '↓'} {formatAbsDiff(trend!, fmt)} since last period
-                        </span>
-                      )}
+                      {isRecordedPrevalence && <span className="font-medium text-amber-800">Possible under-detection</span>}
                     </p>
                   </div>
 
-                  <div className="text-sm tabular-nums sm:text-right">
-                    <span className="font-semibold text-gray-900">{formatValue(value, fmt)}</span>
-                    {baselineValue !== null && (
-                      <span className="text-gray-400"> vs {formatValue(baselineValue, fmt)}</span>
+                  <div className="flex items-baseline justify-between gap-2 lg:block lg:text-right">
+                    <span className="text-xs text-gray-400 lg:hidden">Area result</span>
+                    <span className="text-sm font-semibold tabular-nums text-gray-900">{formatValue(value, fmt)}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-gray-400 lg:hidden">Peer position</span>
+                    <div className="w-full max-w-[10rem]">
+                      <PeerRangeBar
+                        value={value}
+                        min={category.Data.Min}
+                        max={category.Data.Max}
+                        median={category.Data.Median}
+                        quintileBounds={[category.Data.Q20, category.Data.Q40, category.Data.Q60, category.Data.Q80]}
+                        status={isRecordedPrevalence ? 'recording' : 'unfavourable'}
+                        formatDisplayName={fmt}
+                      />
+                      <span className={cn(
+                        'mt-0.5 block text-[10px] font-medium',
+                        reasons.includes('worst-peer-fifth') ? 'text-nhs-red' : 'text-amber-700',
+                      )}>{peerLabel}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-baseline justify-between gap-2 text-xs lg:block">
+                    <span className="text-gray-400 lg:hidden">Against {baselineName}</span>
+                    {gap === null || baselineValue === null ? (
+                      <span className="text-gray-400">Not available</span>
+                    ) : isRecordedPrevalence ? (
+                      <span>
+                        <span className="block font-medium text-gray-600">{formatAbsDiff(gap, fmt)} {gap < 0 ? 'lower' : 'higher'}</span>
+                        <span className="mt-0.5 block tabular-nums text-[10px] text-gray-400">{baselineName} {formatValue(baselineValue, fmt)}</span>
+                      </span>
+                    ) : gapIsBad && comparisonIsClear ? (
+                      <span>
+                        <span className="block font-medium text-nhs-red">{formatAbsDiff(gap, fmt)} worse</span>
+                        <span className="mt-0.5 block tabular-nums text-[10px] text-gray-400">{baselineName} {formatValue(baselineValue, fmt)}</span>
+                      </span>
+                    ) : gapIsBad ? (
+                      <span>
+                        <span className="block font-medium text-gray-500">No clear difference</span>
+                        <span className="mt-0.5 block tabular-nums text-[10px] text-gray-400">{baselineName} {formatValue(baselineValue, fmt)}</span>
+                      </span>
+                    ) : (
+                      <span>
+                        <span className="block font-medium text-nhs-green">{formatAbsDiff(gap, fmt)} better</span>
+                        <span className="mt-0.5 block tabular-nums text-[10px] text-gray-400">{baselineName} {formatValue(baselineValue, fmt)}</span>
+                      </span>
                     )}
                   </div>
 
-                  <span className={cn(
-                    'w-fit rounded px-1.5 py-0.5 text-[11px] font-medium',
-                    isRecordedPrevalence
-                      ? 'bg-nhs-orange/15 text-amber-800'
-                      : 'bg-nhs-red/10 text-nhs-red',
+                  <div className={cn(
+                    'flex items-baseline justify-between gap-2 text-xs font-medium lg:block',
+                    trendIsBad ? 'text-nhs-red' : trendDirection === 'flat' || trend === null ? 'text-gray-500' : 'text-nhs-green',
                   )}>
-                    {isRecordedPrevalence
-                      ? 'Possible under-detection'
-                      : reasons.map(reason => reasonLabel(reason, baselineName)).join(' · ')}
-                  </span>
+                    <span className="text-gray-400 lg:hidden">Recent change</span>
+                    <span>
+                      {trendValues.length < 2 || trend === null
+                        ? 'Not enough history'
+                        : isRecordedPrevalence
+                          ? `${trendDirection === 'down' ? 'Falling' : trendDirection === 'up' ? 'Rising' : 'Stable'} ${trendDirection === 'flat' ? '' : formatAbsDiff(trend, fmt)}`
+                          : trendDirection === 'flat'
+                            ? 'Stable'
+                            : `${trendIsBad ? 'Deteriorating' : 'Improving'} ${formatAbsDiff(trend, fmt)}`}
+                    </span>
+                  </div>
 
-                  <ArrowRight className="hidden h-4 w-4 text-gray-300 group-hover:text-nhs-blue sm:block" aria-hidden />
+                  <ArrowRight className="hidden h-4 w-4 text-gray-300 group-hover:text-nhs-blue lg:block" aria-hidden="true" />
                 </Link>
-              </li>
-            );
-          })}
-        </ol>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="border-t border-gray-100 px-4 py-2 text-right text-[11px] text-gray-400">Ordered by strength of evidence.</p>
+        </>
       )}
     </section>
   );
