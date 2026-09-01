@@ -78,9 +78,13 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
   // Use horizontal bars when there are more than 5 items
   const useHorizontal = validData.length > 5;
 
-  // Calculate natural height based on data
+  // Fill fullscreen panels when the full ranking remains legible. Longer lists
+  // keep their natural height and use the dialog's scrollbar.
   const barHeight = 24;
-  const chartHeight = useHorizontal ? Math.max(280, validData.length * barHeight + 60) : height;
+  const shouldFitAvailableHeight = height === '100%' && validData.length <= 42;
+  const chartHeight = useHorizontal && !shouldFitAvailableHeight
+    ? Math.max(280, validData.length * barHeight + 60)
+    : height;
 
   // Calculate label width based on longest name
   const maxNameLength = Math.max(...validData.map((d) => d.name.length));
