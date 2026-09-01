@@ -156,12 +156,13 @@ export function useChartTableActions(opts: {
                   </DialogClose>
                 </div>
               </div>
-              <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-6">
+              <div className="min-h-0 flex-1 overflow-hidden p-3 sm:p-6">
                 <ChartTableToggle
                   chart={opts.fullscreen.chart}
                   tableData={opts.tableData}
                   columns={opts.columns}
                   viewMode={viewMode}
+                  className="h-full min-h-0"
                 />
               </div>
             </div>
@@ -219,7 +220,7 @@ export function ChartTableToggle({
       {viewMode === 'chart' ? (
         chart
       ) : (
-        <div className="overflow-x-auto">
+        <div className="h-full overflow-auto">
           <Table>
             <TableHeader>
               <TableRow>

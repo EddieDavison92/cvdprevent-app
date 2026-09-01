@@ -183,12 +183,17 @@ export function DemographicChart({
     ],
   };
 
+  const fillsContainer = height === '100%';
+
   return (
-    <div>
+    <div style={fillsContainer ? { height: '100%' } : undefined}>
       <ReactECharts
         option={option}
         notMerge
-        style={{ height, width: '100%' }}
+        style={{
+          height: fillsContainer && hasSuppressedData ? 'calc(100% - 1.75rem)' : height,
+          width: '100%',
+        }}
         opts={{ renderer: 'svg' }}
       />
       {hasSuppressedData && (

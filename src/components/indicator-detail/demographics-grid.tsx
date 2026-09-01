@@ -284,7 +284,8 @@ function DemographicCard({
         <BarChart
           data={simpleChartData}
           formatValue={formatFn}
-          height="calc(100vh - 9rem)"
+          height="100%"
+          barMaxWidth={96}
         />
       ) : (
         <DemographicChart
@@ -292,8 +293,8 @@ function DemographicCard({
           orgName={displayAreaName}
           baselineName={baselineName}
           formatValue={formatFn}
-          height="calc(100vh - 9rem)"
-          barMaxWidth={64}
+          height="100%"
+          barMaxWidth={96}
         />
       ),
     },

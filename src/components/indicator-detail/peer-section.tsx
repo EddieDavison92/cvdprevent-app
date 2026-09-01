@@ -269,8 +269,10 @@ export function PeerSection({
           yAxisLabel={indicator.AxisCharacter}
           benchmarks={benchmarks}
           formatValue={formatFn}
-          height="calc(100vh - 9rem)"
+          height="100%"
           barColor={NHS_COLORS.lightBlue}
+          barMaxWidth={96}
+          horizontalBarMaxWidth={22}
         />
       ),
     },

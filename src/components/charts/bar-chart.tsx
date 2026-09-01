@@ -33,6 +33,8 @@ interface BarChartProps {
   formatValue?: (value: number) => string;
   height?: number | string;
   barColor?: string;
+  barMaxWidth?: number;
+  horizontalBarMaxWidth?: number;
 }
 
 export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function BarChart({
@@ -45,6 +47,8 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
   formatValue = (v) => v.toFixed(1),
   height = 400,
   barColor = NHS_COLORS.blue,
+  barMaxWidth = 60,
+  horizontalBarMaxWidth = 14,
 }: BarChartProps, ref) {
   const validData = data.filter((d) => d.value !== null);
 
@@ -87,7 +91,7 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
     grid: {
       left: useHorizontal ? 10 : '3%',
       right: '4%',
-      bottom: allBenchmarks.length > 0 ? (useHorizontal ? 60 : '20%') : (useHorizontal ? 40 : '15%'),
+      bottom: allBenchmarks.length > 0 ? (useHorizontal ? 60 : 72) : (useHorizontal ? 40 : 55),
       top: useHorizontal ? 10 : (title ? '15%' : '5%'),
       containLabel: true,
     },
@@ -202,7 +206,7 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
             color: d.isHighlighted ? NHS_COLORS.darkBlue : barColor,
           },
         })),
-        barMaxWidth: useHorizontal ? 14 : 60,
+        barMaxWidth: useHorizontal ? horizontalBarMaxWidth : barMaxWidth,
         markLine: allBenchmarks.length > 0
           ? {
               silent: true,
