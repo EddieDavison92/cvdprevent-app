@@ -213,4 +213,15 @@ describe('focus signal selection', () => {
     expect(buildFocusSignals([source], [higherBaseline])).toHaveLength(1);
     expect(buildFocusSignals([source], [lowerBaseline])).toEqual([]);
   });
+
+  it('excludes an unfavourable point estimate when confidence intervals overlap', () => {
+    const source = indicator('CVDP002AF', [
+      category({ value: 80, median: 85, q20: 75, q40: 82, q60: 87, q80: 91, lower: 79, upper: 82 }),
+    ]);
+    const baseline = baselineFor(source, [
+      category({ value: 81, median: 85, q20: 75, q40: 82, q60: 87, q80: 91, lower: 80, upper: 82 }),
+    ]);
+
+    expect(buildFocusSignals([source], [baseline])).toEqual([]);
+  });
 });

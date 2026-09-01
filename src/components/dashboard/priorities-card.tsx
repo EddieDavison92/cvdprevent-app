@@ -48,7 +48,7 @@ export function PrioritiesCard({
             )}
           </div>
           <p className="mt-0.5 text-xs text-gray-500">
-            Indicators that are unfavourable against {baselineName} and sit in the lowest-performing peer fifths.
+            Indicators that are clearly unfavourable against {baselineName} and sit in the lowest-performing peer fifths.
           </p>
         </div>
         <details className="group relative text-xs">
@@ -67,7 +67,7 @@ export function PrioritiesCard({
               </div>
               <div>
                 <dt className="font-semibold text-gray-800">Selected comparison</dt>
-                <dd className="mt-0.5">Only results that are unfavourable against {baselineName} are included. Changing the comparison can change the signals.</dd>
+                <dd className="mt-0.5">Only unfavourable results with non-overlapping confidence intervals against {baselineName} are included. Changing the comparison can change the signals.</dd>
               </div>
               <div>
                 <dt className="font-semibold text-gray-800">Recent change</dt>
