@@ -74,33 +74,56 @@ function cleanIndicatorName(name: string) {
 }
 
 function PopulationGroupValues({ row }: { row: PopulationVariationRow }) {
+  const comparisonGroups = row.groups.filter((group) => !group.isUnclassified);
+  const unclassifiedGroups = row.groups.filter((group) => group.isUnclassified);
+  const displayedGroups = [...comparisonGroups, ...unclassifiedGroups];
+
+  const groupValues = (groups: PopulationVariationRow['groups']) => groups.map((group) => {
+    return (
+      <div
+        key={`${group.category.MetricID}-${group.label}`}
+        title={group.isUnclassified ? `${group.label}: unclassified ethnicity, not included in ranking` : group.label}
+        className={cn(
+          'min-w-0 rounded-md border px-2 py-1',
+          group.isUnclassified
+            ? 'border-gray-300 bg-gray-100/80 text-gray-500'
+            : group.isHighlighted && !row.isRecordedPrevalence
+              ? 'border-amber-200 bg-amber-50'
+              : group.isHighlighted
+                ? 'border-slate-300 bg-slate-50'
+                : 'border-gray-100 bg-white',
+        )}
+      >
+        <dt className="text-[10px] leading-tight text-gray-500">{group.label}</dt>
+        <dd className={cn(
+          'text-xs font-semibold tabular-nums',
+          group.isUnclassified
+            ? 'text-gray-500'
+            : group.isHighlighted && !row.isRecordedPrevalence
+              ? 'text-amber-800'
+              : 'text-gray-800',
+        )}>
+          {formatValue(group.value, row.indicator.FormatDisplayName)}
+        </dd>
+      </div>
+    );
+  });
+
   return (
-    <dl className="flex flex-wrap gap-1.5" aria-label={`${row.dimensionLabel} results`}>
-      {row.groups.map((group) => {
-        const isSelected = group === row.mostUnfavourable;
-        return (
-          <div
-            key={`${group.category.MetricID}-${group.label}`}
-            className={cn(
-              'min-w-[4.5rem] max-w-[11rem] rounded-md border px-2 py-1',
-              isSelected && !row.isRecordedPrevalence
-                ? 'border-amber-200 bg-amber-50'
-                : isSelected
-                  ? 'border-slate-300 bg-slate-50'
-                  : 'border-gray-100 bg-white',
-            )}
-          >
-            <dt className="text-[10px] leading-tight text-gray-500">{group.label}</dt>
-            <dd className={cn(
-              'text-xs font-semibold tabular-nums',
-              isSelected && !row.isRecordedPrevalence ? 'text-amber-800' : 'text-gray-800',
-            )}>
-              {formatValue(group.value, row.indicator.FormatDisplayName)}
-            </dd>
-          </div>
-        );
-      })}
-    </dl>
+    <div className="min-w-0">
+      <dl
+        className="grid gap-1.5"
+        style={{ gridTemplateColumns: `repeat(${displayedGroups.length}, minmax(0, 1fr))` }}
+        aria-label={`${row.dimensionLabel} results`}
+      >
+        {groupValues(displayedGroups)}
+      </dl>
+      {unclassifiedGroups.length > 0 && (
+        <p className="mt-1 text-right text-[9px] font-medium leading-tight text-gray-400">
+          Missing and not stated ethnicity are shown for data quality only and are not included in ranking
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -134,7 +157,6 @@ export function QualityImprovementExplorer({
   const [sortBy, setSortBy] = useState<SortOption>('peer');
   const [variationDimension, setVariationDimension] = useState<PopulationDimension | 'all'>('all');
   const [variationSort, setVariationSort] = useState<VariationSort>('variation');
-  const [showAllVariation, setShowAllVariation] = useState(false);
   const [query, setQuery] = useState('');
   const [showDefinitions, setShowDefinitions] = useState(false);
 
@@ -233,13 +255,13 @@ export function QualityImprovementExplorer({
     }).sort((a, b) => (
       variationSort === 'name'
         ? a.indicator.IndicatorShortName.localeCompare(b.indicator.IndicatorShortName)
-        : b.relativeGap - a.relativeGap
+        : b.variationScore - a.variationScore
     ));
   }, [variationRows, query, sectionFilter, variationSort]);
 
   const careVariationRows = visibleVariationRows.filter((row) => !row.isRecordedPrevalence);
   const prevalenceVariationRows = visibleVariationRows.filter((row) => row.isRecordedPrevalence);
-  const displayedCareVariationRows = showAllVariation ? careVariationRows : careVariationRows.slice(0, 12);
+  const materialCareVariationCount = careVariationRows.filter((row) => row.isMaterialDifference).length;
 
   const setMode = (nextMode: ImprovementMode) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -261,7 +283,6 @@ export function QualityImprovementExplorer({
     setSortBy('peer');
     setVariationDimension('all');
     setVariationSort('variation');
-    setShowAllVariation(false);
   };
 
   const variationList = (items: PopulationVariationRow[]) => (
@@ -272,7 +293,9 @@ export function QualityImprovementExplorer({
             href={buildUrl(`/dashboard/${row.indicator.IndicatorID}`, searchParams)}
             className={cn(
               'group grid gap-3 border-l-4 px-4 py-3 transition-colors hover:bg-nhs-pale-grey/40 focus-visible:bg-nhs-pale-grey/40 focus-visible:outline-none sm:px-5 lg:grid-cols-[minmax(14rem,1fr)_7rem_minmax(22rem,1.4fr)_9rem_1rem] lg:items-center lg:gap-4',
-              row.isRecordedPrevalence ? 'border-l-slate-300' : 'border-l-amber-400',
+              row.isMaterialDifference
+                ? row.isRecordedPrevalence ? 'border-l-slate-300' : 'border-l-amber-400'
+                : 'border-l-gray-200',
             )}
           >
             <div className="min-w-0">
@@ -304,10 +327,16 @@ export function QualityImprovementExplorer({
 
             <div className="flex items-center justify-between gap-3 text-xs font-medium">
               <span className="text-gray-400 lg:hidden">Difference</span>
-              <span className={row.isRecordedPrevalence ? 'text-gray-600' : 'text-amber-700'}>
-                {formatAbsDiff(row.gap, row.indicator.FormatDisplayName)} {row.isRecordedPrevalence
-                  ? (row.gap > 0 ? 'higher' : 'lower')
-                  : row.performanceGap < 0 ? 'less favourable' : 'more favourable'}
+              <span className={cn(
+                row.isMaterialDifference
+                  ? row.isRecordedPrevalence ? 'text-gray-600' : 'text-amber-700'
+                  : 'text-gray-500',
+              )}>
+                {row.isMaterialDifference
+                  ? <>{formatAbsDiff(row.gap, row.indicator.FormatDisplayName)} {row.isRecordedPrevalence
+                    ? (row.gap > 0 ? 'higher' : 'lower')
+                    : row.performanceGap < 0 ? 'less favourable' : 'more favourable'}</>
+                  : 'Similar across groups'}
               </span>
             </div>
 
@@ -407,15 +436,23 @@ export function QualityImprovementExplorer({
           </div>
           <div>
             <dt className="font-semibold text-gray-800">Group difference</dt>
-            <dd className="mt-0.5 text-gray-600">The group furthest in an unfavourable direction from the all-patient result. Recorded prevalence is descriptive and is not labelled better or worse.</dd>
+            <dd className="mt-0.5 text-gray-600">The largest material difference from the all-patient result. Recorded prevalence is descriptive and is not labelled better or worse.</dd>
           </div>
           <div>
             <dt className="font-semibold text-gray-800">Group results</dt>
-            <dd className="mt-0.5 text-gray-600">Each labelled value is the published result for that patient group. Care measures highlight the least favourable group; recorded prevalence highlights the largest difference.</dd>
+            <dd className="mt-0.5 text-gray-600">Each labelled value is the published result for that patient group. Near-tied groups are highlighted together rather than selecting one arbitrarily.</dd>
+          </div>
+          <div>
+            <dt className="font-semibold text-gray-800">Highlight threshold</dt>
+            <dd className="mt-0.5 text-gray-600">For percentage results, the threshold is the larger of 1 percentage point or 5% of the all-patient result. Other measures use a 5% relative difference. This is a screening rule, not a test of statistical significance.</dd>
           </div>
           <div>
             <dt className="font-semibold text-gray-800">Suppressed results</dt>
             <dd className="mt-0.5 text-gray-600">Small-number results remain hidden for disclosure control and are never treated as zero.</dd>
+          </div>
+          <div>
+            <dt className="font-semibold text-gray-800">Unclassified ethnicity</dt>
+            <dd className="mt-0.5 text-gray-600">Missing, not stated and unknown ethnicity remain visible as data-quality categories, but do not determine the highlighted group or ranking.</dd>
           </div>
         </dl>
       )}
@@ -510,7 +547,6 @@ export function QualityImprovementExplorer({
               <span className="mb-1 block text-xs font-medium text-gray-500">Breakdown</span>
               <Select value={variationDimension} onValueChange={(value) => {
                 setVariationDimension(value as PopulationDimension | 'all');
-                setShowAllVariation(false);
               }}>
                 <SelectTrigger className="w-full bg-white" aria-label="Population breakdown">
                   <SelectValue />
@@ -566,8 +602,10 @@ export function QualityImprovementExplorer({
             <p className="text-sm font-medium text-gray-800">
               {mode === 'population' ? visibleVariationRows.length : visibleRows.length} result{(mode === 'population' ? visibleVariationRows.length : visibleRows.length) === 1 ? '' : 's'}
             </p>
-            {mode === 'population' && !showAllVariation && careVariationRows.length > 12 && (
-              <p className="mt-0.5 text-xs text-gray-500">Showing the 12 largest care-result differences</p>
+            {mode === 'population' && careVariationRows.length > 0 && (
+              <p className="mt-0.5 text-xs text-gray-500">
+                {materialCareVariationCount} with a notable difference · {careVariationRows.length - materialCareVariationCount} broadly similar across groups
+              </p>
             )}
             {mode === 'peers' && selectedMarkerLabel && (
               <p className="mt-0.5 text-xs text-gray-500">
@@ -731,19 +769,8 @@ export function QualityImprovementExplorer({
           </ul>
         ) : (
           <div>
-            {displayedCareVariationRows.length > 0 && variationList(displayedCareVariationRows)}
-            {!showAllVariation && careVariationRows.length > displayedCareVariationRows.length && (
-              <div className="border-t border-gray-100 px-4 py-3 text-center">
-                <button
-                  type="button"
-                  onClick={() => setShowAllVariation(true)}
-                  className="text-sm font-medium text-nhs-blue hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue"
-                >
-                  Show all {careVariationRows.length} care indicators
-                </button>
-              </div>
-            )}
-            {(showAllVariation || careVariationRows.length <= 12) && prevalenceVariationRows.length > 0 && (
+            {careVariationRows.length > 0 && variationList(careVariationRows)}
+            {prevalenceVariationRows.length > 0 && (
               <section aria-labelledby="recorded-prevalence-variation">
                 <div className="border-y border-gray-100 bg-slate-50 px-4 py-3 sm:px-5">
                   <h3 id="recorded-prevalence-variation" className="text-sm font-semibold text-gray-800">Recorded prevalence</h3>
