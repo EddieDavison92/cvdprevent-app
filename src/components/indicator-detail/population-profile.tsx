@@ -249,8 +249,8 @@ function ProfileCard({
           areaName={areaName}
           baselineName={baselineName}
           isEngland={isEngland}
-          height="calc(100vh - 9rem)"
-          barMaxWidth={64}
+          height="100%"
+          barMaxWidth={96}
         />
       ),
     },

@@ -154,7 +154,7 @@ export function TrendSection({
           series={series}
           yAxisLabel={indicator.AxisCharacter}
           formatValue={formatFn}
-          height="calc(100vh - 9rem)"
+          height="100%"
           diffSuffix={fmtDisplay.includes('%') ? 'pp' : ''}
         />
       ),
