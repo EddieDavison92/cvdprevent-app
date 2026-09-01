@@ -21,6 +21,7 @@ interface DemographicChartProps {
   data: DemographicChartData[];
   orgName?: string;
   baselineName?: string;
+  yAxisLabel?: string;
   formatValue?: (value: number) => string;
   height?: number | string;
   barMaxWidth?: number;
@@ -30,6 +31,7 @@ export function DemographicChart({
   data,
   orgName = 'Your Org',
   baselineName = 'England',
+  yAxisLabel,
   formatValue = (v) => v.toFixed(1),
   height = 200,
   barMaxWidth = 30,
@@ -131,6 +133,9 @@ export function DemographicChart({
     },
     yAxis: {
       type: 'value',
+      name: yAxisLabel,
+      nameLocation: 'middle',
+      nameGap: 48,
       min: yMin,
       max: yMax,
       interval: yInterval,

@@ -19,6 +19,12 @@ import {
   type DemographicDefinition,
 } from '@/lib/utils/demographics';
 
+const PROFILE_AXIS_LABEL = 'Share of eligible population (%)';
+
+function cleanIndicatorName(name: string): string {
+  return name.replace(/\s*\(CVDP?\d+[A-Z]*\)\s*$/i, '').trim();
+}
+
 interface PopulationProfileProps {
   areaData: IndicatorRawData[];
   baselineData: IndicatorRawData[];
@@ -73,7 +79,7 @@ function ProfileChart({
             continue;
           }
           const denom = item.seriesName === areaName ? d.areaDenominator : d.baselineDenominator;
-          html += `<span style="color:${item.color}">●</span> ${item.seriesName}: ${item.value.toFixed(1)}%`;
+          html += `<span style="color:${item.color}">●</span> ${item.seriesName}: ${item.value.toFixed(1)}% of eligible population`;
           if (denom != null) {
             html += ` <span style="color:#666">(${denom.toLocaleString()})</span>`;
           }
@@ -108,6 +114,9 @@ function ProfileChart({
     },
     yAxis: {
       type: 'value',
+      name: PROFILE_AXIS_LABEL,
+      nameLocation: 'middle',
+      nameGap: 48,
       max: (value: { max: number }) => Math.ceil(value.max / 5) * 5,
       axisLine: nhsEChartsTheme.yAxis.axisLine,
       axisTick: nhsEChartsTheme.yAxis.axisTick,
@@ -198,6 +207,11 @@ function ProfileCard({
   areaCode?: string;
   timePeriod?: string;
 }) {
+  const groupLabel = demo.label.replace(/^By /, '').toLowerCase();
+  const cardTitle = `Eligible population by ${groupLabel}`;
+  const indicatorLabel = indicatorName && indicatorCode
+    ? `${cleanIndicatorName(indicatorName)} · ${indicatorCode}`
+    : indicatorName ? cleanIndicatorName(indicatorName) : 'this indicator';
   const fmtPct = (v: unknown) => typeof v === 'number' ? `${v.toFixed(1)}%` : String(v ?? '—');
   const fmtNum = (v: unknown) => typeof v === 'number' ? v.toLocaleString() : String(v ?? '—');
   const hasSuppression = shares.some(
@@ -217,13 +231,13 @@ function ProfileCard({
   const tableColumns: TableColumn[] = useMemo(() => {
     const cols: TableColumn[] = [
       { key: 'category', header: demo.label.replace('By ', ''), align: 'left' },
-      { key: 'areaShare', header: `${areaName} %`, align: 'right', format: fmtPct },
-      { key: 'areaDenominator', header: `${areaName} Population`, align: 'right', format: fmtNum },
+      { key: 'areaShare', header: `${areaName} share`, align: 'right', format: fmtPct },
+      { key: 'areaDenominator', header: `${areaName} eligible population`, align: 'right', format: fmtNum },
     ];
     if (!isEngland) {
       cols.push(
-        { key: 'baselineShare', header: `${baselineName} %`, align: 'right', format: fmtPct },
-        { key: 'baselineDenominator', header: `${baselineName} Population`, align: 'right', format: fmtNum },
+        { key: 'baselineShare', header: `${baselineName} share`, align: 'right', format: fmtPct },
+        { key: 'baselineDenominator', header: `${baselineName} eligible population`, align: 'right', format: fmtNum },
       );
     }
     return cols;
@@ -235,14 +249,14 @@ function ProfileCard({
     columns: tableColumns,
     filename: `population-profile-${demo.type.replace(/\s+/g, '-').toLowerCase()}${areaCode ? `-${areaCode}` : ''}${periodSlug ? `-${periodSlug}` : ''}`,
     metadata: [
-      ...(indicatorName && indicatorCode ? [['Indicator', `${indicatorName} (${indicatorCode})`] as [string, string]] : []),
+      ...(indicatorName && indicatorCode ? [['Indicator', `${cleanIndicatorName(indicatorName)} (${indicatorCode})`] as [string, string]] : []),
       ['Area', areaCode ? `${areaName} (${areaCode})` : areaName],
-      ['Breakdown', `Population Profile — ${demo.label}`],
+      ['Breakdown', cardTitle],
       ...(timePeriod ? [['Period', timePeriod] as [string, string]] : []),
     ],
     fullscreen: {
-      title: demo.label,
-      description: `${indicatorName ?? 'Population profile'}${isEngland ? '' : ` — ${areaName} compared with ${baselineName}`}`,
+      title: cardTitle,
+      description: `Share of patients eligible for ${indicatorLabel}${isEngland ? '' : `. ${areaName} compared with ${baselineName}`}`,
       chart: (
         <ProfileChart
           data={shares}
@@ -260,12 +274,12 @@ function ProfileCard({
     <Card className="gap-2 py-4">
       <CardHeader className="gap-1">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">{demo.label}</CardTitle>
+          <CardTitle className="text-base">{cardTitle}</CardTitle>
           {shares.length > 0 && actions}
         </div>
-        {indicatorName && (
-          <CardDescription className="text-xs">{indicatorName}</CardDescription>
-        )}
+        <CardDescription className="text-xs">
+          Share of patients eligible for {indicatorLabel}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ChartTableToggle
@@ -330,7 +344,9 @@ export function PopulationProfile({
         {demographics.slice(0, 4).map((demo) => (
           <Card key={demo.type} className="gap-2 py-4">
             <CardHeader className="gap-1">
-              <CardTitle className="text-base">{demo.label}</CardTitle>
+              <CardTitle className="text-base">
+                Eligible population {demo.label.toLowerCase()}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex h-[150px] items-center justify-center text-gray-400">

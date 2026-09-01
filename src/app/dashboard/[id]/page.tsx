@@ -790,8 +790,10 @@ export default function IndicatorDetailPage() {
 
             {/* Demographics Grid */}
             <div>
-              <h2 className="mb-1 text-lg font-semibold text-nhs-dark-blue">Demographic Breakdowns</h2>
-              <p className="mb-4 text-sm text-gray-500">How indicator outcomes vary across demographic groups</p>
+              <h2 className="mb-1 text-lg font-semibold text-nhs-dark-blue">Indicator results by demographic group</h2>
+              <p className="mb-4 text-sm text-gray-500">
+                How the indicator value differs between groups. Each bar shows the result for that group, not its size.
+              </p>
               <DemographicsGrid
                 indicator={indicatorForComponents}
                 areaData={areaAllData}
@@ -808,8 +810,10 @@ export default function IndicatorDetailPage() {
 
             {/* Population Profile */}
             <div>
-              <h2 className="mb-1 text-lg font-semibold text-nhs-dark-blue">Population Profile</h2>
-              <p className="mb-4 text-sm text-gray-500">How the eligible population is distributed across demographic groups</p>
+              <h2 className="mb-1 text-lg font-semibold text-nhs-dark-blue">Who is in the eligible population?</h2>
+              <p className="mb-4 text-sm text-gray-500">
+                How the people this indicator covers are spread across groups. These are population shares, not indicator results.
+              </p>
               <PopulationProfile
                 areaData={areaAllData}
                 baselineData={baselineAllData}
