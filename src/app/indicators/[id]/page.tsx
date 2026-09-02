@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Calendar } from 'lucide-react';
+import { ArrowLeft, Calendar, ChartNoAxesColumnIncreasing } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { BarChart } from '@/components/charts/bar-chart';
@@ -17,7 +17,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAreaIndicators, getPersonsData } from '@/lib/hooks/use-area-indicators';
 import { isOutcomeIndicator } from '@/lib/api';
@@ -43,6 +42,46 @@ function cleanAreaName(name: string) {
     .replace(/^NHS /, '')
     .replace(/ Integrated Care Board$/, '')
     .replace(/ Primary Care Network$/, '');
+}
+
+function IndicatorLoadingState() {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="flex flex-1 items-center justify-center bg-nhs-pale-grey/30 px-6 py-16">
+        <div
+          className="w-full max-w-md overflow-hidden rounded-2xl border border-blue-100 bg-white text-center shadow-sm"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="h-1 bg-nhs-blue" aria-hidden="true" />
+          <div className="px-8 py-10">
+            <div className="relative mx-auto h-20 w-20" aria-hidden="true">
+              <div className="absolute inset-0 animate-spin rounded-full border-4 border-blue-100 border-r-sky-400 border-t-nhs-blue motion-reduce:animate-none" />
+              <div className="absolute inset-3 flex items-center justify-center rounded-full bg-blue-50 text-nhs-blue">
+                <ChartNoAxesColumnIncreasing className="h-7 w-7" strokeWidth={2} />
+              </div>
+            </div>
+
+            <h1 className="mt-6 text-xl font-semibold text-gray-900">Loading indicator data</h1>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-gray-600">
+              Finding the latest published results and preparing the comparisons.
+            </p>
+
+            <div className="mt-6 flex justify-center gap-1.5" aria-hidden="true">
+              {[0, 150, 300].map(delay => (
+                <span
+                  key={delay}
+                  className="h-1.5 w-10 animate-pulse rounded-full bg-nhs-blue/25 motion-reduce:animate-none"
+                  style={{ animationDelay: `${delay}ms` }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
 }
 
 function SelectedAreaCard({ area, value, rank, lowerIsBetter, formatFn }: {
@@ -438,19 +477,7 @@ export default function IndicatorExplorePage() {
 
   // --- Loading / not found ---
   if (isResolvingIndicator && !indicator) {
-    return (
-      <div className="flex min-h-screen flex-col">
-        <Header />
-        <main className="flex-1 bg-nhs-pale-grey/30 p-6">
-          <div className="mx-auto max-w-6xl space-y-4">
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-4 w-96" />
-            <div className="flex gap-2 mt-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-24" />)}</div>
-            <Skeleton className="h-[400px] mt-4" />
-          </div>
-        </main>
-      </div>
-    );
+    return <IndicatorLoadingState />;
   }
 
   if (!indicator) {
