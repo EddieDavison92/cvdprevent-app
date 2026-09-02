@@ -6,7 +6,6 @@ export { ConditionFilter } from './condition-filter';
 export { IndicatorSummaryCard } from './indicator-summary-card';
 export { IndicatorSummaryGrid } from './indicator-summary-grid';
 export { AllIndicatorsExplorer } from './all-indicators-explorer';
-export { QualityImprovementExplorer } from './quality-improvement-explorer';
 export { GapToTarget } from './gap-to-target';
 export { BaselineSelector } from './baseline-selector';
 export { SectionView } from './section-view';

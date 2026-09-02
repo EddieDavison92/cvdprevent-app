@@ -102,10 +102,11 @@ function confidenceIntervalsDoNotOverlap(
   return areaUpper! < baselineLower! || baselineUpper! < areaLower!;
 }
 
-function getPeerEvidence(
+/** Peer fifth the value sits in (worst or second-worst) and its gap from the median as a share of the Q20–Q80 span. */
+export function getPeerBand(
   category: IndicatorCategoryData,
   lowerIsBetter: boolean,
-) {
+): { band: FocusPeerBand | null; severity: number } {
   const value = category.Data.Value;
   const { Median: median, Q20: q20, Q40: q40, Q60: q60, Q80: q80 } = category.Data;
   if (value === null || median === null || [q20, q40, q60, q80].some(boundary => boundary === null)) {
@@ -174,7 +175,7 @@ export function buildFocusSignals(
     const value = category.Data.Value;
     if (value === null) continue;
     const baselineValue = baselineCategory?.Data.Value ?? null;
-    const peer = getPeerEvidence(category, classification.lowerIsBetter);
+    const peer = getPeerBand(category, classification.lowerIsBetter);
     if (peer.band === null) continue;
 
     const comparisonIsClear = Boolean(baselineCategory && baselineValue !== null

@@ -7,3 +7,4 @@ export { ChartActions, useChartRef } from './chart-actions';
 export { ChartTableToggle, useChartTableActions, CSVButton, type TableColumn, type ChartTableToggleProps } from './chart-table-toggle';
 export type { CSVMetadata } from '@/lib/utils/csv';
 export { Sparkline } from './sparkline';
+export { TrendSparkline, TREND_SPARKLINE } from './trend-sparkline';

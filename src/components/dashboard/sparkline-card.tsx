@@ -3,9 +3,9 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Sparkline } from '@/components/charts/sparkline';
+import { TrendSparkline } from '@/components/charts/trend-sparkline';
 import { getPersonsData } from '@/lib/hooks/use-area-indicators';
-import { formatDiff, formatTimePeriod, formatValue } from '@/lib/utils/format';
+import { formatDiff, formatValue } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 import { cn } from '@/lib/utils';
 import type { IndicatorWithData } from '@/lib/api/types';
@@ -25,18 +25,16 @@ function cleanName(name: string) {
 export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recordedPrevalence = false }: SparklineCardProps) {
   const searchParams = useSearchParams();
 
-  const { chartData, value, recentChange, trendDirection, trendGood } = useMemo(() => {
+  const { chartData, medianData, value, recentChange, trendDirection, trendGood } = useMemo(() => {
     const persons = getPersonsData(indicator);
-    if (!persons) return { chartData: [], value: null, recentChange: null, trendDirection: null, trendGood: false };
+    if (!persons) return { chartData: [], medianData: [], value: null, recentChange: null, trendDirection: null, trendGood: false };
 
     const ts = persons.TimeSeries
       ?.slice()
       .sort((a, b) => new Date(a.EndDate).getTime() - new Date(b.EndDate).getTime()) ?? [];
 
-    const chartData = ts.map((p) => ({
-      x: formatTimePeriod(p.TimePeriodName),
-      y: p.Value,
-    }));
+    const chartData = ts.map((p) => p.Value);
+    const medianData = ts.map((p) => p.Median ?? null);
 
     const value = persons.Data.Value;
 
@@ -46,6 +44,7 @@ export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recorded
 
     return {
       chartData,
+      medianData,
       value,
       recentChange: trend.latest?.change ?? null,
       trendDirection: dir,
@@ -86,13 +85,8 @@ export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recorded
         </div>
       </div>
 
-      <div className="opacity-80 transition-opacity group-hover:opacity-100">
-        <Sparkline
-          data={chartData}
-          color={sectionColor}
-          height={34}
-          className="w-full"
-        />
+      <div className="flex justify-center opacity-80 transition-opacity group-hover:opacity-100">
+        <TrendSparkline values={chartData} reference={medianData} color={sectionColor} />
       </div>
 
       <span className="text-sm font-semibold tabular-nums text-gray-900">
