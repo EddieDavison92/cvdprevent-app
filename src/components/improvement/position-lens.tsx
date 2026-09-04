@@ -40,7 +40,9 @@ function quadrantOf(row: LensRow): Quadrant {
 
 const W = 1000;
 const H = 420;
-const PAD = { left: 84, right: 28, top: 26, bottom: 46 };
+const PAD = { left: 84, right: 28, top: 30, bottom: 70 };
+/** Keeps points clear of the plot edges. */
+const INSET = 14;
 const Y_LIMIT = 1.5;
 
 interface HoverState {
@@ -61,8 +63,8 @@ function QuadrantChart({ rows, areaName, numbers }: { rows: LensRow[]; areaName:
   const searchParams = useSearchParams();
   const [hover, setHover] = useState<HoverState | null>(null);
   const points = rows.filter((row) => quadrantOf(row) !== 'none');
-  const sx = (x: number) => PAD.left + (Math.min(99, x) / 100) * (W - PAD.left - PAD.right);
-  const sy = (y: number) => PAD.top + ((Y_LIMIT - Math.max(-Y_LIMIT, Math.min(Y_LIMIT, y))) / (Y_LIMIT * 2)) * (H - PAD.top - PAD.bottom);
+  const sx = (x: number) => PAD.left + INSET + (Math.min(100, x) / 100) * (W - PAD.left - PAD.right - INSET * 2);
+  const sy = (y: number) => PAD.top + INSET + ((Y_LIMIT - Math.max(-Y_LIMIT, Math.min(Y_LIMIT, y))) / (Y_LIMIT * 2)) * (H - PAD.top - PAD.bottom - INSET * 2);
   if (points.length === 0) return null;
   const midX = sx(50);
   const midY = sy(0);
@@ -79,10 +81,10 @@ function QuadrantChart({ rows, areaName, numbers }: { rows: LensRow[]; areaName:
         <rect x={midX} y={PAD.top} width={W - PAD.right - midX} height={midY - PAD.top} fill="#F0F7F4" />
         <rect x={PAD.left} y={midY} width={midX - PAD.left} height={H - PAD.bottom - midY} fill="#FDF3EC" />
         <rect x={midX} y={midY} width={W - PAD.right - midX} height={H - PAD.bottom - midY} fill="#F9FAFB" />
-        <text x={PAD.left + 10} y={PAD.top + 16} className="fill-gray-500 text-[12px] font-semibold">Behind, improving</text>
-        <text x={W - PAD.right - 10} y={PAD.top + 16} textAnchor="end" className="fill-gray-500 text-[12px] font-semibold">Ahead, improving</text>
-        <text x={PAD.left + 10} y={H - PAD.bottom - 10} className="fill-gray-500 text-[12px] font-semibold">Behind, slipping</text>
-        <text x={W - PAD.right - 10} y={H - PAD.bottom - 10} textAnchor="end" className="fill-gray-500 text-[12px] font-semibold">Ahead, slipping</text>
+        <text x={PAD.left} y={PAD.top - 10} className="fill-gray-500 text-[12px] font-semibold">Behind, improving</text>
+        <text x={W - PAD.right} y={PAD.top - 10} textAnchor="end" className="fill-gray-500 text-[12px] font-semibold">Ahead, improving</text>
+        <text x={PAD.left} y={H - PAD.bottom + 36} className="fill-gray-500 text-[12px] font-semibold">Behind, slipping</text>
+        <text x={W - PAD.right} y={H - PAD.bottom + 36} textAnchor="end" className="fill-gray-500 text-[12px] font-semibold">Ahead, slipping</text>
         <line x1={midX} x2={midX} y1={PAD.top} y2={H - PAD.bottom} stroke="#D1D5DB" strokeWidth={1.5} />
         <line x1={PAD.left} x2={W - PAD.right} y1={midY} y2={midY} stroke="#D1D5DB" strokeWidth={1.5} />
         {[0, 25, 50, 75, 100].map((tick) => (
@@ -95,7 +97,7 @@ function QuadrantChart({ rows, areaName, numbers }: { rows: LensRow[]; areaName:
             {tick === 0 ? 'no change' : tick > 0 ? '+1 spread' : '−1 spread'}
           </text>
         ))}
-        <text x={(PAD.left + W - PAD.right) / 2} y={H - 8} textAnchor="middle" className="fill-gray-500 text-[11px]">Position among peers</text>
+        <text x={(PAD.left + W - PAD.right) / 2} y={H - PAD.bottom + 36} textAnchor="middle" className="fill-gray-500 text-[11px]">Position among peers</text>
         <text transform={`translate(14 ${(PAD.top + H - PAD.bottom) / 2}) rotate(-90)`} textAnchor="middle" className="fill-gray-500 text-[11px]">Latest change (relative to peer spread)</text>
         {ordered.map((row) => {
           const id = row.indicator.IndicatorID;
