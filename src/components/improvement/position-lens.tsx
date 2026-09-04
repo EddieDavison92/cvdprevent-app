@@ -132,7 +132,7 @@ function QuadrantChart({ rows, areaName, numbers }: { rows: LensRow[]; areaName:
           );
         })}
       </svg>
-      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 px-2 text-[11px] text-gray-500">
+      <div className="mb-4 mt-1 flex flex-wrap gap-x-4 gap-y-1 px-2 text-[11px] text-gray-500">
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-nhs-blue" aria-hidden />Numbered: behind the median, listed in the same order below</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-nhs-mid-grey" aria-hidden />Ahead of the median</span>
         <span>Hover for detail, click to open the indicator</span>
