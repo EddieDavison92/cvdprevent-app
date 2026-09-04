@@ -6,7 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import { ChevronDown, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useWithinArea, type WithinDepth } from '@/lib/hooks/use-within-area';
-import type { SiblingDataItem } from '@/lib/api/types';
+import { SYSTEM_LEVELS, type SiblingDataItem } from '@/lib/api/types';
+import { getChildLevel, SYSTEM_LEVEL_NAMES } from '@/lib/constants/geography';
 import { formatNumber, formatValue } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 import type { LensRow } from '@/lib/utils/improvement-lenses';
@@ -26,7 +27,6 @@ interface WithinAreaLensProps {
   peersLabel: string;
 }
 
-const LEVEL_NAMES: Record<number, string> = { 1: 'England', 6: 'Region', 7: 'ICB', 8: 'Sub-ICB', 4: 'PCN', 5: 'Practice' };
 const COLUMNS = 'lg:grid-cols-[minmax(14rem,1.1fr)_minmax(16rem,2fr)_10rem_1.5rem]';
 
 interface RankedItem extends SiblingDataItem {
@@ -123,10 +123,16 @@ export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active, d
   const depth: WithinDepth = depthChoice ?? (probe.children?.length === 1 ? 'grandchildren' : defaultDepth);
   const data = useWithinArea(areaId, timePeriodId, requests, depth, active && !!probe.children);
 
-  const childLevel = probe.children?.[0] ? LEVEL_NAMES[probe.children[0].SystemLevelID] ?? 'area' : null;
-  const grandchildLevel = data.areas[0] && depth === 'grandchildren' ? LEVEL_NAMES[data.areas[0].SystemLevelID] ?? null : null;
+  const childLevelId = probe.children?.[0]?.SystemLevelID;
+  const childLevel = childLevelId ? SYSTEM_LEVEL_NAMES[childLevelId] ?? null : null;
+  const grandchildLevelId = childLevelId === SYSTEM_LEVELS.PCN
+    ? SYSTEM_LEVELS.PRACTICE
+    : childLevelId ? getChildLevel(childLevelId) : null;
+  const grandchildLevel = data.areas[0] && depth === 'grandchildren'
+    ? SYSTEM_LEVEL_NAMES[data.areas[0].SystemLevelID] ?? null
+    : grandchildLevelId ? SYSTEM_LEVEL_NAMES[grandchildLevelId] ?? null : null;
   const levelName = depth === 'children' ? childLevel : grandchildLevel ?? data.levelName;
-  const canDescend = (probe.children?.length ?? 0) > 0 && probe.children![0].SystemLevelID !== 5;
+  const canDescend = childLevel !== null && grandchildLevel !== null;
 
   const strips = useMemo(() => {
     const result: StripRow[] = [];
@@ -182,8 +188,8 @@ export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active, d
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="children">{childLevel}</SelectItem>
-              <SelectItem value="grandchildren">One level below {childLevel}</SelectItem>
+              <SelectItem value="children">{childLevel} level</SelectItem>
+              <SelectItem value="grandchildren">{grandchildLevel} level</SelectItem>
             </SelectContent>
           </Select>
         )}
