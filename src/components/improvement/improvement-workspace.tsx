@@ -5,7 +5,7 @@ import { BarChart3, MapPin, Scale, Search, Users, type LucideIcon } from 'lucide
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { IndicatorWithData } from '@/lib/api/types';
-import { getPersonsData } from '@/lib/hooks/use-area-indicators';
+import { useComparisonAreas } from '@/lib/hooks/use-comparison-areas';
 import { getDashboardSections } from '@/lib/constants/indicator-sections';
 import { buildLensRows, type Lens, type OpportunityTarget } from '@/lib/utils/improvement-lenses';
 import type { PopulationDimension } from '@/lib/utils/quality-improvement';
@@ -18,9 +18,9 @@ import { WithinAreaLens } from './within-area-lens';
 
 interface ImprovementWorkspaceProps {
   indicators: IndicatorWithData[] | undefined;
-  baselineIndicators?: IndicatorWithData[];
-  baselineName?: string;
   areaId: number | undefined;
+  areaCode: string | undefined;
+  systemLevelId: number | undefined;
   areaName: string;
   systemLevelName?: string;
   timePeriodId: number | undefined;
@@ -46,9 +46,9 @@ const CHILD_LEVEL: Record<string, { label: string; depth: 'children' | 'grandchi
 
 export function ImprovementWorkspace({
   indicators,
-  baselineIndicators,
-  baselineName,
   areaId,
+  areaCode,
+  systemLevelId,
   areaName,
   systemLevelName,
   timePeriodId,
@@ -69,20 +69,17 @@ export function ImprovementWorkspace({
   const childLevel = CHILD_LEVEL[systemLevelName ?? ''] ?? { label: 'area', depth: 'children' as const };
   const lensLabel = (id: Lens, label: string) => (id === 'within' ? `By ${childLevel.label}` : label);
 
-  const baselineValues = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const indicator of baselineIndicators ?? []) {
-      const value = getPersonsData(indicator)?.Data.Value;
-      if (value !== null && value !== undefined) map.set(indicator.IndicatorCode, value);
-    }
-    return map;
-  }, [baselineIndicators]);
-  const baselineAvailable = baselineValues.size > 0 && !!baselineName;
-  const target = (targetParam === 'baseline' && !baselineAvailable ? 'median' : targetParam) as OpportunityTarget;
+  const comparisons = useComparisonAreas(
+    areaId && areaCode && systemLevelId ? { AreaID: areaId, AreaCode: areaCode, SystemLevelID: systemLevelId } : null,
+    timePeriodId,
+  );
+  const targetIsKnown = targetParam === 'median' || targetParam === 'top'
+    || comparisons.some((comparison) => `area:${comparison.id}` === targetParam);
+  const target = (targetIsKnown ? targetParam : 'median') as OpportunityTarget;
 
   const rows = useMemo(
-    () => buildLensRows(indicators ?? [], { includePeers: hasPeers, baselineValues }),
-    [indicators, hasPeers, baselineValues],
+    () => buildLensRows(indicators ?? [], { includePeers: hasPeers }),
+    [indicators, hasPeers],
   );
   const stages = useMemo(() => getDashboardSections(indicators ?? []).filter((section) => section.indicatorCodes.length > 0), [indicators]);
 
@@ -171,7 +168,7 @@ export function ImprovementWorkspace({
             systemLevelName={peersLabel}
             target={target}
             onTargetChange={setTarget}
-            baselineName={baselineAvailable ? baselineName! : null}
+            comparisons={comparisons}
           />
         )}
         {lens === 'position' && (

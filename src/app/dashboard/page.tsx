@@ -413,9 +413,9 @@ export default function DashboardPage() {
 
               <ImprovementWorkspace
                 indicators={filteredAreaIndicators}
-                baselineIndicators={baselineIndicators}
-                baselineName={shouldFetchBaseline ? baselineName : undefined}
                 areaId={organisation?.AreaID}
+                areaCode={organisation?.AreaCode}
+                systemLevelId={organisation?.SystemLevelID}
                 areaName={organisation?.AreaName ?? 'Selected area'}
                 systemLevelName={organisation?.SystemLevelName}
                 timePeriodId={latestStandardPeriod?.TimePeriodID}

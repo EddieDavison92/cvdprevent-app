@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatAbsDiff, formatNumber, formatValue } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
 import { opportunityFor, type LensRow, type OpportunityTarget } from '@/lib/utils/improvement-lenses';
+import type { ComparisonArea } from '@/lib/hooks/use-comparison-areas';
 import { cn } from '@/lib/utils';
 import { ColumnHeadings, EmptyLens, IndicatorName, LensHeader, MobileLabel } from './lens-shared';
 
@@ -19,27 +20,29 @@ interface OpportunityLensProps {
   systemLevelName: string;
   target: OpportunityTarget;
   onTargetChange: (target: OpportunityTarget) => void;
-  baselineName: string | null;
+  /** Areas above this one, nearest first. */
+  comparisons: ComparisonArea[];
 }
 
 const COLUMNS = 'lg:grid-cols-[minmax(14rem,1.3fr)_minmax(9rem,1fr)_6.5rem_11rem_6rem_1rem]';
 
-function targetLabel(target: OpportunityTarget, systemLevelName: string, baselineName: string | null) {
+function targetLabel(target: OpportunityTarget, systemLevelName: string, comparison: ComparisonArea | undefined) {
   const level = systemLevelName.replace(/s$/, '');
   if (target === 'top') return `the top-fifth ${level} in England`;
-  if (target === 'baseline') return baselineName ?? 'the comparison area';
+  if (target.startsWith('area:')) return comparison?.name ?? 'the comparison area';
   return `the median ${level} in England`;
 }
 
-export function OpportunityLens({ rows, areaName, systemLevelName, target, onTargetChange, baselineName }: OpportunityLensProps) {
+export function OpportunityLens({ rows, areaName, systemLevelName, target, onTargetChange, comparisons }: OpportunityLensProps) {
   const searchParams = useSearchParams();
   const [sortBy, setSortBy] = useState<SortOption>('patients');
   const [showAtTarget, setShowAtTarget] = useState(false);
 
+  const comparison = comparisons.find((candidate) => `area:${candidate.id}` === target);
   const { active, atTarget, rates } = useMemo(() => {
     const withOpportunity = rows.filter((row) => row.opportunity !== null);
     const rates = rows.filter((row) => row.opportunity === null && row.section.id === 'outcomes');
-    const scored = withOpportunity.map((row) => ({ row, ...opportunityFor(row, target) }));
+    const scored = withOpportunity.map((row) => ({ row, ...opportunityFor(row, target, comparison?.values) }));
     const sorter = (a: typeof scored[number], b: typeof scored[number]) => {
       if (sortBy === 'name') return a.row.indicator.IndicatorShortName.localeCompare(b.row.indicator.IndicatorShortName);
       if (sortBy === 'gap') return (b.gap ?? -Infinity) - (a.gap ?? -Infinity);
@@ -52,17 +55,17 @@ export function OpportunityLens({ rows, areaName, systemLevelName, target, onTar
       atTarget: available.filter((item) => item.patients === 0).sort(sorter),
       rates,
     };
-  }, [rows, target, sortBy]);
+  }, [rows, target, sortBy, comparison]);
 
   const maxPatients = Math.max(1, ...active.map((item) => item.patients ?? 0));
   const totalPatients = active.reduce((sum, item) => sum + (item.patients ?? 0), 0);
-  const label = targetLabel(target, systemLevelName, baselineName);
-  const shortLabel = target === 'top' ? 'top fifth' : target === 'baseline' ? baselineName ?? 'comparison' : 'median';
+  const label = targetLabel(target, systemLevelName, comparison);
+  const shortLabel = target === 'top' ? 'top fifth' : comparison ? comparison.name : 'median';
 
   const renderRow = ({ row, patients, gap }: { row: LensRow; patients: number | null; gap: number | null }) => {
     const fmt = row.indicator.FormatDisplayName;
     const toMedian = target === 'top' ? row.opportunity?.toMedian ?? null : null;
-    const targetValue = target === 'top' ? row.topFifth : target === 'baseline' ? row.baselineValue : row.peer?.median ?? null;
+    const targetValue = target === 'top' ? row.topFifth : comparison ? comparison.values.get(row.indicator.IndicatorCode) ?? null : row.peer?.median ?? null;
     return (
       <li key={row.indicator.IndicatorID}>
         <Link
@@ -134,7 +137,11 @@ export function OpportunityLens({ rows, areaName, systemLevelName, target, onTar
           <SelectContent>
             <SelectItem value="median">Median {systemLevelName.replace(/s$/, '')} in England</SelectItem>
             <SelectItem value="top">Top-fifth {systemLevelName.replace(/s$/, '')} in England</SelectItem>
-            {baselineName && <SelectItem value="baseline">{baselineName}</SelectItem>}
+            {comparisons.map((candidate) => (
+              <SelectItem key={candidate.id} value={`area:${candidate.id}`}>
+                {candidate.name}{candidate.levelName && candidate.levelName !== 'England' ? ` (${candidate.levelName})` : ''}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
@@ -153,7 +160,9 @@ export function OpportunityLens({ rows, areaName, systemLevelName, target, onTar
 
       <ColumnHeadings columns={COLUMNS} labels={['Indicator', 'Extra patients if we matched them', '>Patients', 'Our result', '>Eligible', '']} />
 
-      {active.length === 0 ? (
+      {comparison?.isLoading ? (
+        <EmptyLens>Loading {comparison.name}…</EmptyLens>
+      ) : active.length === 0 ? (
         <EmptyLens>{rows.length === 0 ? 'No indicators match.' : `${areaName} already matches or beats ${label} on every indicator here.`}</EmptyLens>
       ) : (
         <ul className="divide-y divide-gray-100">{active.map(renderRow)}</ul>

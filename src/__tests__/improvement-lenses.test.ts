@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { IndicatorCategoryData, IndicatorWithData } from '@/lib/api/types';
-import { buildGroupRows, buildLensRows, estimatePosition, opportunityFor } from '@/lib/utils/improvement-lenses';
+import { buildGroupRows, buildLensRows, estimatePosition, opportunityAgainst, opportunityFor } from '@/lib/utils/improvement-lenses';
 
 let nextMetricId = 1;
 
@@ -65,12 +65,15 @@ function indicator(code: string, shortName: string, categories: IndicatorCategor
 }
 
 describe('improvement lenses', () => {
-  it('turns the gap to each target into patients', () => {
+  it('turns the gap to each comparator into patients', () => {
     const [row] = buildLensRows([
       indicator('CVDP002AF', 'AF: Treated with anticoagulants', [category()], 1),
-    ], { baselineValues: new Map([['CVDP002AF', 61]]) });
-    expect(row.opportunity).toMatchObject({ toMedian: 400, toTop: 1200, toBaseline: 100, gapToMedian: 4, gapToTop: 12 });
+    ]);
+    expect(row.opportunity).toMatchObject({ toMedian: 400, toTop: 1200, gapToMedian: 4, gapToTop: 12 });
     expect(opportunityFor(row, 'top').patients).toBe(1200);
+    expect(opportunityAgainst(row, 61)).toEqual({ patients: 100, gap: 1 });
+    expect(opportunityFor(row, 'area:7', new Map([['CVDP002AF', 58]]))).toEqual({ patients: 0, gap: -2 });
+    expect(opportunityFor(row, 'area:7', new Map()).patients).toBeNull();
   });
 
   it('counts detection-gap patients against the lower boundary', () => {
