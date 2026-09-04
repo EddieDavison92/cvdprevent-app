@@ -8,7 +8,8 @@ import {
 } from '@/lib/utils/quality-improvement';
 
 export type Lens = 'opportunity' | 'position' | 'inequalities' | 'within';
-export type OpportunityTarget = 'median' | 'top' | 'baseline';
+/** Peer median, best fifth of peers, or `area:<id>` for an area above this one. */
+export type OpportunityTarget = 'median' | 'top' | `area:${number}`;
 
 export interface LensRow extends ImprovementRow {
   metricId: number;
@@ -36,26 +37,21 @@ export interface LensRow extends ImprovementRow {
   /** Change in the gap over up to four periods. Positive means closing. */
   gapChange: number | null;
   gapDirection: 'closing' | 'widening' | 'steady' | null;
-  baselineValue: number | null;
   opportunity: Opportunity | null;
 }
 
 export interface Opportunity {
-  /** Extra patients if the area matched each target. Null when the target is unavailable. */
+  /** Extra patients if the area matched each comparator. Null when the comparator is unavailable. */
   toMedian: number | null;
   toTop: number | null;
-  toBaseline: number | null;
   gapToMedian: number | null;
   gapToTop: number | null;
-  gapToBaseline: number | null;
   /** Patients currently counted in the numerator; meaningful for detection gaps. */
   flagged: number | null;
 }
 
 export interface BuildLensRowsOptions {
   includePeers?: boolean;
-  /** Persons value for each indicator code in the comparison area. */
-  baselineValues?: Map<string, number>;
 }
 
 const OPPORTUNITY_STAGES = new Set(['detection', 'treatment', 'control', 'monitoring']);
@@ -95,7 +91,7 @@ function patients(gapPp: number | null, denominator: number | null) {
 
 export function buildLensRows(
   indicators: IndicatorWithData[],
-  { includePeers = true, baselineValues }: BuildLensRowsOptions = {},
+  { includePeers = true }: BuildLensRowsOptions = {},
 ): LensRow[] {
   return buildImprovementRows(indicators, { includePeers }).map((row) => {
     const category = getPersonsData(row.indicator)!;
@@ -128,7 +124,6 @@ export function buildLensRows(
       ? null
       : row.lowerIsBetter ? -row.trend.change : row.trend.change;
     const movement = favourableChange !== null && spread ? favourableChange / spread : null;
-    const baselineValue = baselineValues?.get(row.indicator.IndicatorCode) ?? null;
 
     let opportunity: Opportunity | null = null;
     if (isPercentage && OPPORTUNITY_STAGES.has(row.section.id)) {
@@ -137,14 +132,11 @@ export function buildLensRows(
       );
       const gapToMedian = favourableGap(peer?.median ?? null);
       const gapToTop = favourableGap(topFifth);
-      const gapToBaseline = favourableGap(baselineValue);
       opportunity = {
         toMedian: patients(gapToMedian, data.Denominator),
         toTop: patients(gapToTop, data.Denominator),
-        toBaseline: patients(gapToBaseline, data.Denominator),
         gapToMedian,
         gapToTop,
-        gapToBaseline,
         flagged: row.section.id === 'detection' ? data.Numerator : null,
       };
     }
@@ -168,17 +160,23 @@ export function buildLensRows(
       gapNow,
       gapChange,
       gapDirection,
-      baselineValue,
       opportunity,
     };
   });
 }
 
-export function opportunityFor(row: LensRow, target: OpportunityTarget) {
+/** Extra patients and gap if the area matched a comparator area's rate. */
+export function opportunityAgainst(row: LensRow, comparatorValue: number | null | undefined) {
+  if (!row.opportunity || comparatorValue === null || comparatorValue === undefined) return { patients: null, gap: null };
+  const gap = row.lowerIsBetter ? row.value - comparatorValue : comparatorValue - row.value;
+  return { patients: patients(gap, row.denominator), gap };
+}
+
+export function opportunityFor(row: LensRow, target: OpportunityTarget, comparatorValues?: Map<string, number>) {
   if (!row.opportunity) return { patients: null, gap: null };
   const { opportunity } = row;
   if (target === 'top') return { patients: opportunity.toTop, gap: opportunity.gapToTop };
-  if (target === 'baseline') return { patients: opportunity.toBaseline, gap: opportunity.gapToBaseline };
+  if (target.startsWith('area:')) return opportunityAgainst(row, comparatorValues?.get(row.indicator.IndicatorCode));
   return { patients: opportunity.toMedian, gap: opportunity.gapToMedian };
 }
 
