@@ -38,8 +38,8 @@ function quadrantOf(row: LensRow): Quadrant {
   return `${behind ? 'behind' : 'ahead'}-${slipping ? 'slipping' : 'improving'}` as Quadrant;
 }
 
-const W = 720;
-const H = 400;
+const W = 1000;
+const H = 420;
 const PAD = { left: 84, right: 28, top: 26, bottom: 46 };
 const Y_LIMIT = 1.5;
 
@@ -74,7 +74,7 @@ function QuadrantChart({ rows, areaName, numbers }: { rows: LensRow[]; areaName:
 
   return (
     <div className="px-2 pt-2 sm:px-4">
-      <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto h-auto w-full max-w-3xl" role="img" aria-label={`${areaName}: each indicator by position among peers and latest change`}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={`${areaName}: each indicator by position among peers and latest change`}>
         <rect x={PAD.left} y={PAD.top} width={midX - PAD.left} height={midY - PAD.top} fill="#F9FAFB" />
         <rect x={midX} y={PAD.top} width={W - PAD.right - midX} height={midY - PAD.top} fill="#F0F7F4" />
         <rect x={PAD.left} y={midY} width={midX - PAD.left} height={H - PAD.bottom - midY} fill="#FDF3EC" />
@@ -132,7 +132,7 @@ function QuadrantChart({ rows, areaName, numbers }: { rows: LensRow[]; areaName:
           );
         })}
       </svg>
-      <div className="mx-auto mt-1 flex max-w-3xl flex-wrap gap-x-4 gap-y-1 px-2 text-[11px] text-gray-500">
+      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 px-2 text-[11px] text-gray-500">
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-nhs-blue" aria-hidden />Numbered: behind the median, listed in the same order below</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-nhs-mid-grey" aria-hidden />Ahead of the median</span>
         <span>Hover for detail, click to open the indicator</span>

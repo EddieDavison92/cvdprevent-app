@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { BarChart3, MapPin, Scale, Search, Users, type LucideIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { IndicatorWithData } from '@/lib/api/types';
@@ -28,12 +28,21 @@ interface ImprovementWorkspaceProps {
   isLoading?: boolean;
 }
 
-const LENSES: Array<{ id: Lens; label: string; question: string; needsPeers: boolean }> = [
-  { id: 'opportunity', label: 'Opportunity', question: 'How many patients would benefit?', needsPeers: true },
-  { id: 'position', label: 'Position & direction', question: 'Where do we stand, and which way are we moving?', needsPeers: false },
-  { id: 'inequalities', label: 'Inequalities', question: 'Who is being left behind?', needsPeers: false },
-  { id: 'within', label: 'Within our area', question: 'Where in our patch?', needsPeers: false },
+const LENSES: Array<{ id: Lens; label: string; icon: LucideIcon; needsPeers: boolean }> = [
+  { id: 'opportunity', label: 'Opportunity', icon: Users, needsPeers: true },
+  { id: 'position', label: 'Position & direction', icon: BarChart3, needsPeers: false },
+  { id: 'inequalities', label: 'Inequalities', icon: Scale, needsPeers: false },
+  { id: 'within', label: 'Within our area', icon: MapPin, needsPeers: false },
 ];
+
+/** Level the fourth lens breaks an area down into. ICBs go straight to PCNs. */
+const CHILD_LEVEL: Record<string, { label: string; depth: 'children' | 'grandchildren' }> = {
+  England: { label: 'region', depth: 'children' },
+  Region: { label: 'ICB', depth: 'children' },
+  ICB: { label: 'PCN', depth: 'grandchildren' },
+  'Sub-ICB': { label: 'PCN', depth: 'children' },
+  PCN: { label: 'practice', depth: 'children' },
+};
 
 export function ImprovementWorkspace({
   indicators,
@@ -57,6 +66,8 @@ export function ImprovementWorkspace({
 
   const displayAreaName = cleanAreaName(areaName);
   const peersLabel = systemLevelName ? `${systemLevelName}s` : 'peers';
+  const childLevel = CHILD_LEVEL[systemLevelName ?? ''] ?? { label: 'area', depth: 'children' as const };
+  const lensLabel = (id: Lens, label: string) => (id === 'within' ? `By ${childLevel.label}` : label);
 
   const baselineValues = useMemo(() => {
     const map = new Map<string, number>();
@@ -99,35 +110,32 @@ export function ImprovementWorkspace({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">{activeLens.question}</h2>
-          <p className="mt-0.5 text-sm text-gray-500">
-            {hasPeers
-              ? `Four questions about ${displayAreaName}.`
-              : 'Three questions about England. Peer comparison needs an area below England.'}
-          </p>
-        </div>
-      </div>
-
       <div className="space-y-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div role="tablist" aria-label="Lens" className="flex flex-wrap gap-1">
-            {lenses.map((candidate) => (
-              <button
-                key={candidate.id}
-                type="button"
-                role="tab"
-                aria-selected={candidate.id === lens}
-                onClick={() => setLens(candidate.id)}
-                className={cn(
-                  'rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue',
-                  candidate.id === lens ? 'bg-nhs-blue text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                )}
-              >
-                {candidate.label}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-gray-500">View</span>
+            <div role="tablist" aria-label="View" className="inline-flex flex-wrap gap-0.5 rounded-lg border border-gray-200 bg-gray-100 p-0.5">
+              {lenses.map((candidate) => {
+                const Icon = candidate.icon;
+                const active = candidate.id === lens;
+                return (
+                  <button
+                    key={candidate.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setLens(candidate.id)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue',
+                      active ? 'bg-white text-nhs-blue shadow-sm' : 'text-gray-600 hover:bg-white/60 hover:text-gray-900',
+                    )}
+                  >
+                    <Icon className="h-4 w-4" aria-hidden />
+                    {lensLabel(candidate.id, candidate.label)}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <label className="relative block w-full sm:w-64">
             <span className="sr-only">Search indicators</span>
@@ -173,7 +181,7 @@ export function ImprovementWorkspace({
           <InequalitiesLens rows={visibleRows} dimension={dimensionParam as PopulationDimension} onDimensionChange={setDimension} />
         )}
         <div hidden={lens !== 'within'}>
-          <WithinAreaLens rows={visibleRows} areaId={areaId} areaName={displayAreaName} timePeriodId={timePeriodId} active={lens === 'within'} />
+          <WithinAreaLens rows={visibleRows} areaId={areaId} areaName={displayAreaName} timePeriodId={timePeriodId} active={lens === 'within'} defaultDepth={childLevel.depth} peersLabel={peersLabel} />
         </div>
       </section>
     </div>

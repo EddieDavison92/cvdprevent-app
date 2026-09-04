@@ -104,7 +104,7 @@ export function InequalitiesLens({ rows, dimension, onDimensionChange }: Inequal
         </th>
         {columns.map((label) => {
           const cell = byLabel.get(label);
-          if (!cell) return <td key={label} className="px-2 py-2 text-center text-xs text-gray-300">·</td>;
+          if (!cell) return <td key={label} className="px-2 py-2 text-center text-xs text-gray-300" title={`${label}: not published`}>–</td>;
           const isUnclassified = cell.isUnclassified;
           return (
             <td
@@ -113,10 +113,8 @@ export function InequalitiesLens({ rows, dimension, onDimensionChange }: Inequal
               style={isUnclassified ? undefined : cellStyle(cell.diff, rowScale, descriptive)}
               title={describe(cell, group.overallValue, fmt, descriptive, row.lowerIsBetter)}
             >
-              {cell.suppressed
+              {cell.suppressed || cell.value === null
                 ? '–'
-                : cell.value === null
-                  ? '·'
                   : isUnclassified
                     ? formatValue(cell.value, fmt)
                     : Math.abs(cell.value - group.overallValue) < 0.05
@@ -139,13 +137,13 @@ export function InequalitiesLens({ rows, dimension, onDimensionChange }: Inequal
       <LensHeader
         title={`Each group compared with all patients, by ${dimensionLabel.toLowerCase()}`}
         description={<>
-          Darker means further behind the all-patient result. Plain cells are level or ahead. Dash: too few patients to publish.
+          Darker means further behind the all-patient result. Plain cells are level or ahead. A dash means not published, usually because too few patients.
           {ordered && dimension.startsWith('Deprivation') && care.length > 0 && <> The least deprived group is 2pp or more ahead on <b className="text-gray-700">{gradientCount} of {care.length}</b> indicators.</>}
           {dimension.startsWith('Ethnicity') && <> Missing and not-stated ethnicity are shown but not ranked.</>}
         </>}
       >
         <Select value={effectiveSort} onValueChange={(value) => setSortBy(value as SortOption)}>
-          <SelectTrigger className="h-8 w-48 bg-white text-xs" aria-label="Sort">
+          <SelectTrigger className="h-8 w-auto min-w-40 gap-2 bg-white text-xs" aria-label="Sort">
             <span className="text-gray-400">Sort</span>
             <SelectValue />
           </SelectTrigger>

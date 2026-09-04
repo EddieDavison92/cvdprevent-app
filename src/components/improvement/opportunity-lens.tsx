@@ -127,7 +127,7 @@ export function OpportunityLens({ rows, areaName, systemLevelName, target, onTar
         description={<>For each indicator: (their rate − {areaName}&apos;s rate) × {areaName}&apos;s eligible patients. Simple arithmetic, not a forecast.{totalPatients > 0 && <> Total below: <b className="text-gray-700">{formatNumber(totalPatients)}</b> patients.</>}</>}
       >
         <Select value={target} onValueChange={(value) => onTargetChange(value as OpportunityTarget)}>
-          <SelectTrigger className="h-8 w-56 bg-white text-xs" aria-label="Compare with">
+          <SelectTrigger className="h-8 w-auto min-w-48 gap-2 bg-white text-xs" aria-label="Compare with">
             <span className="text-gray-400">Compare with</span>
             <SelectValue />
           </SelectTrigger>
@@ -138,7 +138,7 @@ export function OpportunityLens({ rows, areaName, systemLevelName, target, onTar
           </SelectContent>
         </Select>
         <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
-          <SelectTrigger className="h-8 w-44 bg-white text-xs" aria-label="Sort">
+          <SelectTrigger className="h-8 w-auto min-w-36 gap-2 bg-white text-xs" aria-label="Sort">
             <span className="text-gray-400">Sort</span>
             <SelectValue />
           </SelectTrigger>

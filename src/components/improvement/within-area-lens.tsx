@@ -21,6 +21,9 @@ interface WithinAreaLensProps {
   areaName: string;
   timePeriodId: number | undefined;
   active: boolean;
+  defaultDepth: WithinDepth;
+  /** Plural peer level, for the median legend. */
+  peersLabel: string;
 }
 
 const LEVEL_NAMES: Record<number, string> = { 1: 'England', 6: 'Region', 7: 'ICB', 8: 'Sub-ICB', 4: 'PCN', 5: 'Practice' };
@@ -106,7 +109,7 @@ function Strip({
   );
 }
 
-export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active }: WithinAreaLensProps) {
+export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active, defaultDepth, peersLabel }: WithinAreaLensProps) {
   const searchParams = useSearchParams();
   const [depthChoice, setDepthChoice] = useState<WithinDepth | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('spread');
@@ -117,7 +120,7 @@ export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active }:
   const requests = useMemo(() => rows.map((row) => ({ metricId: row.metricId, timePeriodId: row.timePeriodId })), [rows]);
   // Fetch the child list first so a single-child area can default one level deeper.
   const probe = useWithinArea(areaId, timePeriodId, [], 'children', active);
-  const depth: WithinDepth = depthChoice ?? (probe.children?.length === 1 ? 'grandchildren' : 'children');
+  const depth: WithinDepth = depthChoice ?? (probe.children?.length === 1 ? 'grandchildren' : defaultDepth);
   const data = useWithinArea(areaId, timePeriodId, requests, depth, active && !!probe.children);
 
   const childLevel = probe.children?.[0] ? LEVEL_NAMES[probe.children[0].SystemLevelID] ?? 'area' : null;
@@ -170,11 +173,11 @@ export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active }:
     <>
       <LensHeader
         title={`Every ${levelName ?? 'area'} in ${areaName}, on each indicator`}
-        description={<>Each dot is one {levelName ?? 'area'}. Hover for the name; click to keep it highlighted on every row. Right is always better. Black line: {areaName}. Dashed line: peer median. Widest spread first; open a row for the full ranking. {loading && <span className="inline-flex items-center gap-1 text-gray-400"><Loader2 className="h-3 w-3 animate-spin" aria-hidden />Loading {data.loaded} of {data.total}</span>}</>}
+        description={<>Hover a dot for the name; click to keep it highlighted on every row. Right is always better. Widest spread first; open a row for the full ranking. {loading && <span className="inline-flex items-center gap-1 text-gray-400"><Loader2 className="h-3 w-3 animate-spin" aria-hidden />Loading {data.loaded} of {data.total}</span>}</>}
       >
         {canDescend && childLevel && (
           <Select value={depth} onValueChange={(value) => { setDepthChoice(value as WithinDepth); setOpenId(null); setPinnedAreaId(null); }}>
-            <SelectTrigger className="h-8 w-44 bg-white text-xs" aria-label="Level">
+            <SelectTrigger className="h-8 w-auto min-w-40 gap-2 bg-white text-xs" aria-label="Level">
               <span className="text-gray-400">Level</span>
               <SelectValue />
             </SelectTrigger>
@@ -185,7 +188,7 @@ export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active }:
           </Select>
         )}
         <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
-          <SelectTrigger className="h-8 w-40 bg-white text-xs" aria-label="Sort">
+          <SelectTrigger className="h-8 w-auto min-w-36 gap-2 bg-white text-xs" aria-label="Sort">
             <span className="text-gray-400">Sort</span>
             <SelectValue />
           </SelectTrigger>
@@ -206,7 +209,13 @@ export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active }:
         </div>
       )}
 
-      <ColumnHeadings columns={COLUMNS} labels={['Indicator', `${levelName ?? 'Area'} results · worse ← → better`, 'Range', '']} />
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-gray-100 px-4 py-2 text-[11px] text-gray-500 sm:px-5">
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-nhs-blue/50" aria-hidden />One {levelName ?? 'area'}</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3.5 w-0.5 bg-gray-900" aria-hidden />{areaName}</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3.5 w-0.5 border-l-2 border-dashed border-gray-400" aria-hidden />Median of {peersLabel} in England</span>
+        <span className="ml-auto">worse ← → better</span>
+      </div>
+      <ColumnHeadings columns={COLUMNS} labels={['Indicator', `${levelName ?? 'Area'} results`, 'Range', '']} />
 
       {probe.children && probe.children.length === 0 ? (
         <EmptyLens>{areaName} has no areas below it in CVDPREVENT.</EmptyLens>
