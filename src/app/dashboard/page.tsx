@@ -6,7 +6,6 @@ import { Header } from '@/components/layout/header';
 import {
   OrganisationHeader,
   QuickStats,
-  QualityImprovementExplorer,
   ConditionFilter,
   BaselineSelector,
   SectionView,
@@ -19,6 +18,7 @@ import { Footer } from '@/components/layout/footer';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { PathwayOverview } from '@/components/pathways';
+import { ImprovementWorkspace } from '@/components/improvement/improvement-workspace';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useOrganisation } from '@/providers/organisation-context';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
@@ -411,10 +411,14 @@ export default function DashboardPage() {
                 onSelectCondition={setSelectedCondition}
               />
 
-              <QualityImprovementExplorer
+              <ImprovementWorkspace
                 indicators={filteredAreaIndicators}
+                baselineIndicators={baselineIndicators}
+                baselineName={shouldFetchBaseline ? baselineName : undefined}
+                areaId={organisation?.AreaID}
                 areaName={organisation?.AreaName ?? 'Selected area'}
-                systemLevelName={organisation?.SystemLevelName ? `${organisation.SystemLevelName}s` : undefined}
+                systemLevelName={organisation?.SystemLevelName}
+                timePeriodId={latestStandardPeriod?.TimePeriodID}
                 isLoading={isLoadingOrg || isLoadingData}
                 isEngland={isEngland}
               />
