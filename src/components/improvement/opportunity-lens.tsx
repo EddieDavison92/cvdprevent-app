@@ -7,7 +7,14 @@ import { ArrowRight, ChevronDown } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatAbsDiff, formatNumber, formatValue } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
-import { opportunityFor, type LensRow, type OpportunityTarget } from '@/lib/utils/improvement-lenses';
+import {
+  classifyOpportunityEmpty,
+  countUnscoredOpportunity,
+  opportunityFor,
+  type OpportunityEmptyReason,
+  type LensRow,
+  type OpportunityTarget,
+} from '@/lib/utils/improvement-lenses';
 import type { ComparisonArea } from '@/lib/hooks/use-comparison-areas';
 import { cn } from '@/lib/utils';
 import { ColumnHeadings, EmptyLens, IndicatorName, LensHeader, MobileLabel } from './lens-shared';
@@ -22,6 +29,7 @@ interface OpportunityLensProps {
   onTargetChange: (target: OpportunityTarget) => void;
   /** Areas above this one, nearest first. */
   comparisons: ComparisonArea[];
+  isLoadingAncestors?: boolean;
 }
 
 const COLUMNS = 'lg:grid-cols-[minmax(14rem,1.3fr)_minmax(9rem,1fr)_6.5rem_11rem_6rem_1rem]';
@@ -33,13 +41,44 @@ function targetLabel(target: OpportunityTarget, systemLevelName: string, compari
   return `the median ${level} in England`;
 }
 
-export function OpportunityLens({ rows, areaName, systemLevelName, target, onTargetChange, comparisons }: OpportunityLensProps) {
+function emptyCopy(
+  reason: OpportunityEmptyReason,
+  areaName: string,
+  label: string,
+  levelSingular: string,
+): { title?: string; body: string } {
+  switch (reason) {
+    case 'no-rows':
+      return { title: 'No indicators match', body: 'Try another stage or clear the search.' };
+    case 'loading-comparison':
+      return { title: `Loading ${label}`, body: 'Rates for this comparison are still arriving.' };
+    case 'comparison-unavailable':
+      return {
+        title: `No published comparison with ${label}`,
+        body: `CVDPREVENT has not published matching rates for ${label} on these indicators.`,
+      };
+    case 'peer-range-unavailable':
+      return {
+        title: 'No published peer range',
+        body: `These indicators have no published ${levelSingular} median or top-fifth, so extra patients cannot be estimated. Compare with a parent organisation, or use Position & direction.`,
+      };
+    case 'no-opportunity':
+      return {
+        title: 'Cannot estimate extra patients',
+        body: 'Mortality, admission and prevalence indicators cannot be turned into patient counts. Use Position & direction for those.',
+      };
+    case 'at-target':
+      return { body: `${areaName} already matches or beats ${label} on every indicator here.` };
+  }
+}
+
+export function OpportunityLens({ rows, areaName, systemLevelName, target, onTargetChange, comparisons, isLoadingAncestors = false }: OpportunityLensProps) {
   const searchParams = useSearchParams();
   const [sortBy, setSortBy] = useState<SortOption>('patients');
   const [showAtTarget, setShowAtTarget] = useState(false);
 
   const comparison = comparisons.find((candidate) => `area:${candidate.id}` === target);
-  const { active, atTarget, rates } = useMemo(() => {
+  const { active, atTarget, rates, opportunityCount, scoredCount } = useMemo(() => {
     const withOpportunity = rows.filter((row) => row.opportunity !== null);
     const rates = rows.filter((row) => row.opportunity === null && row.section.id === 'outcomes');
     const scored = withOpportunity.map((row) => ({ row, ...opportunityFor(row, target, comparison?.values) }));
@@ -54,6 +93,8 @@ export function OpportunityLens({ rows, areaName, systemLevelName, target, onTar
       active: available.filter((item) => item.patients! > 0).sort(sorter),
       atTarget: available.filter((item) => item.patients === 0).sort(sorter),
       rates,
+      opportunityCount: withOpportunity.length,
+      scoredCount: available.length,
     };
   }, [rows, target, sortBy, comparison]);
 
@@ -61,6 +102,18 @@ export function OpportunityLens({ rows, areaName, systemLevelName, target, onTar
   const totalPatients = active.reduce((sum, item) => sum + (item.patients ?? 0), 0);
   const label = targetLabel(target, systemLevelName, comparison);
   const shortLabel = target === 'top' ? 'top fifth' : comparison ? comparison.name : 'median';
+  const levelSingular = systemLevelName.replace(/s$/, '');
+  const emptyReason = classifyOpportunityEmpty({
+    filteredRowCount: rows.length,
+    opportunityCount,
+    scoredCount,
+    activeCount: active.length,
+    target,
+    comparison: comparison ? { isLoading: comparison.isLoading, valueCount: comparison.values.size } : null,
+    ancestorsLoading: isLoadingAncestors,
+  });
+  const empty = emptyReason ? emptyCopy(emptyReason, areaName, label, levelSingular) : null;
+  const unscoredCount = countUnscoredOpportunity(rows, target, comparison?.values);
 
   const renderRow = ({ row, patients, gap }: { row: LensRow; patients: number | null; gap: number | null }) => {
     const fmt = row.indicator.FormatDisplayName;
@@ -135,8 +188,11 @@ export function OpportunityLens({ rows, areaName, systemLevelName, target, onTar
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="median">Median {systemLevelName.replace(/s$/, '')} in England</SelectItem>
-            <SelectItem value="top">Top-fifth {systemLevelName.replace(/s$/, '')} in England</SelectItem>
+            <SelectItem value="median">Median {levelSingular} in England</SelectItem>
+            <SelectItem value="top">Top-fifth {levelSingular} in England</SelectItem>
+            {isLoadingAncestors && target.startsWith('area:') && !comparison && (
+              <SelectItem value={target}>Loading parent area…</SelectItem>
+            )}
             {comparisons.map((candidate) => (
               <SelectItem key={candidate.id} value={`area:${candidate.id}`}>
                 {candidate.name}{candidate.levelName && candidate.levelName !== 'England' ? ` (${candidate.levelName})` : ''}
@@ -144,6 +200,9 @@ export function OpportunityLens({ rows, areaName, systemLevelName, target, onTar
             ))}
           </SelectContent>
         </Select>
+        {isLoadingAncestors && (
+          <span className="text-[11px] text-gray-400">Loading parent areas…</span>
+        )}
         <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
           <SelectTrigger className="h-8 w-auto min-w-36 gap-2 bg-white text-xs" aria-label="Sort">
             <span className="text-gray-400">Sort</span>
@@ -160,12 +219,15 @@ export function OpportunityLens({ rows, areaName, systemLevelName, target, onTar
 
       <ColumnHeadings columns={COLUMNS} labels={['Indicator', 'Extra patients if we matched them', '>Patients', 'Our result', '>Eligible', '']} />
 
-      {comparison?.isLoading ? (
-        <EmptyLens>Loading {comparison.name}…</EmptyLens>
-      ) : active.length === 0 ? (
-        <EmptyLens>{rows.length === 0 ? 'No indicators match.' : `${areaName} already matches or beats ${label} on every indicator here.`}</EmptyLens>
+      {empty ? (
+        <EmptyLens title={empty.title}>{empty.body}</EmptyLens>
       ) : (
         <ul className="divide-y divide-gray-100">{active.map(renderRow)}</ul>
+      )}
+      {unscoredCount > 0 && active.length > 0 && (
+        <p className="border-t border-gray-100 px-4 py-2 text-[11px] text-gray-400 sm:px-5">
+          {unscoredCount} indicator{unscoredCount === 1 ? '' : 's'} {unscoredCount === 1 ? 'has' : 'have'} no published rate for {label}, so {unscoredCount === 1 ? 'it is' : 'they are'} left out of this list.
+        </p>
       )}
 
       {atTarget.length > 0 && (

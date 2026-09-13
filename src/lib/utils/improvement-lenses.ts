@@ -180,6 +180,60 @@ export function opportunityFor(row: LensRow, target: OpportunityTarget, comparat
   return { patients: opportunity.toMedian, gap: opportunity.gapToMedian };
 }
 
+export type OpportunityEmptyReason =
+  | 'no-rows'
+  | 'loading-comparison'
+  | 'comparison-unavailable'
+  | 'peer-range-unavailable'
+  | 'no-opportunity'
+  | 'at-target';
+
+/** Why the opportunity list is empty — missing data is not treated as already at target. */
+export function classifyOpportunityEmpty(input: {
+  filteredRowCount: number;
+  opportunityCount: number;
+  scoredCount: number;
+  activeCount: number;
+  target: OpportunityTarget;
+  comparison?: { isLoading: boolean; valueCount: number } | null;
+  ancestorsLoading?: boolean;
+}): OpportunityEmptyReason | null {
+  const areaTarget = input.target.startsWith('area:');
+  if (areaTarget && (input.comparison?.isLoading || (!input.comparison && input.ancestorsLoading))) {
+    return 'loading-comparison';
+  }
+  if (input.activeCount > 0) return null;
+  if (input.filteredRowCount === 0) return 'no-rows';
+  if (input.opportunityCount === 0) return 'no-opportunity';
+  if (areaTarget && (!input.comparison || input.comparison.valueCount === 0)) {
+    return 'comparison-unavailable';
+  }
+  if (input.scoredCount === 0) {
+    return areaTarget ? 'comparison-unavailable' : 'peer-range-unavailable';
+  }
+  return 'at-target';
+}
+
+export function countUnscoredOpportunity(
+  rows: LensRow[],
+  target: OpportunityTarget,
+  comparatorValues?: Map<string, number>,
+) {
+  return rows.filter((row) => (
+    row.opportunity !== null && opportunityFor(row, target, comparatorValues).patients === null
+  )).length;
+}
+
+export type PositionPlotAbsence = 'prevalence' | 'no-peer' | 'no-history';
+
+/** Why a row cannot be placed on the position chart. */
+export function positionPlotAbsence(row: LensRow): PositionPlotAbsence | null {
+  if (row.position !== null && row.movement !== null && !row.isRecordedPrevalence) return null;
+  if (row.isRecordedPrevalence) return 'prevalence';
+  if (row.position === null) return 'no-peer';
+  return 'no-history';
+}
+
 /* ---------- Inequalities ---------- */
 
 export interface GroupCell {

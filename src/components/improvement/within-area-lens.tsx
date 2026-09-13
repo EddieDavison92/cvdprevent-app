@@ -23,6 +23,8 @@ interface WithinAreaLensProps {
   timePeriodId: number | undefined;
   active: boolean;
   defaultDepth: WithinDepth;
+  /** Expected child level before results load, e.g. "PCN" or "practice". */
+  fallbackLevel: string;
   /** Plural peer level, for the median legend. */
   peersLabel: string;
 }
@@ -109,7 +111,7 @@ function Strip({
   );
 }
 
-export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active, defaultDepth, peersLabel }: WithinAreaLensProps) {
+export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active, defaultDepth, fallbackLevel, peersLabel }: WithinAreaLensProps) {
   const searchParams = useSearchParams();
   const [depthChoice, setDepthChoice] = useState<WithinDepth | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('spread');
@@ -155,7 +157,10 @@ export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active, d
   }, [rows, data.byMetric, sortBy]);
 
   const loading = data.total > 0 && data.loaded < data.total;
-  const plural = (name: string | null) => (name ? `${name}s` : 'areas');
+  const loadingAreas = data.isLoadingAreas || probe.isLoadingAreas;
+  const resolvedLevel = levelName ?? fallbackLevel;
+  const plural = (name: string | null) => (name ? `${name}s` : `${fallbackLevel}s`);
+  const showPeerMedian = rows.some((row) => row.peer?.median != null);
   const highlightedAreaId = hover?.areaId ?? pinnedAreaId;
   const pinnedName = pinnedAreaId !== null
     ? strips.flatMap((strip) => strip.ranked).find((item) => item.AreaID === pinnedAreaId)?.AreaName ?? null
@@ -178,7 +183,7 @@ export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active, d
   return (
     <>
       <LensHeader
-        title={`Every ${levelName ?? 'area'} in ${areaName}, on each indicator`}
+        title={`Every ${resolvedLevel} in ${areaName}, on each indicator`}
         description={<>Hover a dot for the name; click to keep it highlighted on every row. Right is always better. Widest spread first; open a row for the full ranking. {loading && <span className="inline-flex items-center gap-1 text-gray-400"><Loader2 className="h-3 w-3 animate-spin" aria-hidden />Loading {data.loaded} of {data.total}</span>}</>}
       >
         {canDescend && childLevel && (
@@ -216,17 +221,29 @@ export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active, d
       )}
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-gray-100 px-4 py-2 text-[11px] text-gray-500 sm:px-5">
-        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-nhs-blue/50" aria-hidden />One {levelName ?? 'area'}</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-nhs-blue/50" aria-hidden />One {resolvedLevel}</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-3.5 w-0.5 bg-gray-900" aria-hidden />{areaName}</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-3.5 w-0.5 border-l-2 border-dashed border-gray-400" aria-hidden />Median of {peersLabel} in England</span>
+        {showPeerMedian && (
+          <span className="inline-flex items-center gap-1.5"><span className="h-3.5 w-0.5 border-l-2 border-dashed border-gray-400" aria-hidden />Median of {peersLabel} in England</span>
+        )}
         <span className="ml-auto">worse ← → better</span>
       </div>
-      <ColumnHeadings columns={COLUMNS} labels={['Indicator', `${levelName ?? 'Area'} results`, 'Range', '']} />
+      <ColumnHeadings columns={COLUMNS} labels={['Indicator', `${resolvedLevel} results`, 'Range', '']} />
 
       {probe.children && probe.children.length === 0 ? (
-        <EmptyLens>{areaName} has no areas below it in CVDPREVENT.</EmptyLens>
+        <EmptyLens title="No areas below">{areaName} has no {plural(resolvedLevel)} in CVDPREVENT.</EmptyLens>
       ) : strips.length === 0 ? (
-        <EmptyLens>{loading || data.isLoadingAreas || probe.isLoadingAreas ? 'Loading area results…' : 'No indicators match.'}</EmptyLens>
+        <EmptyLens
+          title={loadingAreas || loading ? 'Loading results' : rows.length === 0 ? 'No indicators match' : `Not enough ${resolvedLevel} results`}
+        >
+          {loadingAreas
+            ? `Looking up ${plural(resolvedLevel)} in ${areaName}…`
+            : loading
+              ? `Loading ${resolvedLevel} results…`
+              : rows.length === 0
+                ? 'Try another stage or clear the search.'
+                : `An indicator needs at least two ${plural(resolvedLevel)} with a published value to appear here.`}
+        </EmptyLens>
       ) : (
         <ul className="divide-y divide-gray-100">
           {strips.map((strip) => {
@@ -247,7 +264,7 @@ export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active, d
                     <IndicatorName row={row} extra={row.isRecordedPrevalence ? <span>recorded prevalence</span> : row.lowerIsBetter ? <span>lower is better</span> : undefined} />
                   </button>
                   <div onClick={() => hover && setPinnedAreaId((current) => (current === hover.areaId ? null : hover.areaId))}>
-                    <MobileLabel>{levelName ?? 'Area'} results</MobileLabel>
+                    <MobileLabel>{resolvedLevel} results</MobileLabel>
                     <Strip
                       strip={strip}
                       areaName={areaName}

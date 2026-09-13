@@ -9,7 +9,7 @@ import { PeerRangeBar } from '@/components/dashboard/peer-range-bar';
 import { NHS_COLORS } from '@/lib/constants/colors';
 import { formatAbsDiff, formatDiff, formatValue } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
-import type { LensRow } from '@/lib/utils/improvement-lenses';
+import { positionPlotAbsence, type LensRow } from '@/lib/utils/improvement-lenses';
 import { cn } from '@/lib/utils';
 import { cleanIndicatorName, ColumnHeadings, EmptyLens, IndicatorName, LensHeader, MobileLabel } from './lens-shared';
 
@@ -39,11 +39,17 @@ function quadrantOf(row: LensRow): Quadrant {
 }
 
 const W = 1000;
-const H = 420;
-const PAD = { left: 84, right: 28, top: 30, bottom: 70 };
+const H = 440;
+const PAD = { left: 88, right: 28, top: 28, bottom: 88 };
 /** Keeps points clear of the plot edges. */
 const INSET = 14;
 const Y_LIMIT = 1.5;
+const ABSENCE_ORDER = ['no-peer', 'no-history', 'prevalence'] as const;
+const ABSENCE_LABEL = {
+  'no-peer': 'No published peer range',
+  'no-history': 'Not enough history to plot',
+  prevalence: 'Recorded prevalence',
+} as const;
 
 interface HoverState {
   row: LensRow;
@@ -59,7 +65,7 @@ function Badge({ number, className }: { number: number; className?: string }) {
   );
 }
 
-function QuadrantChart({ rows, areaName, numbers }: { rows: LensRow[]; areaName: string; numbers: Map<number, number> }) {
+function QuadrantChart({ rows, areaName, systemLevelName, numbers }: { rows: LensRow[]; areaName: string; systemLevelName: string; numbers: Map<number, number> }) {
   const searchParams = useSearchParams();
   const [hover, setHover] = useState<HoverState | null>(null);
   const points = rows.filter((row) => quadrantOf(row) !== 'none');
@@ -76,15 +82,15 @@ function QuadrantChart({ rows, areaName, numbers }: { rows: LensRow[]; areaName:
 
   return (
     <div className="px-2 pt-2 sm:px-4">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={`${areaName}: each indicator by position among peers and latest change`}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full overflow-visible" role="img" aria-label={`${areaName}: each indicator by position among ${systemLevelName} and latest change`}>
         <rect x={PAD.left} y={PAD.top} width={midX - PAD.left} height={midY - PAD.top} fill="#F9FAFB" />
         <rect x={midX} y={PAD.top} width={W - PAD.right - midX} height={midY - PAD.top} fill="#F0F7F4" />
         <rect x={PAD.left} y={midY} width={midX - PAD.left} height={H - PAD.bottom - midY} fill="#FDF3EC" />
         <rect x={midX} y={midY} width={W - PAD.right - midX} height={H - PAD.bottom - midY} fill="#F9FAFB" />
-        <text x={PAD.left} y={PAD.top - 10} className="fill-gray-500 text-[12px] font-semibold">Behind, improving</text>
-        <text x={W - PAD.right} y={PAD.top - 10} textAnchor="end" className="fill-gray-500 text-[12px] font-semibold">Ahead, improving</text>
-        <text x={PAD.left} y={H - PAD.bottom + 36} className="fill-gray-500 text-[12px] font-semibold">Behind, slipping</text>
-        <text x={W - PAD.right} y={H - PAD.bottom + 36} textAnchor="end" className="fill-gray-500 text-[12px] font-semibold">Ahead, slipping</text>
+        <text x={PAD.left} y={PAD.top - 8} className="fill-gray-500 text-[11px] font-semibold">Behind · improving</text>
+        <text x={W - PAD.right} y={PAD.top - 8} textAnchor="end" className="fill-gray-500 text-[11px] font-semibold">Ahead · improving</text>
+        <text x={PAD.left} y={H - PAD.bottom + 54} className="fill-gray-500 text-[11px] font-semibold">Behind · slipping</text>
+        <text x={W - PAD.right} y={H - PAD.bottom + 54} textAnchor="end" className="fill-gray-500 text-[11px] font-semibold">Ahead · slipping</text>
         <line x1={midX} x2={midX} y1={PAD.top} y2={H - PAD.bottom} stroke="#D1D5DB" strokeWidth={1.5} />
         <line x1={PAD.left} x2={W - PAD.right} y1={midY} y2={midY} stroke="#D1D5DB" strokeWidth={1.5} />
         {[0, 25, 50, 75, 100].map((tick) => (
@@ -97,8 +103,8 @@ function QuadrantChart({ rows, areaName, numbers }: { rows: LensRow[]; areaName:
             {tick === 0 ? 'no change' : tick > 0 ? '+1 spread' : '−1 spread'}
           </text>
         ))}
-        <text x={(PAD.left + W - PAD.right) / 2} y={H - PAD.bottom + 36} textAnchor="middle" className="fill-gray-500 text-[11px]">Position among peers</text>
-        <text transform={`translate(14 ${(PAD.top + H - PAD.bottom) / 2}) rotate(-90)`} textAnchor="middle" className="fill-gray-500 text-[11px]">Latest change (relative to peer spread)</text>
+        <text x={(PAD.left + W - PAD.right) / 2} y={H - PAD.bottom + 32} textAnchor="middle" className="fill-gray-500 text-[11px]">Position among {systemLevelName}</text>
+        <text transform={`translate(14 ${(PAD.top + H - PAD.bottom) / 2}) rotate(-90)`} textAnchor="middle" className="fill-gray-500 text-[11px]">Latest change (vs peer spread)</text>
         {ordered.map((row) => {
           const id = row.indicator.IndicatorID;
           const cx = sx(row.position!);
@@ -147,7 +153,7 @@ function QuadrantChart({ rows, areaName, numbers }: { rows: LensRow[]; areaName:
         >
           <p className="font-semibold text-gray-900">{cleanIndicatorName(hover.row.indicator.IndicatorShortName)}</p>
           <p className="mt-1 tabular-nums text-gray-700">
-            <b>{formatValue(hover.row.value, hover.row.indicator.FormatDisplayName)}</b> · median {formatValue(hover.row.peer!.median, hover.row.indicator.FormatDisplayName)} · better than {hover.row.position}% of peers
+            <b>{formatValue(hover.row.value, hover.row.indicator.FormatDisplayName)}</b> · median {formatValue(hover.row.peer!.median, hover.row.indicator.FormatDisplayName)} · better than {hover.row.position}% of {systemLevelName}
           </p>
           <p className="tabular-nums text-gray-700">
             Latest change {hover.row.trend.change !== null ? formatDiff(hover.row.trend.change, hover.row.indicator.FormatDisplayName) : '—'} · {QUADRANT_LABEL[quadrantOf(hover.row)].toLowerCase()}
@@ -164,26 +170,43 @@ const COLUMNS_NO_PEERS = 'lg:grid-cols-[minmax(14rem,1.3fr)_6rem_12rem_10rem_1re
 export function PositionLens({ rows, areaName, systemLevelName, hasPeers }: PositionLensProps) {
   const searchParams = useSearchParams();
 
-  const { groups, numbers } = useMemo(() => {
+  const { groups, numbers, plottable } = useMemo(() => {
     const numbers = new Map<number, number>();
     if (!hasPeers) {
       const sorted = [...rows].sort((a, b) => (a.favourableChange ?? Infinity) - (b.favourableChange ?? Infinity));
-      return { groups: [{ quadrant: 'none' as Quadrant, label: 'Direction of travel, largest unfavourable change first', rows: sorted }], numbers };
+      return { groups: [{ key: 'none', label: 'Direction of travel, largest unfavourable change first', rows: sorted }], numbers, plottable: [] as LensRow[] };
     }
-    const byQuadrant = new Map<Quadrant, LensRow[]>();
+    const plottable: LensRow[] = [];
+    const byKey = new Map<string, LensRow[]>();
+    const push = (key: string, row: LensRow) => byKey.set(key, [...(byKey.get(key) ?? []), row]);
     for (const row of rows) {
-      const quadrant = quadrantOf(row);
-      byQuadrant.set(quadrant, [...(byQuadrant.get(quadrant) ?? []), row]);
+      const absence = positionPlotAbsence(row);
+      if (absence === null) {
+        plottable.push(row);
+        push(quadrantOf(row), row);
+      } else {
+        push(absence, row);
+      }
     }
     let next = 1;
-    const groups = QUADRANT_ORDER.flatMap((quadrant) => {
-      const items = byQuadrant.get(quadrant);
+    const groups = [
+      ...QUADRANT_ORDER.filter((quadrant) => quadrant !== 'none'),
+      ...ABSENCE_ORDER,
+    ].flatMap((key) => {
+      const items = byKey.get(key);
       if (!items?.length) return [];
-      items.sort((a, b) => (a.position ?? 101) - (b.position ?? 101) || (a.movement ?? 0) - (b.movement ?? 0));
-      if (quadrant.startsWith('behind')) for (const row of items) numbers.set(row.indicator.IndicatorID, next++);
-      return [{ quadrant, label: quadrant === 'none' ? 'Recorded prevalence and indicators without a position' : QUADRANT_LABEL[quadrant], rows: items }];
+      if (key.startsWith('behind') || key.startsWith('ahead')) {
+        items.sort((a, b) => (a.position ?? 101) - (b.position ?? 101) || (a.movement ?? 0) - (b.movement ?? 0));
+        if (key.startsWith('behind')) for (const row of items) numbers.set(row.indicator.IndicatorID, next++);
+      } else {
+        items.sort((a, b) => a.indicator.IndicatorShortName.localeCompare(b.indicator.IndicatorShortName));
+      }
+      const label = key in ABSENCE_LABEL
+        ? ABSENCE_LABEL[key as keyof typeof ABSENCE_LABEL]
+        : QUADRANT_LABEL[key as Quadrant];
+      return [{ key, label, rows: items }];
     });
-    return { groups, numbers };
+    return { groups, numbers, plottable };
   }, [rows, hasPeers]);
 
   const columns = hasPeers ? COLUMNS : COLUMNS_NO_PEERS;
@@ -201,7 +224,7 @@ export function PositionLens({ rows, areaName, systemLevelName, hasPeers }: Posi
           ? `${row.trend.direction === 'up' ? 'Rising' : 'Falling'} ${formatDiff(row.trend.change, fmt)}`
           : `${row.trend.status === 'improving' ? 'Improving' : 'Deteriorating'} ${formatDiff(row.trend.change, fmt)}`;
     const peer = row.peer;
-    let peerLabel = 'No peer data';
+    let peerLabel = 'Peer range not published';
     let peerTone = 'text-gray-400';
     if (peer) {
       const gapText = formatAbsDiff(peer.gap, fmt);
@@ -268,12 +291,21 @@ export function PositionLens({ rows, areaName, systemLevelName, hasPeers }: Posi
       <LensHeader
         title={hasPeers ? `Every indicator by position among ${systemLevelName} and latest change` : 'Direction of travel since the last published period'}
         description={hasPeers
-          ? 'Right means ahead of more peers. Up means moving the right way. Numbered points are behind the median; the list below uses the same numbers.'
+          ? `Right means ahead of more ${systemLevelName}. Up means moving the right way. Numbered points are behind the median; the list below uses the same numbers. Indicators without a published peer range are listed separately.`
           : 'England has no peers, so this shows movement only. Largest unfavourable change first.'}
       />
-      {hasPeers && <QuadrantChart rows={rows} areaName={areaName} numbers={numbers} />}
-      {rows.length === 0 ? <EmptyLens>No indicators match.</EmptyLens> : groups.map((group) => (
-        <section key={group.quadrant} aria-label={group.label}>
+      {hasPeers && plottable.length > 0 && (
+        <QuadrantChart rows={plottable} areaName={areaName} systemLevelName={systemLevelName} numbers={numbers} />
+      )}
+      {hasPeers && plottable.length === 0 && rows.length > 0 && (
+        <p className="mx-4 mt-3 rounded-md border border-dashed border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 sm:mx-5">
+          No indicators can be plotted. A position needs a published peer range among {systemLevelName} and two periods of history.
+        </p>
+      )}
+      {rows.length === 0 ? (
+        <EmptyLens title="No indicators match">Try another stage or clear the search.</EmptyLens>
+      ) : groups.map((group) => (
+        <section key={group.key} aria-label={group.label}>
           <div className="border-y border-gray-100 bg-gray-50/70 px-4 py-2 text-xs font-semibold text-gray-700 sm:px-5">
             {group.label} <span className="font-normal text-gray-400">{group.rows.length}</span>
           </div>

@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { IndicatorCategoryData, IndicatorWithData } from '@/lib/api/types';
-import { buildGroupRows, buildLensRows, estimatePosition, opportunityAgainst, opportunityFor } from '@/lib/utils/improvement-lenses';
+import {
+  buildGroupRows,
+  buildLensRows,
+  classifyOpportunityEmpty,
+  countUnscoredOpportunity,
+  estimatePosition,
+  opportunityAgainst,
+  opportunityFor,
+  positionPlotAbsence,
+} from '@/lib/utils/improvement-lenses';
 
 let nextMetricId = 1;
 
@@ -141,5 +150,85 @@ describe('improvement lenses', () => {
     const [group] = buildGroupRows(rows, 'Sex');
     expect(group.cells.map((cell) => [cell.label, cell.diff])).toEqual([['Male', -1], ['Female', 1]]);
     expect(group.gradient).toBeNull();
+  });
+
+  it('does not treat a missing peer range as already at target', () => {
+    const [row] = buildLensRows([
+      indicator('CVDP002AF', 'AF: Treated', [
+        category({ Median: null, Min: null, Max: null, Q20: null, Q40: null, Q60: null, Q80: null }),
+      ], 20),
+    ]);
+    expect(row.peer).toBeNull();
+    expect(row.opportunity?.toMedian).toBeNull();
+    expect(row.opportunity?.toTop).toBeNull();
+    expect(classifyOpportunityEmpty({
+      filteredRowCount: 1,
+      opportunityCount: 1,
+      scoredCount: 0,
+      activeCount: 0,
+      target: 'median',
+    })).toBe('peer-range-unavailable');
+    expect(countUnscoredOpportunity([row], 'median')).toBe(1);
+  });
+
+  it('explains a missing parent comparison instead of claiming the target is met', () => {
+    expect(classifyOpportunityEmpty({
+      filteredRowCount: 3,
+      opportunityCount: 3,
+      scoredCount: 0,
+      activeCount: 0,
+      target: 'area:9',
+      comparison: { isLoading: false, valueCount: 0 },
+    })).toBe('comparison-unavailable');
+    expect(classifyOpportunityEmpty({
+      filteredRowCount: 3,
+      opportunityCount: 3,
+      scoredCount: 0,
+      activeCount: 0,
+      target: 'area:9',
+      comparison: null,
+      ancestorsLoading: true,
+    })).toBe('loading-comparison');
+  });
+
+  it('keeps a genuine at-target empty list distinct from missing data', () => {
+    expect(classifyOpportunityEmpty({
+      filteredRowCount: 2,
+      opportunityCount: 2,
+      scoredCount: 2,
+      activeCount: 0,
+      target: 'median',
+    })).toBe('at-target');
+    expect(classifyOpportunityEmpty({
+      filteredRowCount: 2,
+      opportunityCount: 0,
+      scoredCount: 0,
+      activeCount: 0,
+      target: 'median',
+    })).toBe('no-opportunity');
+    expect(classifyOpportunityEmpty({
+      filteredRowCount: 2,
+      opportunityCount: 2,
+      scoredCount: 1,
+      activeCount: 1,
+      target: 'median',
+    })).toBeNull();
+  });
+
+  it('separates recorded prevalence, missing peers and missing history on the position chart', () => {
+    const [treated] = buildLensRows([
+      indicator('CVDP002AF', 'AF: Treated', [category({ Median: null })], 21),
+    ]);
+    const [prevalence] = buildLensRows([
+      indicator('CVDP001AF', 'AF: Prevalence', [category()], 22),
+    ]);
+    const [noHistory] = buildLensRows([
+      indicator('CVDP003AF', 'AF: Controlled', [category({}, {}, [])], 23),
+    ]);
+    expect(positionPlotAbsence(treated)).toBe('no-peer');
+    expect(positionPlotAbsence(prevalence)).toBe('prevalence');
+    expect(noHistory.position).not.toBeNull();
+    expect(noHistory.movement).toBeNull();
+    expect(positionPlotAbsence(noHistory)).toBe('no-history');
   });
 });
