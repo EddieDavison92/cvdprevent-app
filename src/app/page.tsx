@@ -140,8 +140,11 @@ export default function LandingPage() {
   // Loading while checking for existing org
   if (isLoadingOrg) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-nhs-pale-grey/30">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-nhs-blue border-t-transparent" />
+      <div className="flex min-h-screen flex-col bg-nhs-pale-grey/30">
+        <div className="flex flex-1 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-nhs-blue border-t-transparent" />
+        </div>
+        <Footer />
       </div>
     );
   }

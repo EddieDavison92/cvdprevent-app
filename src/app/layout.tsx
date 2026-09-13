@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { QueryProvider } from '@/providers/query-provider';
 import { OrganisationProvider } from '@/providers/organisation-context';
+import { Footer } from '@/components/layout/footer';
 import {
   DEFAULT_TITLE,
   ROUTE_SEO,
@@ -11,6 +12,17 @@ import {
   SITE_URL,
   siteJsonLd,
 } from '@/lib/seo';
+
+function SuspenseFallback() {
+  return (
+    <div className="flex min-h-screen flex-col bg-nhs-pale-grey/30">
+      <div className="flex flex-1 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-nhs-blue border-t-transparent" aria-hidden />
+      </div>
+      <Footer />
+    </div>
+  );
+}
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -59,7 +71,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd()) }}
         />
         <QueryProvider>
-          <Suspense fallback={null}>
+          <Suspense fallback={<SuspenseFallback />}>
             <OrganisationProvider>{children}</OrganisationProvider>
           </Suspense>
         </QueryProvider>

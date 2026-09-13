@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 const CANONICAL_HOST = 'www.cvdprevent-explorer.app';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const host = request.headers.get('host') ?? '';
 
   if (host === 'cvdprevent.vercel.app') {
@@ -23,6 +23,6 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = {
+export const proxyConfig = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
