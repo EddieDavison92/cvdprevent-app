@@ -111,14 +111,11 @@ export function ChoroplethMap({
     };
   }, [data]);
 
-  // Fetch boundary GeoJSON
+  // Fetch boundary GeoJSON. Missing files are handled in render, not here.
   useEffect(() => {
-    if (!boundaryFile) {
-      setError('Map not available for this geography level');
-      setLoading(false);
-      return;
-    }
+    if (!boundaryFile) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset fetch status when the file changes
     setLoading(true);
     setError(null);
 

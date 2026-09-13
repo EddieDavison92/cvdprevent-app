@@ -41,6 +41,7 @@ export function useComparisonAreas(
   timePeriodId: number | undefined,
 ): ComparisonArea[] {
   const { areasByLevel } = useAllAreas(organisation && organisation.SystemLevelID !== 1 ? timePeriodId : undefined);
+  const areasByLevelKey = [...areasByLevel.keys()].join();
 
   const ancestors = useMemo(() => {
     if (!organisation || organisation.SystemLevelID === 1) return [];
@@ -55,7 +56,7 @@ export function useComparisonAreas(
     return [...above, ENGLAND];
     // areasByLevel is rebuilt each render; its contents change only when a level loads.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organisation, [...areasByLevel.keys()].join()]);
+  }, [organisation, areasByLevelKey]);
 
   const queries = useQueries({
     queries: ancestors.map((area) => ({
@@ -65,6 +66,8 @@ export function useComparisonAreas(
       staleTime: 10 * 60 * 1000,
     })),
   });
+
+  const queryDataKey = queries.map((query) => query.data).join();
 
   return useMemo(() => ancestors.map((area, index) => {
     const values = new Map<string, number>();
@@ -80,5 +83,5 @@ export function useComparisonAreas(
       isLoading: queries[index]?.isLoading ?? false,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [ancestors, queries.map((query) => query.data).join()]);
+  }), [ancestors, queryDataKey]);
 }

@@ -82,6 +82,8 @@ export default function IndicatorDetailPage() {
   const { organisation, levelId, isEngland, isLoading: isLoadingOrg, baseline } = useOrganisation();
 
   useEffect(() => {
+    // Keep local selection in step with the route after a full navigation.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from the URL, not a render cascade
     setSelectedIndicatorId(routeIndicatorId);
   }, [routeIndicatorId]);
 
