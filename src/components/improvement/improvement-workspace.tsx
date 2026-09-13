@@ -69,12 +69,13 @@ export function ImprovementWorkspace({
   const childLevel = CHILD_LEVEL[systemLevelName ?? ''] ?? { label: 'area', depth: 'children' as const };
   const lensLabel = (id: Lens, label: string) => (id === 'within' ? `By ${childLevel.label}` : label);
 
-  const comparisons = useComparisonAreas(
+  const { comparisons, isLoadingAncestors } = useComparisonAreas(
     areaId && areaCode && systemLevelId ? { AreaID: areaId, AreaCode: areaCode, SystemLevelID: systemLevelId } : null,
     timePeriodId,
   );
   const targetIsKnown = targetParam === 'median' || targetParam === 'top'
-    || comparisons.some((comparison) => `area:${comparison.id}` === targetParam);
+    || comparisons.some((comparison) => `area:${comparison.id}` === targetParam)
+    || (targetParam.startsWith('area:') && isLoadingAncestors);
   const target = (targetIsKnown ? targetParam : 'median') as OpportunityTarget;
 
   const rows = useMemo(
@@ -169,6 +170,7 @@ export function ImprovementWorkspace({
             target={target}
             onTargetChange={setTarget}
             comparisons={comparisons}
+            isLoadingAncestors={isLoadingAncestors}
           />
         )}
         {lens === 'position' && (
@@ -178,7 +180,7 @@ export function ImprovementWorkspace({
           <InequalitiesLens rows={visibleRows} dimension={dimensionParam as PopulationDimension} onDimensionChange={setDimension} />
         )}
         <div hidden={lens !== 'within'}>
-          <WithinAreaLens rows={visibleRows} areaId={areaId} areaName={displayAreaName} timePeriodId={timePeriodId} active={lens === 'within'} defaultDepth={childLevel.depth} peersLabel={peersLabel} />
+          <WithinAreaLens rows={visibleRows} areaId={areaId} areaName={displayAreaName} timePeriodId={timePeriodId} active={lens === 'within'} defaultDepth={childLevel.depth} fallbackLevel={childLevel.label} peersLabel={peersLabel} />
         </div>
       </section>
     </div>

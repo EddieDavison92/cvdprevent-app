@@ -69,8 +69,13 @@ export function ColumnHeadings({ columns, labels }: { columns: string; labels: s
   );
 }
 
-export function EmptyLens({ children }: { children: ReactNode }) {
-  return <p className="px-4 py-10 text-center text-sm text-gray-500">{children}</p>;
+export function EmptyLens({ title, children }: { title?: string; children: ReactNode }) {
+  return (
+    <div className="px-4 py-10 text-center sm:px-5">
+      {title && <p className="text-sm font-medium text-gray-800">{title}</p>}
+      <p className={cn('text-sm text-gray-500', title && 'mt-1')}>{children}</p>
+    </div>
+  );
 }
 
 export function MobileLabel({ children }: { children: ReactNode }) {

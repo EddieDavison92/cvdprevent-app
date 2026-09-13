@@ -35,12 +35,20 @@ function displayName(area: Area) {
     .replace(/ - [A-Z0-9]+$/, '');
 }
 
-/** Every area above the organisation (England first), with its indicator values for the period. */
+export interface ComparisonAreasResult {
+  comparisons: ComparisonArea[];
+  /** True while parent areas have not yet been resolved. */
+  isLoadingAncestors: boolean;
+}
+
+/** Every area above the organisation (nearest first), with its indicator values for the period. */
 export function useComparisonAreas(
   organisation: Pick<Area, 'AreaID' | 'AreaCode' | 'SystemLevelID'> | null | undefined,
   timePeriodId: number | undefined,
-): ComparisonArea[] {
-  const { areasByLevel } = useAllAreas(organisation && organisation.SystemLevelID !== 1 ? timePeriodId : undefined);
+): ComparisonAreasResult {
+  const { areasByLevel, isLoading: isLoadingAreas } = useAllAreas(
+    organisation && organisation.SystemLevelID !== 1 ? timePeriodId : undefined,
+  );
   const areasByLevelKey = [...areasByLevel.keys()].join();
 
   const ancestors = useMemo(() => {
@@ -68,8 +76,10 @@ export function useComparisonAreas(
   });
 
   const queryDataKey = queries.map((query) => query.data).join();
+  const parentCount = ancestors.filter((area) => area.AreaID !== ENGLAND.AreaID).length;
+  const isLoadingAncestors = !!organisation && organisation.SystemLevelID !== 1 && isLoadingAreas && parentCount === 0;
 
-  return useMemo(() => ancestors.map((area, index) => {
+  const comparisons = useMemo(() => ancestors.map((area, index) => {
     const values = new Map<string, number>();
     for (const indicator of queries[index]?.data ?? []) {
       const value = getPersonsData(indicator)?.Data.Value;
@@ -84,4 +94,6 @@ export function useComparisonAreas(
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [ancestors, queryDataKey]);
+
+  return { comparisons, isLoadingAncestors };
 }

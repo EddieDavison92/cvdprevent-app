@@ -24,16 +24,20 @@ const YLGNBU = [[255, 255, 204], [161, 218, 180], [65, 182, 196], [44, 127, 184]
 const GREYS = [[247, 247, 247], [217, 217, 217], [189, 189, 189], [150, 150, 150], [99, 99, 99]];
 
 function ramp(stops: number[][], t: number) {
+  if (!Number.isFinite(t) || stops.length < 2) return undefined;
   const position = Math.max(0, Math.min(1, t)) * (stops.length - 1);
-  const index = Math.min(stops.length - 2, Math.floor(position));
+  const index = Math.min(stops.length - 2, Math.max(0, Math.floor(position)));
+  const from = stops[index];
+  const to = stops[index + 1];
+  if (!from || !to) return undefined;
   const fraction = position - index;
-  const mix = (channel: number) => Math.round(stops[index][channel] + (stops[index + 1][channel] - stops[index][channel]) * fraction);
+  const mix = (channel: number) => Math.round(from[channel] + (to[channel] - from[channel]) * fraction);
   return `rgb(${mix(0)},${mix(1)},${mix(2)})`;
 }
 
 /** Colours how far a group is behind; ahead cells stay plain. Descriptive rows colour difference either way in grey. */
 function cellStyle(diff: number | null, scale: number, descriptive: boolean) {
-  if (diff === null) return {};
+  if (diff === null || !Number.isFinite(diff) || !Number.isFinite(scale) || scale <= 0) return {};
   const magnitude = descriptive ? Math.abs(diff) : Math.max(0, -diff);
   if (magnitude < 0.05) return {};
   const t = Math.min(1, magnitude / scale);
@@ -54,17 +58,20 @@ function describe(cell: GroupCell, overallValue: number, fmt: string, descriptiv
 export function InequalitiesLens({ rows, dimension, onDimensionChange }: InequalitiesLensProps) {
   const searchParams = useSearchParams();
   const [sortBy, setSortBy] = useState<SortOption>('gradient');
-  const ordered = ORDERED_DIMENSIONS.has(dimension);
-  const effectiveSort = sortBy === 'gradient' && !ordered ? 'gap' : sortBy;
 
   const availableDimensions = useMemo(() => {
     const present = new Set<string>();
     for (const row of rows) for (const category of row.indicator.Categories) present.add(category.MetricCategoryTypeName);
     return INEQUALITY_DIMENSIONS.filter((candidate) => present.has(candidate));
   }, [rows]);
+  const effectiveDimension = availableDimensions.includes(dimension)
+    ? dimension
+    : (availableDimensions[0] ?? dimension ?? 'Deprivation quintile');
+  const ordered = ORDERED_DIMENSIONS.has(effectiveDimension);
+  const effectiveSort = sortBy === 'gradient' && !ordered ? 'gap' : sortBy;
 
   const { care, prevalence, columns, scale, gradientCount } = useMemo(() => {
-    const groupRows = buildGroupRows(rows, dimension);
+    const groupRows = buildGroupRows(rows, effectiveDimension);
     const sorter = (a: GroupRow, b: GroupRow) => {
       if (effectiveSort === 'name') return a.row.indicator.IndicatorShortName.localeCompare(b.row.indicator.IndicatorShortName);
       if (effectiveSort === 'gradient') return Math.abs(b.gradient ?? 0) - Math.abs(a.gradient ?? 0) || (a.worstDiff ?? 0) - (b.worstDiff ?? 0);
@@ -80,13 +87,16 @@ export function InequalitiesLens({ rows, dimension, onDimensionChange }: Inequal
       }
     }
     const columns = [...labels.entries()].sort((a, b) => a[1] - b[1]).map(([label]) => label);
-    const magnitudes = groupRows.flatMap((group) => group.cells.filter((cell) => cell.diff !== null && group.row.isPercentage).map((cell) => Math.abs(cell.diff!))).sort((a, b) => a - b);
+    const magnitudes = groupRows
+      .flatMap((group) => group.cells.filter((cell) => cell.diff !== null && Number.isFinite(cell.diff) && group.row.isPercentage).map((cell) => Math.abs(cell.diff!)))
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => a - b);
     const scale = Math.max(4, magnitudes[Math.floor(magnitudes.length * 0.9)] ?? 6);
     const gradientCount = care.filter((group) => group.gradient !== null && group.gradient >= 2).length;
     return { care, prevalence, columns, scale, gradientCount };
-  }, [rows, dimension, effectiveSort]);
+  }, [rows, effectiveDimension, effectiveSort]);
 
-  const dimensionLabel = getMarkerGroupLabel(dimension);
+  const dimensionLabel = getMarkerGroupLabel(effectiveDimension);
   const groupCount = care.length + prevalence.length;
 
   const renderRow = (group: GroupRow, descriptive: boolean) => {
@@ -135,11 +145,13 @@ export function InequalitiesLens({ rows, dimension, onDimensionChange }: Inequal
   return (
     <>
       <LensHeader
-        title={`Each group compared with all patients, by ${dimensionLabel.toLowerCase()}`}
+        title={availableDimensions.length === 0
+          ? 'Population groups compared with all patients'
+          : `Each group compared with all patients, by ${dimensionLabel.toLowerCase()}`}
         description={<>
           Darker means further behind the all-patient result. Plain cells are level or ahead. A dash means not published, usually because too few patients.
-          {ordered && dimension.startsWith('Deprivation') && care.length > 0 && <> The least deprived group is 2pp or more ahead on <b className="text-gray-700">{gradientCount} of {care.length}</b> indicators.</>}
-          {dimension.startsWith('Ethnicity') && <> Missing and not-stated ethnicity are shown but not ranked.</>}
+          {ordered && effectiveDimension.startsWith('Deprivation') && care.length > 0 && <> The least deprived group is 2pp or more ahead on <b className="text-gray-700">{gradientCount} of {care.length}</b> indicators.</>}
+          {effectiveDimension.startsWith('Ethnicity') && <> Missing and not-stated ethnicity are shown but not ranked.</>}
         </>}
       >
         <Select value={effectiveSort} onValueChange={(value) => setSortBy(value as SortOption)}>
@@ -161,11 +173,11 @@ export function InequalitiesLens({ rows, dimension, onDimensionChange }: Inequal
             key={candidate}
             type="button"
             role="tab"
-            aria-selected={candidate === dimension}
+            aria-selected={candidate === effectiveDimension}
             onClick={() => onDimensionChange(candidate)}
             className={cn(
               'rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue',
-              candidate === dimension ? 'border-gray-800 bg-gray-800 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
+              candidate === effectiveDimension ? 'border-gray-800 bg-gray-800 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
             )}
           >
             {getMarkerGroupLabel(candidate)}
@@ -173,8 +185,14 @@ export function InequalitiesLens({ rows, dimension, onDimensionChange }: Inequal
         ))}
       </div>
 
-      {groupCount === 0 ? (
-        <EmptyLens>No indicators publish a {dimensionLabel.toLowerCase()} breakdown for this selection.</EmptyLens>
+      {availableDimensions.length === 0 ? (
+        <EmptyLens title="No population breakdowns">
+          None of these indicators publish age, sex, ethnicity, deprivation or other group results for this selection.
+        </EmptyLens>
+      ) : groupCount === 0 ? (
+        <EmptyLens title={`No ${dimensionLabel.toLowerCase()} breakdown`}>
+          These indicators do not publish a {dimensionLabel.toLowerCase()} split for this selection. Try another breakdown above.
+        </EmptyLens>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[40rem] border-collapse text-sm">
@@ -182,7 +200,7 @@ export function InequalitiesLens({ rows, dimension, onDimensionChange }: Inequal
               <tr className="bg-gray-50/60 text-[11px] font-medium uppercase tracking-wide text-gray-500">
                 <th scope="col" className="sticky left-0 z-10 bg-gray-50 px-4 py-2 text-left sm:px-5">Indicator</th>
                 {columns.map((label) => <th key={label} scope="col" className={cn('px-2 py-2 text-center font-medium normal-case tracking-normal', /^(missing|not stated|unknown|not known|not recorded)$/i.test(label) && 'text-gray-400')}>{label}</th>)}
-                <th scope="col" className="px-4 py-2 text-right sm:px-5">{ordered ? (dimension.startsWith('Age') ? 'Oldest minus youngest' : 'Least minus most deprived') : 'Largest group behind'}</th>
+                <th scope="col" className="px-4 py-2 text-right sm:px-5">{ordered ? (effectiveDimension.startsWith('Age') ? 'Oldest minus youngest' : 'Least minus most deprived') : 'Largest group behind'}</th>
               </tr>
             </thead>
             <tbody>
