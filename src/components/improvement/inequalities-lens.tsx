@@ -24,16 +24,20 @@ const YLGNBU = [[255, 255, 204], [161, 218, 180], [65, 182, 196], [44, 127, 184]
 const GREYS = [[247, 247, 247], [217, 217, 217], [189, 189, 189], [150, 150, 150], [99, 99, 99]];
 
 function ramp(stops: number[][], t: number) {
+  if (!Number.isFinite(t) || stops.length < 2) return undefined;
   const position = Math.max(0, Math.min(1, t)) * (stops.length - 1);
-  const index = Math.min(stops.length - 2, Math.floor(position));
+  const index = Math.min(stops.length - 2, Math.max(0, Math.floor(position)));
+  const from = stops[index];
+  const to = stops[index + 1];
+  if (!from || !to) return undefined;
   const fraction = position - index;
-  const mix = (channel: number) => Math.round(stops[index][channel] + (stops[index + 1][channel] - stops[index][channel]) * fraction);
+  const mix = (channel: number) => Math.round(from[channel] + (to[channel] - from[channel]) * fraction);
   return `rgb(${mix(0)},${mix(1)},${mix(2)})`;
 }
 
 /** Colours how far a group is behind; ahead cells stay plain. Descriptive rows colour difference either way in grey. */
 function cellStyle(diff: number | null, scale: number, descriptive: boolean) {
-  if (diff === null) return {};
+  if (diff === null || !Number.isFinite(diff) || !Number.isFinite(scale) || scale <= 0) return {};
   const magnitude = descriptive ? Math.abs(diff) : Math.max(0, -diff);
   if (magnitude < 0.05) return {};
   const t = Math.min(1, magnitude / scale);
@@ -62,7 +66,7 @@ export function InequalitiesLens({ rows, dimension, onDimensionChange }: Inequal
   }, [rows]);
   const effectiveDimension = availableDimensions.includes(dimension)
     ? dimension
-    : (availableDimensions[0] ?? dimension);
+    : (availableDimensions[0] ?? dimension ?? 'Deprivation quintile');
   const ordered = ORDERED_DIMENSIONS.has(effectiveDimension);
   const effectiveSort = sortBy === 'gradient' && !ordered ? 'gap' : sortBy;
 
@@ -83,7 +87,10 @@ export function InequalitiesLens({ rows, dimension, onDimensionChange }: Inequal
       }
     }
     const columns = [...labels.entries()].sort((a, b) => a[1] - b[1]).map(([label]) => label);
-    const magnitudes = groupRows.flatMap((group) => group.cells.filter((cell) => cell.diff !== null && group.row.isPercentage).map((cell) => Math.abs(cell.diff!))).sort((a, b) => a - b);
+    const magnitudes = groupRows
+      .flatMap((group) => group.cells.filter((cell) => cell.diff !== null && Number.isFinite(cell.diff) && group.row.isPercentage).map((cell) => Math.abs(cell.diff!)))
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => a - b);
     const scale = Math.max(4, magnitudes[Math.floor(magnitudes.length * 0.9)] ?? 6);
     const gradientCount = care.filter((group) => group.gradient !== null && group.gradient >= 2).length;
     return { care, prevalence, columns, scale, gradientCount };
