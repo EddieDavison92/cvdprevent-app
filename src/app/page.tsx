@@ -4,9 +4,6 @@ import { Footer } from '@/components/layout/footer';
 import { OrganisationSearch } from '@/components/landing/organisation-search';
 import { ENGLAND_DASHBOARD_HREF } from '@/lib/constants/geography';
 
-const EXPLAINER_LINK_CLASS =
-  'rounded-sm font-medium text-nhs-blue underline-offset-2 transition-colors hover:text-nhs-dark-blue hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue/40';
-
 const EXPLORE_LINKS = [
   {
     label: 'England overview',
@@ -40,49 +37,15 @@ const EXPLORE_LINKS = [
 
 function HomepageExplainer() {
   return (
-    <section aria-labelledby="about-explorer-heading" className="mt-10 border-t border-gray-200 pt-8 text-left">
-      <h2 id="about-explorer-heading" className="text-base font-semibold text-nhs-dark-blue">
+    <section aria-labelledby="about-explorer-heading" className="mt-10 border-t border-gray-200 pt-6">
+      <h2 id="about-explorer-heading" className="sr-only">
         About this explorer
       </h2>
-      <p className="mt-2 text-sm leading-6 text-gray-600">
-        Search an NHS organisation to explore public CVDPREVENT prevention indicators across
-        England. The figures are aggregate audit data, not patient records or clinical advice.
+      <p className="text-sm leading-6 text-gray-600">
+        Unofficial public CVDPREVENT explorer for analysts, commissioners and improvement teams.
+        Covers England, Regions, ICBs, Sub-ICBs and PCNs (PCN is the lowest geography). Not the
+        official Data and Improvement Tool and not affiliated with NHS England.
       </p>
-      <p className="mt-3 text-sm leading-6 text-gray-600">
-        Built for analysts, commissioners and improvement teams who already know the place they
-        want to look at.
-      </p>
-      <h3 className="mt-5 text-sm font-semibold text-nhs-dark-blue">Geographies</h3>
-      <p className="mt-2 text-sm leading-6 text-gray-600">
-        Published results cover England, Regions, ICBs, Sub-ICBs and PCNs. PCN is the lowest
-        geography available.
-      </p>
-      <p className="mt-3 text-sm leading-6 text-gray-600">
-        This is an unofficial explorer. It is not the official CVDPREVENT Data and Improvement
-        Tool and is not affiliated with NHS England.
-      </p>
-      <ul className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-        <li>
-          <Link href="/indicators" className={EXPLAINER_LINK_CLASS}>
-            Indicators
-          </Link>
-        </li>
-        <li>
-          <Link href="/benchmarks" className={EXPLAINER_LINK_CLASS}>
-            Benchmarks
-          </Link>
-        </li>
-        <li>
-          <Link href="/skills" className={EXPLAINER_LINK_CLASS}>
-            Use with AI
-          </Link>
-        </li>
-        <li>
-          <Link href={ENGLAND_DASHBOARD_HREF} className={EXPLAINER_LINK_CLASS}>
-            England dashboard
-          </Link>
-        </li>
-      </ul>
     </section>
   );
 }
@@ -92,7 +55,7 @@ function ExploreLinks() {
     'group flex min-h-[4.25rem] w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-nhs-blue/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue/50';
 
   return (
-    <nav aria-label="Explore" className="mt-10">
+    <nav aria-label="Explore" className="mt-12">
       <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-gray-400">Or explore</p>
       <ul className="grid gap-3 sm:grid-cols-2">
         {EXPLORE_LINKS.map(({ label, description, icon: Icon, iconClass, href }) => (
@@ -146,8 +109,8 @@ export default function HomePage() {
         </header>
 
         <OrganisationSearch />
-        <HomepageExplainer />
         <ExploreLinks />
+        <HomepageExplainer />
       </main>
 
       <Footer />
