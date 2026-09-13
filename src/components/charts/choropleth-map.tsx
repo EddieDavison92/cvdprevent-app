@@ -295,8 +295,8 @@ export function ChoroplethMap({
   return (
     <div
       className="relative isolate"
-      role="img"
-      aria-label={`Map of indicator values by area compared with ${baselineName}`}
+      role="region"
+      aria-label={`Interactive map of indicator values by area compared with ${baselineName}`}
     >
       {loading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80">

@@ -3,6 +3,7 @@ import robots from '@/app/robots';
 import {
   cleanIndicatorTitle,
   DEFAULT_TITLE,
+  indicatorPageMetadata,
   pageMetadata,
   SITE_URL,
   STATIC_SITEMAP_PATHS,
@@ -42,6 +43,12 @@ describe('page metadata', () => {
 
   it('strips trailing indicator codes from titles', () => {
     expect(cleanIndicatorTitle('Hypertension prevalence (CVDP001HYP)')).toBe('Hypertension prevalence');
+  });
+
+  it('does not treat a mixed id segment as a real indicator', async () => {
+    const metadata = await indicatorPageMetadata('123extra');
+    expect(metadata.title).toBe('CVDPREVENT indicator');
+    expect(metadata.alternates).toEqual({ canonical: '/indicators/123extra' });
   });
 });
 

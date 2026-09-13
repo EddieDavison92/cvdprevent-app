@@ -123,8 +123,8 @@ export async function indicatorPageMetadata(
     path,
   });
 
-  const indicatorId = Number.parseInt(id, 10);
-  if (Number.isNaN(indicatorId)) return fallback;
+  if (!/^\d+$/.test(id)) return fallback;
+  const indicatorId = Number(id);
 
   const indicator = (await listPublicIndicators()).find((item) => item.IndicatorID === indicatorId);
   if (!indicator) return fallback;
