@@ -627,6 +627,7 @@ export default function BenchmarksPage() {
 
           {/* Heatmap Table */}
           {(!isPcn || parentAreaId) && (availableIndicators.length > 0 || isLoading) && (
+            <>
             <p className="mb-2 text-[11px] text-gray-400 sm:hidden">Swipe sideways to see every indicator column.</p>
             <div className="rounded-lg border bg-white overflow-x-auto">
               <TooltipProvider delayDuration={200}>
@@ -790,6 +791,7 @@ export default function BenchmarksPage() {
                 </div>
               )}
             </div>
+            </>
           )}
 
         </div>

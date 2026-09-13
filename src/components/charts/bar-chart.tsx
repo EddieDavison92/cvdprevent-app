@@ -131,7 +131,7 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
           width: isNarrow ? '92%' : undefined,
           textStyle: {
             ...nhsEChartsTheme.legend.textStyle,
-            fontSize: isNarrow ? 10 : nhsEChartsTheme.legend.textStyle?.fontSize,
+            ...(isNarrow ? { fontSize: 10 } : {}),
           },
         }
       : undefined,
@@ -175,7 +175,7 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
           splitLine: nhsEChartsTheme.xAxis.splitLine,
           axisLabel: {
             ...nhsEChartsTheme.xAxis.axisLabel,
-            fontSize: isNarrow ? 10 : nhsEChartsTheme.xAxis.axisLabel?.fontSize,
+            ...(isNarrow ? { fontSize: 10 } : {}),
             formatter: (value: number) => formatValue(value).replace(/\.0(%?)$/, '$1'),
           },
         }
@@ -205,7 +205,7 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
             ...nhsEChartsTheme.yAxis.axisLabel,
             width: labelWidth,
             overflow: 'truncate',
-            fontSize: isNarrow ? 10 : nhsEChartsTheme.yAxis.axisLabel?.fontSize,
+            ...(isNarrow ? { fontSize: 10 } : {}),
           },
         }
       : {
