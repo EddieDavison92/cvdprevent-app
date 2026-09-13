@@ -299,7 +299,15 @@ export function ChoroplethMap({
           <span className="text-sm text-gray-400">Loading map...</span>
         </div>
       )}
-      <div ref={mapRef} style={{ height, width: '100%', borderRadius: 8, background: '#dfe6e8' }} />
+      <div
+        ref={mapRef}
+        style={{
+          height: typeof height === 'number' ? `min(${height}px, 70dvh)` : height,
+          width: '100%',
+          borderRadius: 8,
+          background: '#dfe6e8',
+        }}
+      />
     </div>
   );
 }

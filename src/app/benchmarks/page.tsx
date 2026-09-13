@@ -457,7 +457,7 @@ export default function BenchmarksPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex-1 bg-nhs-pale-grey/30 p-6">
+      <main className="flex-1 bg-nhs-pale-grey/30 p-4 sm:p-6">
         <div className="mx-auto max-w-[1400px]">
           {isDataError && <ApiUnavailable className="mb-5" />}
 
@@ -488,7 +488,7 @@ export default function BenchmarksPage() {
           {/* Filters */}
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <Select value={levelId.toString()} onValueChange={(v) => { setLevelId(parseInt(v, 10)); setParentAreaId(undefined); setSelectedAreaCode(null); }}>
-              <SelectTrigger className="w-[160px] h-9 text-sm bg-white" aria-label="Geography level">
+              <SelectTrigger className="h-9 w-full bg-white text-sm sm:w-[160px]" aria-label="Geography level">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -503,7 +503,7 @@ export default function BenchmarksPage() {
                 value={parentAreaId?.toString() ?? 'all'}
                 onValueChange={(v) => { setParentAreaId(v === 'all' ? undefined : parseInt(v, 10)); setSelectedAreaCode(null); }}
               >
-                <SelectTrigger className="w-[260px] h-9 text-sm bg-white" aria-label="Parent scope">
+                <SelectTrigger className="h-9 w-full bg-white text-sm sm:w-[260px]" aria-label="Parent scope">
                   <SelectValue placeholder={isPcn ? `Select ${parentLabel}...` : `All ${parentLabel}s`} />
                 </SelectTrigger>
                 <SelectContent>
@@ -517,9 +517,11 @@ export default function BenchmarksPage() {
               </Select>
             )}
 
-            <div className="h-6 w-px bg-gray-300 mx-1" />
+            <div className="mx-1 hidden h-6 w-px bg-gray-300 sm:block" />
 
             {/* Section filter pills */}
+            <div className="-mx-1 w-full overflow-x-auto [scrollbar-width:thin] sm:mx-0 sm:w-auto sm:overflow-visible">
+            <div className="flex w-max items-center gap-2 px-1 sm:w-auto sm:flex-wrap">
             <button
               onClick={() => setSectionFilter(null)}
               className={cn(
@@ -547,6 +549,8 @@ export default function BenchmarksPage() {
                 </button>
               );
             })}
+            </div>
+            </div>
 
           </div>
 
@@ -623,6 +627,7 @@ export default function BenchmarksPage() {
 
           {/* Heatmap Table */}
           {(!isPcn || parentAreaId) && (availableIndicators.length > 0 || isLoading) && (
+            <p className="mb-2 text-[11px] text-gray-400 sm:hidden">Swipe sideways to see every indicator column.</p>
             <div className="rounded-lg border bg-white overflow-x-auto">
               <TooltipProvider delayDuration={200}>
                 <Table>

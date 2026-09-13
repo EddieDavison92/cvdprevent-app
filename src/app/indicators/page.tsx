@@ -113,7 +113,7 @@ export default function IndicatorsIndexPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex-1 bg-nhs-pale-grey/30 p-6">
+      <main className="flex-1 bg-nhs-pale-grey/30 p-4 sm:p-6">
         <div className="mx-auto max-w-4xl">
           {/* Header */}
           <div className="mb-6">
@@ -134,28 +134,30 @@ export default function IndicatorsIndexPage() {
 
           {/* Condition filters */}
           {conditions.length > 0 && (
-            <div className="mb-5 flex flex-wrap gap-1.5">
-              <button
-                onClick={() => setConditionFilter(null)}
-                className={cn(
-                  'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                  !conditionFilter ? 'bg-nhs-dark-blue text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border',
-                )}
-              >
-                All ({indicators.length})
-              </button>
-              {conditions.map(c => (
+            <div className="mb-5 -mx-1 overflow-x-auto [scrollbar-width:thin] sm:overflow-visible">
+              <div className="flex w-max min-w-full items-center gap-1.5 px-1 sm:w-auto sm:flex-wrap">
                 <button
-                  key={c.name}
-                  onClick={() => setConditionFilter(conditionFilter === c.name ? null : c.name)}
+                  onClick={() => setConditionFilter(null)}
                   className={cn(
-                    'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                    conditionFilter === c.name ? 'bg-nhs-dark-blue text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border',
+                    'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                    !conditionFilter ? 'bg-nhs-dark-blue text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border',
                   )}
                 >
-                  {c.name} ({c.count})
+                  All ({indicators.length})
                 </button>
-              ))}
+                {conditions.map(c => (
+                  <button
+                    key={c.name}
+                    onClick={() => setConditionFilter(conditionFilter === c.name ? null : c.name)}
+                    className={cn(
+                      'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                      conditionFilter === c.name ? 'bg-nhs-dark-blue text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border',
+                    )}
+                  >
+                    {c.name} ({c.count})
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -191,7 +193,7 @@ export default function IndicatorsIndexPage() {
                         <Link
                           key={ind.id}
                           href={buildHref(ind.id)}
-                          className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors group"
+                          className="flex min-h-12 items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors group"
                         >
                           <code className="text-[10px] text-gray-500 font-mono w-[90px] shrink-0">{ind.code}</code>
                           <span className="text-sm text-gray-900 flex-1 min-w-0 truncate">{ind.shortName}</span>

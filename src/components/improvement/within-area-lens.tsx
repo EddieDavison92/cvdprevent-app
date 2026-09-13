@@ -93,7 +93,7 @@ function Strip({
           key={item.AreaID}
           cx={x(item.Value!)}
           cy={15}
-          r={item.AreaID === highlightedAreaId ? 5.5 : 3.5}
+          r={item.AreaID === highlightedAreaId ? 7 : 5.5}
           fill={item.AreaID === highlightedAreaId ? '#003087' : '#005EB8'}
           fillOpacity={highlightedAreaId === null ? 0.5 : item.AreaID === highlightedAreaId ? 1 : 0.2}
           stroke="#fff"
@@ -102,6 +102,7 @@ function Strip({
           onMouseEnter={(event) => onHover(item, event)}
           onMouseMove={(event) => onHover(item, event)}
           onMouseLeave={onLeave}
+          onClick={(event) => onHover(item, event)}
         />
       ))}
       {highlighted && (
@@ -184,11 +185,11 @@ export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active, d
     <>
       <LensHeader
         title={`Every ${resolvedLevel} in ${areaName}, on each indicator`}
-        description={<>Hover a dot for the name; click to keep it highlighted on every row. Right is always better. Widest spread first; open a row for the full ranking. {loading && <span className="inline-flex items-center gap-1 text-gray-400"><Loader2 className="h-3 w-3 animate-spin" aria-hidden />Loading {data.loaded} of {data.total}</span>}</>}
+        description={<>Tap a dot for the name; tap again to keep it highlighted on every row. Right is always better. Widest spread first; open a row for the full ranking. {loading && <span className="inline-flex items-center gap-1 text-gray-400"><Loader2 className="h-3 w-3 animate-spin" aria-hidden />Loading {data.loaded} of {data.total}</span>}</>}
       >
         {canDescend && childLevel && (
           <Select value={depth} onValueChange={(value) => { setDepthChoice(value as WithinDepth); setOpenId(null); setPinnedAreaId(null); }}>
-            <SelectTrigger className="h-8 w-auto min-w-40 gap-2 bg-white text-xs" aria-label="Level">
+            <SelectTrigger className="h-9 w-full min-w-0 gap-2 bg-white text-xs sm:h-8 sm:w-auto sm:min-w-40" aria-label="Level">
               <span className="text-gray-400">Level</span>
               <SelectValue />
             </SelectTrigger>
@@ -199,7 +200,7 @@ export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active, d
           </Select>
         )}
         <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
-          <SelectTrigger className="h-8 w-auto min-w-36 gap-2 bg-white text-xs" aria-label="Sort">
+          <SelectTrigger className="h-9 w-full min-w-0 gap-2 bg-white text-xs sm:h-8 sm:w-auto sm:min-w-36" aria-label="Sort">
             <span className="text-gray-400">Sort</span>
             <SelectValue />
           </SelectTrigger>
@@ -300,28 +301,29 @@ export function WithinAreaLens({ rows, areaId, areaName, timePeriodId, active, d
                     <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                       All {strip.ranked.length} {plural(levelName)}, {row.lowerIsBetter ? 'highest' : 'lowest'} result first
                     </p>
-                    <ol className="max-h-96 overflow-y-auto rounded-md border border-gray-200 bg-white">
+                    <ol className="max-h-96 overflow-auto rounded-md border border-gray-200 bg-white">
                       {worstFirst.map((item) => (
                         <li
                           key={item.AreaID}
                           onMouseEnter={() => setPinnedAreaId(item.AreaID)}
+                          onClick={() => setPinnedAreaId(item.AreaID)}
                           className={cn(
-                            'grid grid-cols-[2.5rem_minmax(10rem,1fr)_minmax(8rem,1.2fr)_5rem_8rem] items-center gap-3 border-b border-gray-100 px-3 py-1.5 text-sm last:border-b-0',
+                            'grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2 border-b border-gray-100 px-3 py-2.5 text-sm last:border-b-0 sm:grid-cols-[2.5rem_minmax(10rem,1fr)_minmax(8rem,1.2fr)_5rem_8rem] sm:gap-3 sm:py-1.5',
                             item.AreaID === highlightedAreaId && 'bg-blue-50',
                           )}
                         >
                           <span className="font-mono text-[11px] text-gray-400">{item.rank}</span>
-                          <Link href={buildUrl('/dashboard', new URLSearchParams({ area: String(item.AreaID) }))} className="truncate text-gray-800 hover:text-nhs-blue hover:underline" title={item.AreaName}>
+                          <Link href={buildUrl('/dashboard', new URLSearchParams({ area: String(item.AreaID) }))} className="min-w-0 truncate text-gray-800 hover:text-nhs-blue hover:underline" title={item.AreaName}>
                             {cleanAreaName(item.AreaName)}
                           </Link>
-                          <span className="block h-2 overflow-hidden rounded-sm bg-gray-100">
+                          <span className="hidden h-2 overflow-hidden rounded-sm bg-gray-100 sm:block">
                             <span
                               className={cn('block h-full rounded-sm', item.rank > strip.ranked.length * 0.8 ? 'bg-amber-500' : 'bg-nhs-blue/60')}
                               style={{ width: `${Math.max(2, ((item.Value! - strip.min) / span) * 100)}%` }}
                             />
                           </span>
                           <b className="text-right tabular-nums">{formatValue(item.Value, fmt)}</b>
-                          <span className="text-[11px] tabular-nums text-gray-400">{item.Denominator ? `${formatNumber(item.Denominator)} eligible` : ''}</span>
+                          <span className="hidden text-[11px] tabular-nums text-gray-400 sm:inline">{item.Denominator ? `${formatNumber(item.Denominator)} eligible` : ''}</span>
                         </li>
                       ))}
                     </ol>

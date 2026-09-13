@@ -599,7 +599,7 @@ export default function IndicatorDetailPage() {
     return (
       <div className="flex min-h-screen flex-col">
         <Header />
-        <main className="flex-1 bg-nhs-pale-grey/30 p-6">
+        <main className="flex-1 bg-nhs-pale-grey/30 p-4 sm:p-6">
           <div className="mx-auto max-w-6xl space-y-4">
             <Skeleton className="h-8 w-64" />
             <Skeleton className="h-4 w-96" />
@@ -614,10 +614,10 @@ export default function IndicatorDetailPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex-1 bg-nhs-pale-grey/30 p-6">
+      <main className="flex-1 bg-nhs-pale-grey/30 p-4 sm:p-6">
         <div className="mx-auto max-w-6xl">
           {/* Page header: eyebrow, indicator title, comparison controls */}
-          <div className="mb-4 rounded-lg border border-gray-200 bg-white px-5 py-4">
+          <div className="mb-4 rounded-lg border border-gray-200 bg-white px-4 py-4 sm:px-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-500">
@@ -630,7 +630,7 @@ export default function IndicatorDetailPage() {
                   {!isEngland && <span className="text-gray-400">{organisation?.SystemLevelName}</span>}
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                  <h1 className="text-2xl font-bold text-nhs-dark-blue">{cleanIndicatorTitle(indicator.IndicatorShortName)}</h1>
+                  <h1 className="text-pretty text-xl font-bold text-nhs-dark-blue sm:text-2xl">{cleanIndicatorTitle(indicator.IndicatorShortName)}</h1>
                   <span className="font-mono text-xs text-gray-400">{indicator.IndicatorCode}</span>
                   <span className="flex items-center gap-1.5">
                     <Badge variant={indicator.IndicatorTypeName === 'Outcome' ? 'secondary' : 'default'}>

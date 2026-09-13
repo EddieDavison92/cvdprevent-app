@@ -36,7 +36,7 @@ export function IndicatorName({ row, extra }: { row: LensRow; extra?: ReactNode 
   const name = cleanIndicatorName(row.indicator.IndicatorShortName);
   return (
     <div className="min-w-0">
-      <p className="truncate text-sm text-gray-800 group-hover:text-nhs-blue" title={name}>{name}</p>
+      <p className="text-pretty text-sm text-gray-800 group-hover:text-nhs-blue sm:truncate" title={name}>{name}</p>
       <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-400">
         <span className="font-mono">{row.indicator.IndicatorCode}</span>
         <span className="inline-flex items-center gap-1">

@@ -484,7 +484,7 @@ export default function IndicatorExplorePage() {
     return (
       <div className="flex min-h-screen flex-col">
         <Header />
-        <main className="flex-1 bg-nhs-pale-grey/30 p-6">
+        <main className="flex-1 bg-nhs-pale-grey/30 p-4 sm:p-6">
           <div className="mx-auto max-w-6xl text-center py-20">
             <h1 className="text-xl font-bold text-gray-900 mb-2">Indicator not found</h1>
             <p className="text-gray-500 mb-4">This indicator may not be available for the current time period.</p>
@@ -501,7 +501,7 @@ export default function IndicatorExplorePage() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex-1 bg-nhs-pale-grey/30 p-6">
+      <main className="flex-1 bg-nhs-pale-grey/30 p-4 sm:p-6">
         <div className="mx-auto max-w-6xl">
           {/* Back link */}
           <Link href="/indicators">
@@ -513,8 +513,8 @@ export default function IndicatorExplorePage() {
 
           {/* Indicator header */}
           <div className="mb-4">
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-xl font-bold text-nhs-dark-blue">{indicator.IndicatorShortName}</h1>
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <h1 className="text-pretty text-xl font-bold text-nhs-dark-blue">{indicator.IndicatorShortName}</h1>
               <Badge variant={isOutcome ? 'secondary' : 'default'}>
                 {isOutcome ? 'Outcome' : 'Standard'}
               </Badge>
@@ -556,7 +556,7 @@ export default function IndicatorExplorePage() {
                 setSelectedAreaCode(undefined);
               }}
             >
-              <SelectTrigger className="w-[140px] h-9 text-sm bg-white" aria-label="Geography level">
+              <SelectTrigger className="h-9 w-full bg-white text-sm sm:w-[140px]" aria-label="Geography level">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -574,7 +574,7 @@ export default function IndicatorExplorePage() {
                   setSelectedAreaCode(undefined);
                 }}
               >
-                <SelectTrigger className="w-[240px] h-9 text-sm bg-white" aria-label="Parent scope">
+                <SelectTrigger className="h-9 w-full bg-white text-sm sm:w-[240px]" aria-label="Parent scope">
                   <SelectValue placeholder={isPcn ? `Select ${scopeLevelName}...` : `All ${scopeLevelName}s`} />
                 </SelectTrigger>
                 <SelectContent>
@@ -588,13 +588,13 @@ export default function IndicatorExplorePage() {
               </Select>
             )}
 
-            <div className="h-6 w-px bg-gray-300" />
+            <div className="hidden h-6 w-px bg-gray-300 sm:block" />
 
             <Select
               value={selectedAreaCode ?? 'none'}
               onValueChange={v => setSelectedAreaCode(v === 'none' ? undefined : v)}
             >
-              <SelectTrigger className="w-[260px] h-9 text-sm bg-white" aria-label="Highlight area">
+              <SelectTrigger className="h-9 w-full bg-white text-sm sm:w-[260px]" aria-label="Highlight area">
                 <SelectValue placeholder="Select area to highlight..." />
               </SelectTrigger>
               <SelectContent>

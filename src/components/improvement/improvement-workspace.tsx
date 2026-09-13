@@ -129,7 +129,8 @@ export function ImprovementWorkspace({
                     )}
                   >
                     <Icon className="h-4 w-4" aria-hidden />
-                    {lensLabel(candidate.id, candidate.label)}
+                    <span className="sm:hidden">{lensLabel(candidate.id, candidate.id === 'position' ? 'Position' : candidate.label)}</span>
+                    <span className="hidden sm:inline">{lensLabel(candidate.id, candidate.label)}</span>
                   </button>
                 );
               })}
@@ -141,23 +142,25 @@ export function ImprovementWorkspace({
             <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search indicator or code" className="h-8 w-full bg-white pl-8 text-sm" />
           </label>
         </div>
-        <div className="flex flex-wrap items-center gap-1 border-t border-gray-100 pt-2" role="group" aria-label="Pathway stage">
-          <span className="mr-1 text-xs font-medium text-gray-500">Stage</span>
-          {[{ id: 'all', name: 'All', color: '' }, ...stages].map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              aria-pressed={stage === section.id}
-              onClick={() => setStage(stage === section.id && section.id !== 'all' ? 'all' : section.id)}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue',
-                stage === section.id ? 'border-gray-800 bg-gray-800 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
-              )}
-            >
-              {section.color && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: section.color }} aria-hidden />}
-              {section.name}
-            </button>
-          ))}
+        <div className="-mx-1 overflow-x-auto border-t border-gray-100 pt-2 [scrollbar-width:thin] sm:overflow-visible" role="group" aria-label="Pathway stage">
+          <div className="flex w-max min-w-full items-center gap-1 px-1 sm:w-auto sm:flex-wrap">
+            <span className="mr-1 shrink-0 text-xs font-medium text-gray-500">Stage</span>
+            {[{ id: 'all', name: 'All', color: '' }, ...stages].map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                aria-pressed={stage === section.id}
+                onClick={() => setStage(stage === section.id && section.id !== 'all' ? 'all' : section.id)}
+                className={cn(
+                  'inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue',
+                  stage === section.id ? 'border-gray-800 bg-gray-800 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
+                )}
+              >
+                {section.color && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: section.color }} aria-hidden />}
+                {section.name}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

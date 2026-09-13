@@ -155,7 +155,7 @@ export function InequalitiesLens({ rows, dimension, onDimensionChange }: Inequal
         </>}
       >
         <Select value={effectiveSort} onValueChange={(value) => setSortBy(value as SortOption)}>
-          <SelectTrigger className="h-8 w-auto min-w-40 gap-2 bg-white text-xs" aria-label="Sort">
+          <SelectTrigger className="h-9 w-full min-w-0 gap-2 bg-white text-xs sm:h-8 sm:w-auto sm:min-w-40" aria-label="Sort">
             <span className="text-gray-400">Sort</span>
             <SelectValue />
           </SelectTrigger>
@@ -194,6 +194,8 @@ export function InequalitiesLens({ rows, dimension, onDimensionChange }: Inequal
           These indicators do not publish a {dimensionLabel.toLowerCase()} split for this selection. Try another breakdown above.
         </EmptyLens>
       ) : (
+        <>
+        <p className="px-4 pb-2 text-[11px] text-gray-400 sm:hidden">Swipe sideways to compare every group.</p>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[40rem] border-collapse text-sm">
             <thead>
@@ -214,6 +216,7 @@ export function InequalitiesLens({ rows, dimension, onDimensionChange }: Inequal
             </tbody>
           </table>
         </div>
+        </>
       )}
     </>
   );

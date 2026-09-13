@@ -71,11 +71,11 @@ export function useChartTableActions(opts: {
 
   const actions = useMemo(() => (
     <>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-1 sm:gap-3">
         <button
           type="button"
           onClick={handleExportCSV}
-          className="flex items-center gap-1 text-xs text-gray-500 transition-colors hover:text-gray-700"
+          className="inline-flex min-h-9 items-center gap-1 px-1.5 text-xs text-gray-500 transition-colors hover:text-gray-700"
           title="Download as CSV"
         >
           <Download className="h-3 w-3" />
@@ -84,7 +84,7 @@ export function useChartTableActions(opts: {
         <button
           type="button"
           onClick={toggleView}
-          className="text-xs text-gray-500 transition-colors hover:text-gray-700"
+          className="inline-flex min-h-9 items-center px-1.5 text-xs text-gray-500 transition-colors hover:text-gray-700"
         >
           {viewMode === 'chart' ? 'View as table' : 'View as chart'}
         </button>
@@ -92,7 +92,7 @@ export function useChartTableActions(opts: {
           <button
             type="button"
             onClick={() => setIsFullscreen(true)}
-            className="rounded-md p-1 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue focus-visible:ring-offset-2"
+            className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue focus-visible:ring-offset-2"
             title="View full screen"
             aria-label={`View ${opts.fullscreen.title} full screen`}
           >
@@ -105,7 +105,7 @@ export function useChartTableActions(opts: {
         <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
           <DialogContent
             hideClose
-            className="flex overflow-hidden rounded-xl p-0"
+            className="flex max-h-none overflow-hidden rounded-xl p-0"
             style={{
               inset: 'clamp(0.5rem, 2vw, 1.5rem)',
               width: 'auto',
@@ -116,18 +116,18 @@ export function useChartTableActions(opts: {
             }}
           >
             <div className="flex min-h-0 w-full flex-col">
-              <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-200 px-4 py-3 sm:px-6">
+              <div className="flex shrink-0 flex-col gap-2 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-6">
                 <div className="min-w-0">
-                  <DialogTitle className="truncate text-base sm:text-lg">
+                  <DialogTitle className="text-pretty text-base sm:truncate sm:text-lg">
                     {opts.fullscreen.title}
                   </DialogTitle>
                   {opts.fullscreen.description && (
-                    <DialogDescription className="mt-1 truncate text-xs sm:text-sm">
+                    <DialogDescription className="mt-1 text-pretty text-xs sm:truncate sm:text-sm">
                       {opts.fullscreen.description}
                     </DialogDescription>
                   )}
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
+                <div className="flex shrink-0 flex-wrap items-center gap-1 sm:gap-3">
                   <button
                     type="button"
                     onClick={handleExportCSV}

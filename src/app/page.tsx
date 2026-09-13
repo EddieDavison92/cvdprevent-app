@@ -151,7 +151,7 @@ export default function LandingPage() {
   const listboxId = 'organisation-results';
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-nhs-pale-grey/30">
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-nhs-pale-grey/30">
       {/* Background wash */}
       <div
         aria-hidden

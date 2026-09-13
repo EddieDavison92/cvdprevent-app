@@ -1,10 +1,24 @@
 'use client';
 
-import { memo, forwardRef } from 'react';
+import { memo, forwardRef, useSyncExternalStore } from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { nhsEChartsTheme, defaultChartOptions } from './chart-theme';
 import { NHS_COLORS } from '@/lib/constants/colors';
+
+function subscribeNarrow(onChange: () => void) {
+  const media = window.matchMedia('(max-width: 639px)');
+  media.addEventListener('change', onChange);
+  return () => media.removeEventListener('change', onChange);
+}
+
+function useIsNarrow() {
+  return useSyncExternalStore(
+    subscribeNarrow,
+    () => window.matchMedia('(max-width: 639px)').matches,
+    () => false,
+  );
+}
 
 interface BarChartData {
   name: string;
@@ -50,6 +64,7 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
   barMaxWidth = 60,
   horizontalBarMaxWidth = 14,
 }: BarChartProps, ref) {
+  const isNarrow = useIsNarrow();
   const validData = data.filter((d) => d.value !== null);
 
   // Combine single benchmark with benchmarks array
@@ -86,16 +101,18 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
     ? Math.max(280, validData.length * barHeight + 60)
     : height;
 
-  // Calculate label width based on longest name
-  const maxNameLength = Math.max(...validData.map((d) => d.name.length));
-  const labelWidth = Math.min(280, Math.max(180, maxNameLength * 7));
+  // Keep category labels short on narrow screens so the bars stay visible
+  const maxNameLength = Math.max(...validData.map((d) => d.name.length), 0);
+  const labelWidth = isNarrow
+    ? Math.min(112, Math.max(72, maxNameLength * 5.5))
+    : Math.min(280, Math.max(180, maxNameLength * 7));
 
   const option: EChartsOption = {
     ...defaultChartOptions,
     grid: {
-      left: useHorizontal ? 10 : '3%',
-      right: '4%',
-      bottom: allBenchmarks.length > 0 ? (useHorizontal ? 60 : 72) : (useHorizontal ? 40 : 55),
+      left: useHorizontal ? (isNarrow ? 4 : 10) : '3%',
+      right: isNarrow ? 8 : '4%',
+      bottom: allBenchmarks.length > 0 ? (useHorizontal ? (isNarrow ? 72 : 60) : 72) : (useHorizontal ? 40 : 55),
       top: useHorizontal ? 10 : (title ? '15%' : '5%'),
       containLabel: true,
     },
@@ -110,8 +127,12 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
       ? {
           data: allBenchmarks.map((b) => b.label),
           bottom: 0,
-          itemGap: 20,
-          textStyle: nhsEChartsTheme.legend.textStyle,
+          itemGap: isNarrow ? 8 : 20,
+          width: isNarrow ? '92%' : undefined,
+          textStyle: {
+            ...nhsEChartsTheme.legend.textStyle,
+            fontSize: isNarrow ? 10 : nhsEChartsTheme.legend.textStyle?.fontSize,
+          },
         }
       : undefined,
     tooltip: {
@@ -144,7 +165,7 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
     xAxis: useHorizontal
       ? {
           type: 'value',
-          name: yAxisLabel,
+          name: isNarrow ? undefined : yAxisLabel,
           nameLocation: 'middle',
           nameGap: 25,
           min: yMin,
@@ -154,6 +175,7 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
           splitLine: nhsEChartsTheme.xAxis.splitLine,
           axisLabel: {
             ...nhsEChartsTheme.xAxis.axisLabel,
+            fontSize: isNarrow ? 10 : nhsEChartsTheme.xAxis.axisLabel?.fontSize,
             formatter: (value: number) => formatValue(value).replace(/\.0(%?)$/, '$1'),
           },
         }
@@ -183,6 +205,7 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
             ...nhsEChartsTheme.yAxis.axisLabel,
             width: labelWidth,
             overflow: 'truncate',
+            fontSize: isNarrow ? 10 : nhsEChartsTheme.yAxis.axisLabel?.fontSize,
           },
         }
       : {
