@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import robots from '@/app/robots';
+import { ENGLAND_DASHBOARD_HREF } from '@/lib/constants/geography';
 import {
   cleanIndicatorTitle,
   DEFAULT_TITLE,
@@ -77,6 +78,12 @@ describe('sitemap and robots', () => {
       allow: '/',
       disallow: ['/api/cron/', '/api/feedback'],
     });
+  });
+});
+
+describe('homepage deep links', () => {
+  it('uses the stable England AreaID already used in the app', () => {
+    expect(ENGLAND_DASHBOARD_HREF).toBe('/dashboard?area=1');
   });
 });
 
