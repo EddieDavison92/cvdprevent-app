@@ -24,18 +24,18 @@ export function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full bg-nhs-dark-blue">
-        <div className="flex h-14 items-center justify-between px-4 md:px-6">
+      <header className="sticky top-0 z-50 w-full bg-nhs-dark-blue pt-[env(safe-area-inset-top)]">
+        <div className="flex h-14 items-center justify-between gap-2 px-2 sm:px-4 md:px-6">
           <Link
             href="/"
             onClick={() => clearOrganisation()}
-            className="flex items-center gap-3"
+            className="flex min-w-0 items-center gap-2 sm:gap-3"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10">
               <Heart className="h-5 w-5 text-white" fill="currentColor" />
             </div>
-            <div>
-              <span className="text-lg font-bold tracking-tight text-white">
+            <div className="min-w-0">
+              <span className="text-base font-bold tracking-tight text-white sm:text-lg">
                 CVD<span className="font-normal opacity-80">PREVENT</span>
               </span>
             </div>
@@ -54,19 +54,19 @@ export function Header() {
             </kbd>
           </button>
 
-          <nav className="flex items-center gap-1">
+          <nav className="flex shrink-0 items-center">
             {/* Mobile search button */}
             <button
               onClick={() => setSearchOpen(true)}
               aria-label="Search"
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:hidden"
+              className="inline-flex size-11 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:hidden"
             >
               <Search className="h-4 w-4" aria-hidden />
             </button>
             <Link
               href="/dashboard"
               aria-label="Dashboard"
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              className="inline-flex size-11 items-center justify-center rounded-lg text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:h-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-2"
             >
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -74,7 +74,7 @@ export function Header() {
             <Link
               href="/indicators"
               aria-label="Indicators"
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              className="inline-flex size-11 items-center justify-center rounded-lg text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:h-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-2"
             >
               <List className="h-4 w-4" />
               <span className="hidden sm:inline">Indicators</span>
@@ -82,7 +82,7 @@ export function Header() {
             <Link
               href="/benchmarks"
               aria-label="Benchmarks"
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              className="inline-flex size-11 items-center justify-center rounded-lg text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:h-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-2"
             >
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Benchmarks</span>
@@ -90,7 +90,7 @@ export function Header() {
             <Link
               href="/skills"
               aria-label="Ask AI"
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              className="hidden items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:inline-flex"
             >
               <Bot className="h-4 w-4" />
               <span className="hidden xl:inline">Ask AI</span>

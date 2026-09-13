@@ -25,14 +25,14 @@ export function IndicatorFilters({
   });
 
   return (
-    <div className="flex flex-wrap items-center gap-4">
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-muted-foreground">Time Period:</label>
+    <div className="flex w-full flex-wrap items-center gap-4 sm:w-auto">
+      <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
+        <label className="shrink-0 text-sm font-medium text-muted-foreground">Time Period:</label>
         <Select
           value={selectedPeriodId?.toString()}
           onValueChange={(value) => onPeriodChange(parseInt(value, 10))}
         >
-          <SelectTrigger className="w-[200px] bg-white">
+          <SelectTrigger className="w-full bg-white sm:w-[200px]">
             <SelectValue placeholder="Select period" />
           </SelectTrigger>
           <SelectContent>

@@ -319,7 +319,7 @@ export default function DashboardPage() {
 
           {/* Tabbed Interface */}
           <Tabs value={currentTab} onValueChange={setCurrentTab}>
-            <TabsList variant="line" className="w-full justify-start border-b border-gray-200">
+            <TabsList variant="line" className="h-auto min-h-9 w-full justify-start overflow-x-auto border-b border-gray-200">
               {!isEngland && <TabsTrigger value="overview" className="flex-none px-3">Overview</TabsTrigger>}
               <TabsTrigger value="trends" className="flex-none px-3">Trends</TabsTrigger>
               {!isEngland && <TabsTrigger value="pathways" className="flex-none px-3">Pathways</TabsTrigger>}

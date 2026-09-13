@@ -107,7 +107,7 @@ export function AreaChangeDialog({ compact = false, className }: AreaChangeDialo
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className={cn('h-8 gap-2', className)}>
+        <Button variant="outline" size="sm" className={cn('h-9 min-h-9 gap-2', className)}>
           <RefreshCw className="h-3.5 w-3.5" />
           {compact ? 'Change' : 'Change area'}
         </Button>

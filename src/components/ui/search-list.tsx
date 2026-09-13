@@ -126,7 +126,7 @@ export function SearchResultRow({ active, leading, title, subtitle, trailing, cl
       type="button"
       data-active={active ? 'true' : undefined}
       className={cn(
-        'group flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors focus:outline-none',
+        'group flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left transition-colors focus:outline-none',
         active ? 'bg-nhs-blue/[0.07]' : 'hover:bg-gray-50',
         className
       )}
@@ -173,7 +173,7 @@ export function SearchResultsSkeleton({ rows = 5 }: { rows?: number }) {
 
 export function SearchFooterHints({ className, hints }: { className?: string; hints: { keys: React.ReactNode; label: string }[] }) {
   return (
-    <div className={cn('flex items-center gap-4 border-t border-gray-100 bg-gray-50/60 px-4 py-2 text-[11px] text-gray-500', className)}>
+    <div className={cn('hidden items-center gap-4 border-t border-gray-100 bg-gray-50/60 px-4 py-2 text-[11px] text-gray-500 sm:flex', className)}>
       {hints.map((h) => (
         <span key={h.label} className="inline-flex items-center gap-1.5">
           <Kbd>{h.keys}</Kbd>

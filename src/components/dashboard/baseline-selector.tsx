@@ -107,13 +107,13 @@ export function BaselineSelector() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
       <Label htmlFor="baseline-select" className="flex items-center gap-1.5 text-sm text-gray-600">
         <Target className="h-4 w-4 text-gray-500" />
         Compare with
       </Label>
       <Select value={baseline.AreaID.toString()} onValueChange={handleChange}>
-        <SelectTrigger id="baseline-select" className="h-8 w-[200px] bg-white text-sm">
+        <SelectTrigger id="baseline-select" className="h-9 w-full min-w-0 bg-white text-sm sm:h-8 sm:w-[200px]">
           <SelectValue>{getDisplayName(baseline)}</SelectValue>
         </SelectTrigger>
         {/* popper keeps the list below the trigger; item-aligned clips at the viewport top when the last item is selected */}

@@ -64,7 +64,7 @@ export function FeedbackDialog() {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1 text-nhs-blue underline hover:text-nhs-dark-blue"
+          className="inline-flex min-h-11 items-center gap-1 text-nhs-blue underline hover:text-nhs-dark-blue"
         >
           <MessageSquareText className="h-3.5 w-3.5" aria-hidden="true" />
           Send feedback
@@ -158,7 +158,7 @@ export function FeedbackDialog() {
                 </p>
               ) : null}
 
-              <div className="flex justify-end gap-2 pt-1">
+              <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>

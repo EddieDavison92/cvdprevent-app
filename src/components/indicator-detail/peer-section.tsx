@@ -281,13 +281,13 @@ export function PeerSection({
   return (
     <Card className="gap-2 py-4">
       <CardHeader className="gap-1">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <CardTitle className="text-lg">
             {activeViewMode === 'peers' ? 'Comparison with Peers'
               : activeViewMode === 'national' ? `All ${levelName}s`
                 : `${childLevelName} Breakdown`}
           </CardTitle>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             {chartData.length > 0 && chartActions}
             {showToggle && (
               <div className="flex rounded-lg bg-gray-100 p-0.5">
@@ -296,7 +296,7 @@ export function PeerSection({
                     key={v.key}
                     onClick={() => setManualViewMode(v.key)}
                     className={cn(
-                      'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                      'min-h-8 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
                       activeViewMode === v.key
                         ? 'bg-white text-nhs-blue shadow-sm'
                         : 'text-gray-600 hover:text-gray-900'
@@ -309,7 +309,7 @@ export function PeerSection({
             )}
           </div>
         </div>
-        <CardDescription>{description}</CardDescription>
+        <CardDescription className="text-pretty">{description}</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
