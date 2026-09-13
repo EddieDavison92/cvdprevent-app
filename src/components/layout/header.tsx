@@ -25,11 +25,12 @@ export function Header() {
   return (
     <>
       <header className="sticky top-0 z-50 w-full bg-nhs-dark-blue pt-[env(safe-area-inset-top)]">
-        <div className="flex h-14 items-center justify-between gap-2 px-2 sm:px-4 md:px-6">
+        {/* 1fr / auto / 1fr so the logo and nav widths do not shift the search */}
+        <div className="grid h-14 grid-cols-[1fr_auto_1fr] items-center gap-2 px-2 sm:px-4 md:px-6">
           <Link
             href="/"
             onClick={() => clearOrganisation()}
-            className="flex min-w-0 items-center gap-2 sm:gap-3"
+            className="col-start-1 flex min-w-0 items-center gap-2 justify-self-start sm:gap-3"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10">
               <Heart className="h-5 w-5 text-white" fill="currentColor" aria-hidden />
@@ -41,11 +42,11 @@ export function Header() {
             </div>
           </Link>
 
-          {/* Search trigger */}
+          {/* Search trigger — viewport-centred on sm+; hidden on small screens */}
           <button
             onClick={() => setSearchOpen(true)}
             aria-label="Search organisations, indicators, and pages"
-            className="hidden h-9 min-w-[280px] items-center gap-2.5 rounded-lg border border-white/15 bg-white/10 px-3 text-sm text-white/70 transition-colors hover:border-white/25 hover:bg-white/15 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:flex md:min-w-[360px]"
+            className="col-start-2 hidden h-9 min-w-[280px] items-center gap-2.5 rounded-lg border border-white/15 bg-white/10 px-3 text-sm text-white/70 transition-colors hover:border-white/25 hover:bg-white/15 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:flex md:min-w-[360px]"
           >
             <Search className="h-4 w-4" aria-hidden />
             <span>Search organisations, indicators…</span>
@@ -54,7 +55,7 @@ export function Header() {
             </kbd>
           </button>
 
-          <nav className="flex shrink-0 items-center">
+          <nav className="col-start-3 flex shrink-0 items-center justify-self-end whitespace-nowrap">
             {/* Mobile search button */}
             <button
               onClick={() => setSearchOpen(true)}
