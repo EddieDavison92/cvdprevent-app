@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Kbd,
@@ -139,8 +140,11 @@ export default function LandingPage() {
   // Loading while checking for existing org
   if (isLoadingOrg) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-nhs-pale-grey/30">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-nhs-blue border-t-transparent" />
+      <div className="flex min-h-screen flex-col bg-nhs-pale-grey/30">
+        <div className="flex flex-1 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-nhs-blue border-t-transparent" />
+        </div>
+        <Footer />
       </div>
     );
   }
@@ -324,29 +328,26 @@ export default function LandingPage() {
                 description: 'Browse every CVD indicator',
                 icon: List,
                 iconClass: 'bg-nhs-bright-blue text-white',
-                onClick: () => router.push('/indicators'),
+                href: '/indicators',
               },
               {
                 label: 'Benchmarks',
                 description: 'Rank and compare areas',
                 icon: BarChart3,
                 iconClass: 'bg-nhs-dark-blue text-white',
-                onClick: () => router.push('/benchmarks'),
+                href: '/benchmarks',
               },
               {
                 label: 'Ask with AI',
                 description: 'Query data in ChatGPT or Claude',
                 icon: Bot,
                 iconClass: 'bg-nhs-blue/10 text-nhs-blue',
-                onClick: () => router.push('/skills'),
+                href: '/skills',
               },
-            ].map(({ label, description, icon: Icon, iconClass, onClick }) => (
-              <li key={label} className="flex">
-                <button
-                  type="button"
-                  onClick={onClick}
-                  className="group flex min-h-[4.25rem] w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-nhs-blue/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue/50"
-                >
+            ].map(({ label, description, icon: Icon, iconClass, href, onClick }) => {
+              const className = 'group flex min-h-[4.25rem] w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-nhs-blue/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue/50';
+              const content = (
+                <>
                   <span className={`inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${iconClass}`}>
                     <Icon className="h-4 w-4" aria-hidden />
                   </span>
@@ -358,9 +359,19 @@ export default function LandingPage() {
                     className="h-4 w-4 flex-shrink-0 text-nhs-blue opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100 group-focus-visible:opacity-100"
                     aria-hidden
                   />
-                </button>
-              </li>
-            ))}
+                </>
+              );
+
+              return (
+                <li key={label} className="flex">
+                  {href ? (
+                    <Link href={href} className={className}>{content}</Link>
+                  ) : (
+                    <button type="button" onClick={onClick} className={className}>{content}</button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </nav>
       </main>

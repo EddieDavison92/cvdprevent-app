@@ -2,7 +2,7 @@
 
 An unofficial interface for exploring the [CVDPREVENT](https://www.cvdprevent.nhs.uk) cardiovascular disease prevention audit.
 
-[Open the explorer](https://cvdprevent-explorer.app) · [View the public data source](https://www.cvdprevent.nhs.uk)
+[Open the explorer](https://www.cvdprevent-explorer.app) · [View the public data source](https://www.cvdprevent.nhs.uk)
 
 ## What the app does
 

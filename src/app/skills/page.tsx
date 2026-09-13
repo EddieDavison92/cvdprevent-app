@@ -1,19 +1,15 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Bot } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { CopySkillUrl } from '@/components/skills/copy-skill-url';
+import { ROUTE_SEO, SITE_URL } from '@/lib/seo';
 
-const SKILL_URL = 'https://www.cvdprevent-explorer.app/skill.md';
+const SKILL_URL = `${SITE_URL}/skill.md`;
 const SKILL_SOURCE_URL = '/skills/cvdprevent/SKILL.md';
 const API_REFERENCE_URL = '/api-reference.md';
 
-export const metadata: Metadata = {
-  title: 'Use CVDPREVENT data with an AI assistant',
-  description: 'Copy one URL and give it to ChatGPT, Claude, or another web-enabled assistant to query public aggregate CVDPREVENT data.',
-  alternates: { canonical: '/skills' },
-};
+export const metadata = ROUTE_SEO.skills;
 
 export default function SkillsPage() {
   return (

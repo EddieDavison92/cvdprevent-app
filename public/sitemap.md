@@ -3,6 +3,7 @@
 ## Start
 
 - [Organisation search](https://www.cvdprevent-explorer.app/) — find an ICB, Sub-ICB, PCN or region.
+- [Dashboard](https://www.cvdprevent-explorer.app/dashboard) — review an organisation after selecting it.
 - [Indicators](https://www.cvdprevent-explorer.app/indicators) — browse CVDPREVENT indicators.
 - [Benchmarks](https://www.cvdprevent-explorer.app/benchmarks) — compare NHS organisations.
 - [Use with AI](https://www.cvdprevent-explorer.app/skills) — learn how to give the data skill to an AI assistant.

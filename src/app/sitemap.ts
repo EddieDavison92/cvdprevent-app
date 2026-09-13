@@ -1,29 +1,23 @@
 import type { MetadataRoute } from 'next';
+import { listPublicIndicators, SITE_URL, STATIC_SITEMAP_PATHS } from '@/lib/seo';
 
-const SITE_URL = 'https://www.cvdprevent-explorer.app';
-
-const routes = [
-  '',
-  '/skills',
-  '/indicators',
-  '/benchmarks',
-  '/skill.md',
-  '/skill-examples.md',
-  '/api-reference.md',
-  '/skill-relay.md',
-  '/sitemap.md',
-  '/llms.txt',
-  '/api/cvdprevent',
-  '/api/cvdprevent/polarity',
-];
-
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
+  const indicators = await listPublicIndicators();
 
-  return routes.map((route) => ({
-    url: `${SITE_URL}${route}`,
+  const staticEntries = STATIC_SITEMAP_PATHS.map(({ path, changeFrequency, priority }) => ({
+    url: `${SITE_URL}${path}`,
     lastModified,
-    changeFrequency: route === '' ? 'weekly' : 'monthly',
-    priority: route === '' ? 1 : route === '/skill.md' ? 0.9 : 0.7,
+    changeFrequency,
+    priority,
   }));
+
+  const indicatorEntries = indicators.map((indicator) => ({
+    url: `${SITE_URL}/indicators/${indicator.IndicatorID}`,
+    lastModified,
+    changeFrequency: 'weekly' as const,
+    priority: 0.6,
+  }));
+
+  return [...staticEntries, ...indicatorEntries];
 }

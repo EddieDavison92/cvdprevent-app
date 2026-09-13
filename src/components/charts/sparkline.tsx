@@ -33,7 +33,7 @@ export function Sparkline({
 
   if (validPoints.length < 2) {
     return (
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className={className}>
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className={className} role="img" aria-label="Trend sparkline">
         {validPoints.length === 1 && (
           <circle cx={width / 2} cy={height / 2} r={2.5} fill={color} />
         )}
@@ -77,7 +77,7 @@ export function Sparkline({
   const areaPoints = linePoints + ` ${last.x},${pad.top + plotH} ${first.x},${pad.top + plotH}`;
 
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className={className} role="img">
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className={className} role="img" aria-label="Trend sparkline">
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity={0.15} />
