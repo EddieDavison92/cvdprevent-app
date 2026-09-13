@@ -6,7 +6,7 @@
     "dev": "next dev",
     "test": "vitest run",
     "build": "next build",
-    "test:api": "vitest run",
+    "test:api": "vitest run src/__tests__/api-contracts.test.ts",
     "start": "next start",
     "lint": "eslint",
     "profile:data": "node scripts/profile-api-data.mjs"

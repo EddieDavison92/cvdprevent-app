@@ -1,7 +1,8 @@
 /**
  * API contract tests — verify CVDPREVENT API response shapes match our types.
  * These hit the real API so they double as smoke tests for upstream changes.
- * Run as part of build (`npm run test && next build`).
+ * CI runs this file via `npm run test:api` (GitHub-hosted runners have network).
+ * Locally: `npm test` for the full suite, or `npm run test:api` for this file.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { findSectionForIndicator } from '@/lib/constants/indicator-sections';
