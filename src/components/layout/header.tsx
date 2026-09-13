@@ -26,7 +26,7 @@ export function Header() {
     <>
       <header className="sticky top-0 z-50 w-full bg-nhs-dark-blue pt-[env(safe-area-inset-top)]">
         {/* 1fr / auto / 1fr so the logo and nav widths do not shift the search */}
-        <div className="grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-2 sm:px-4 md:px-6">
+        <div className="grid h-14 grid-cols-[1fr_auto_1fr] items-center gap-2 px-2 sm:px-4 md:px-6">
           <Link
             href="/"
             onClick={() => clearOrganisation()}
@@ -55,7 +55,7 @@ export function Header() {
             </kbd>
           </button>
 
-          <nav className="col-start-3 flex shrink-0 items-center justify-self-end">
+          <nav className="col-start-3 flex shrink-0 items-center justify-self-end whitespace-nowrap">
             {/* Mobile search button */}
             <button
               onClick={() => setSearchOpen(true)}
