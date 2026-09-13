@@ -12,12 +12,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 const FEEDBACK_TYPES = ['Idea', 'Problem', 'Data question', 'Other'] as const;
 
 type SubmitState = 'idle' | 'sending' | 'sent' | 'error';
 
-export function FeedbackDialog() {
+export function FeedbackDialog({ triggerClassName }: { triggerClassName?: string }) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<(typeof FEEDBACK_TYPES)[number]>('Idea');
   const [message, setMessage] = useState('');
@@ -64,7 +65,10 @@ export function FeedbackDialog() {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="inline-flex min-h-11 items-center gap-1 text-nhs-blue underline hover:text-nhs-dark-blue"
+          className={cn(
+            'inline-flex min-h-11 items-center gap-1 rounded-sm font-medium text-nhs-blue underline-offset-2 transition-colors hover:text-nhs-dark-blue hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-nhs-blue/40',
+            triggerClassName,
+          )}
         >
           <MessageSquareText className="h-3.5 w-3.5" aria-hidden="true" />
           Send feedback
