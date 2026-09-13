@@ -32,7 +32,7 @@ export function Header() {
             className="flex min-w-0 items-center gap-2 sm:gap-3"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10">
-              <Heart className="h-5 w-5 text-white" fill="currentColor" />
+              <Heart className="h-5 w-5 text-white" fill="currentColor" aria-hidden />
             </div>
             <div className="min-w-0">
               <span className="text-base font-bold tracking-tight text-white sm:text-lg">
