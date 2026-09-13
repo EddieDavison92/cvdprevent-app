@@ -26,6 +26,10 @@ export const PUBLIC_LEVELS = [
   SYSTEM_LEVELS.PCN,
 ] as const;
 
+/** England's public AreaID is 1 (organisation context and geography tree). */
+export const ENGLAND_AREA_ID = 1;
+export const ENGLAND_DASHBOARD_HREF = `/dashboard?area=${ENGLAND_AREA_ID}`;
+
 // Get the parent level ID
 export function getParentLevel(levelId: number): number | null {
   const index = SYSTEM_LEVEL_ORDER.indexOf(levelId as (typeof SYSTEM_LEVEL_ORDER)[number]);
