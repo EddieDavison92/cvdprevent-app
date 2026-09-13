@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import type { Area } from '@/lib/api/types';
 import { fetchApi } from '@/lib/api/client';
@@ -101,14 +101,22 @@ async function fetchAreaById(areaId: number, timePeriodId: number): Promise<Area
   }
 }
 
+function readAreaIdFromLocation(): number | null {
+  if (typeof window === 'undefined') return null;
+  const area = new URLSearchParams(window.location.search).get('area');
+  const parsed = area ? parseInt(area, 10) : NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function OrganisationProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const pathname = usePathname();
 
   const [organisation, setOrganisationState] = useState<Area | null>(null);
   const [levelId, setLevelId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [urlAreaId, setUrlAreaId] = useState<number | null>(null);
+  const [hasCheckedUrl, setHasCheckedUrl] = useState(false);
   // Lazy read is hydration-safe: baseline-dependent UI only renders once the
   // organisation has loaded, which happens after mount
   const [baseline, setBaselineState] = useState<Area>(() => {
@@ -131,26 +139,28 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
 
   const { data: latestPeriod } = useLatestTimePeriod('standard');
   const latestTimePeriodId = latestPeriod?.TimePeriodID;
+  const hasUrlArea = urlAreaId !== null;
 
-  // Parse URL area param synchronously on first render
-  const areaParam = searchParams.get('area');
-  const parsedUrlAreaId = areaParam ? parseInt(areaParam, 10) : null;
-  const hasUrlArea = parsedUrlAreaId !== null && !isNaN(parsedUrlAreaId);
-
-  // Fetch area from URL param if present
   const { data: urlArea, isLoading: isLoadingUrlArea } = useQuery({
-    queryKey: ['areaDetails', parsedUrlAreaId, latestTimePeriodId],
-    queryFn: () => fetchAreaById(parsedUrlAreaId!, latestTimePeriodId!),
-    enabled: hasUrlArea && !!latestTimePeriodId,
+    queryKey: ['areaDetails', urlAreaId, latestTimePeriodId],
+    queryFn: () => fetchAreaById(urlAreaId!, latestTimePeriodId!),
+    enabled: hasCheckedUrl && hasUrlArea && !!latestTimePeriodId,
     staleTime: Infinity,
   });
 
-  // Initialize from URL param or localStorage. This must run post-mount:
-  // localStorage is browser-only and a lazy initializer would make the first
-  // client render differ from the server HTML (hydration mismatch), while the
-  // URL branch syncs an async fetch result.
-  /* eslint-disable react-hooks/set-state-in-effect -- SSR-safe hydration effect, see above */
+  // Read the area query after mount so useSearchParams does not force the
+  // whole tree (including the homepage explainer) into a client-only fallback.
+  // Initialize from URL param or localStorage post-mount: localStorage is
+  // browser-only and a lazy initializer would mismatch the server HTML.
+  /* eslint-disable react-hooks/set-state-in-effect -- SSR-safe hydration effects, see above */
   useEffect(() => {
+    setUrlAreaId(readAreaIdFromLocation());
+    setHasCheckedUrl(true);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!hasCheckedUrl) return;
+
     if (urlArea) {
       setOrganisationState(urlArea);
       setLevelId(urlArea.SystemLevelID);
@@ -162,7 +172,6 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
       }
       setIsLoading(false);
     } else if (!hasUrlArea) {
-      // No URL param, try localStorage
       const stored = readStoredOrganisation();
       if (stored) {
         setOrganisationState(stored.area);
@@ -170,18 +179,16 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
       }
       setIsLoading(false);
     } else if (hasUrlArea && !isLoadingUrlArea && !urlArea && !!latestTimePeriodId) {
-      // URL area fetch completed but returned null (invalid area ID)
       setIsLoading(false);
     }
-  }, [urlArea, hasUrlArea, isLoadingUrlArea, latestTimePeriodId]);
+  }, [urlArea, hasUrlArea, hasCheckedUrl, isLoadingUrlArea, latestTimePeriodId]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Helper to update URL with area param
   const updateUrlWithArea = useCallback((areaId: number) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search);
     params.set('area', areaId.toString());
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [router, pathname, searchParams]);
+  }, [router, pathname]);
 
   const setOrganisation = useCallback((area: Area) => {
     setOrganisationState(area);
@@ -211,8 +218,7 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
     setOrganisationState(null);
     setLevelId(null);
 
-    // Remove from URL
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search);
     params.delete('area');
     const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     router.replace(newUrl, { scroll: false });
@@ -222,7 +228,7 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
     } catch {
       // Storage failed, continue
     }
-  }, [router, pathname, searchParams]);
+  }, [router, pathname]);
 
   const setBaseline = useCallback((area: Area) => {
     setBaselineState(area);
