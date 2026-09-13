@@ -71,6 +71,7 @@ export function useWithinArea(
       })))
       : [],
   });
+  const dataQueryKey = dataQueries.map((query) => query.data).join();
 
   const byMetric = useMemo(() => {
     const map = new Map<number, SiblingDataItem[]>();
@@ -87,14 +88,16 @@ export function useWithinArea(
     return map;
     // dataQueries is a fresh array each render; depend on its data identity instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requests, parents, dataQueries.map((query) => query.data).join()]);
+  }, [requests, parents, dataQueryKey]);
+
+  const grandchildDataKey = grandchildQueries.map((query) => query.data).join();
 
   const areas = useMemo(() => {
     if (!children) return [];
     if (depth === 'children') return children;
     return grandchildQueries.flatMap((query) => query.data ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [children, depth, grandchildQueries.map((query) => query.data).join()]);
+  }, [children, depth, grandchildDataKey]);
 
   const levelName = useMemo(() => {
     const sample = byMetric.values().next().value?.[0];

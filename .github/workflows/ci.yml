@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint, test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Unit tests do not call the live API. api-contracts.test.ts hits the
+      # public CVDPREVENT API (https://api.cvdprevent.nhs.uk) and is run as
+      # its own step so an upstream outage is obvious in the job log.
+      # GitHub-hosted runners have outbound network, so the contract suite
+      # stays in CI rather than being skipped.
+      - name: Unit tests
+        run: npm test -- --exclude src/__tests__/api-contracts.test.ts
+
+      - name: API contract tests
+        run: npm run test:api
+
+      - name: Build
+        run: npm run build
