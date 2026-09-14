@@ -87,7 +87,7 @@ export function estimatePosition(
 /**
  * Phrase for a favourability percentile (share of peers this area does better than).
  * Position is already polarity-adjusted: higher is more favourable.
- * Values left of the median lead with "behind", not "better than".
+ * Direction uses the unrounded position (below 50 is behind); the displayed percentage is rounded.
  */
 export function formatPeerPercentilePhrase(
   position: number | null | undefined,
@@ -96,7 +96,7 @@ export function formatPeerPercentilePhrase(
   if (position == null || !Number.isFinite(position)) return null;
   const aheadShare = Math.max(0, Math.min(100, Math.round(position)));
   const ofPeers = peers ? ` of ${peers}` : '';
-  if (aheadShare < 50) return `behind ${100 - aheadShare}%${ofPeers}`;
+  if (position < 50) return `behind ${100 - aheadShare}%${ofPeers}`;
   return `ahead of ${aheadShare}%${ofPeers}`;
 }
 

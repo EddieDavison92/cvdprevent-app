@@ -115,6 +115,7 @@ describe('improvement lenses', () => {
     expect(formatPeerPercentilePhrase(7, 'ICBs')).toBe('behind 93% of ICBs');
     expect(formatPeerPercentilePhrase(0, 'ICBs')).toBe('behind 100% of ICBs');
     expect(formatPeerPercentilePhrase(49)).toBe('behind 51%');
+    expect(formatPeerPercentilePhrase(49.6)).toBe('behind 50%');
     expect(formatPeerPercentilePhrase(7.4, 'ICBs')).toBe('behind 93% of ICBs');
   });
 
