@@ -12,6 +12,7 @@ import {
   SITE_URL,
   siteJsonLd,
 } from '@/lib/seo';
+import { Analytics } from '@vercel/analytics/next';
 
 function SuspenseFallback() {
   return (
@@ -75,6 +76,7 @@ export default function RootLayout({
             <OrganisationProvider>{children}</OrganisationProvider>
           </Suspense>
         </QueryProvider>
+        <Analytics />
       </body>
     </html>
   );
