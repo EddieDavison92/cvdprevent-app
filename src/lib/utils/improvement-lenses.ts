@@ -22,7 +22,7 @@ export interface LensRow extends ImprovementRow {
   /** Q80 minus Q20 among peers. */
   spread: number | null;
   spreadIsWide: boolean;
-  /** Estimated share of peers this area does better than, 0–100. */
+  /** Estimated share of peers this area does better than, 0–100. Use formatPeerPercentilePhrase for display. */
   position: number | null;
   /** Latest change with favourable direction positive. */
   favourableChange: number | null;
@@ -82,6 +82,22 @@ export function estimatePosition(
     }
   }
   return Math.round(lowerIsBetter ? 100 - percentile : percentile);
+}
+
+/**
+ * Phrase for a favourability percentile (share of peers this area does better than).
+ * Position is already polarity-adjusted: higher is more favourable.
+ * Direction uses the unrounded position (below 50 is behind); the displayed percentage is rounded.
+ */
+export function formatPeerPercentilePhrase(
+  position: number | null | undefined,
+  peers?: string,
+): string | null {
+  if (position == null || !Number.isFinite(position)) return null;
+  const aheadShare = Math.max(0, Math.min(100, Math.round(position)));
+  const ofPeers = peers ? ` of ${peers}` : '';
+  if (position < 50) return `behind ${100 - aheadShare}%${ofPeers}`;
+  return `ahead of ${aheadShare}%${ofPeers}`;
 }
 
 function patients(gapPp: number | null, denominator: number | null) {

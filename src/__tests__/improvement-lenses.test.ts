@@ -6,6 +6,7 @@ import {
   classifyOpportunityEmpty,
   countUnscoredOpportunity,
   estimatePosition,
+  formatPeerPercentilePhrase,
   opportunityAgainst,
   opportunityFor,
   positionPlotAbsence,
@@ -108,6 +109,46 @@ describe('improvement lenses', () => {
     expect(estimatePosition(60, bounds, true)).toBe(57);
     expect(estimatePosition(40, bounds, false)).toBe(0);
     expect(estimatePosition(85, bounds, false)).toBe(100);
+  });
+
+  it('phrases a low favourability percentile as behind peers, not better than them', () => {
+    expect(formatPeerPercentilePhrase(7, 'ICBs')).toBe('behind 93% of ICBs');
+    expect(formatPeerPercentilePhrase(0, 'ICBs')).toBe('behind 100% of ICBs');
+    expect(formatPeerPercentilePhrase(49)).toBe('behind 51%');
+    expect(formatPeerPercentilePhrase(49.6)).toBe('behind 50%');
+    expect(formatPeerPercentilePhrase(7.4, 'ICBs')).toBe('behind 93% of ICBs');
+  });
+
+  it('phrases a high favourability percentile as ahead of that share of peers', () => {
+    expect(formatPeerPercentilePhrase(85, 'ICBs')).toBe('ahead of 85% of ICBs');
+    expect(formatPeerPercentilePhrase(50, 'PCNs')).toBe('ahead of 50% of PCNs');
+    expect(formatPeerPercentilePhrase(100)).toBe('ahead of 100%');
+  });
+
+  it('omits percentile copy when position is missing', () => {
+    expect(formatPeerPercentilePhrase(null, 'ICBs')).toBeNull();
+    expect(formatPeerPercentilePhrase(undefined)).toBeNull();
+    expect(formatPeerPercentilePhrase(Number.NaN)).toBeNull();
+  });
+
+  it('phrases polarity-adjusted estimates so overtreatment behind peers does not read as better', () => {
+    const [overtreatment] = buildLensRows([
+      indicator('CVDP006HYP', 'Hypertension: Potential antihypertensive overtreatment', [
+        category({ Value: 0.65, Median: 0.58, Min: 0.2, Q20: 0.4, Q40: 0.5, Q60: 0.7, Q80: 0.9, Max: 1.2 }),
+      ], 30),
+    ]);
+    expect(overtreatment.lowerIsBetter).toBe(true);
+    expect(overtreatment.position).toBeLessThan(50);
+    expect(formatPeerPercentilePhrase(overtreatment.position, 'ICBs')).toMatch(/^behind \d+% of ICBs$/);
+
+    const [treated] = buildLensRows([
+      indicator('CVDP002AF', 'AF: Treated with anticoagulants', [
+        category({ Value: 72, Median: 64 }),
+      ], 31),
+    ]);
+    expect(treated.lowerIsBetter).toBe(false);
+    expect(treated.position).toBeGreaterThan(50);
+    expect(formatPeerPercentilePhrase(treated.position, 'ICBs')).toMatch(/^ahead of \d+% of ICBs$/);
   });
 
   it('describes whether the gap to the median is closing', () => {
