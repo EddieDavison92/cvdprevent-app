@@ -9,7 +9,7 @@ import { PeerRangeBar } from '@/components/dashboard/peer-range-bar';
 import { NHS_COLORS } from '@/lib/constants/colors';
 import { formatAbsDiff, formatDiff, formatValue } from '@/lib/utils/format';
 import { buildUrl } from '@/lib/utils/url';
-import { positionPlotAbsence, type LensRow } from '@/lib/utils/improvement-lenses';
+import { formatPeerPercentilePhrase, positionPlotAbsence, type LensRow } from '@/lib/utils/improvement-lenses';
 import { cn } from '@/lib/utils';
 import { cleanIndicatorName, ColumnHeadings, EmptyLens, IndicatorName, LensHeader, MobileLabel } from './lens-shared';
 
@@ -79,6 +79,7 @@ function QuadrantChart({ rows, areaName, systemLevelName, numbers }: { rows: Len
   const ordered = [...points].sort((a, b) => Number(numbers.has(a.indicator.IndicatorID)) - Number(numbers.has(b.indicator.IndicatorID)));
 
   const show = (row: LensRow) => (event: MouseEvent) => setHover({ row, x: event.clientX, y: event.clientY });
+  const hoverPercentile = hover ? formatPeerPercentilePhrase(hover.row.position, systemLevelName) : null;
 
   return (
     <div className="px-2 pt-2 sm:px-4">
@@ -153,7 +154,8 @@ function QuadrantChart({ rows, areaName, systemLevelName, numbers }: { rows: Len
         >
           <p className="font-semibold text-gray-900">{cleanIndicatorName(hover.row.indicator.IndicatorShortName)}</p>
           <p className="mt-1 tabular-nums text-gray-700">
-            <b>{formatValue(hover.row.value, hover.row.indicator.FormatDisplayName)}</b> · median {formatValue(hover.row.peer!.median, hover.row.indicator.FormatDisplayName)} · better than {hover.row.position}% of {systemLevelName}
+            <b>{formatValue(hover.row.value, hover.row.indicator.FormatDisplayName)}</b> · median {formatValue(hover.row.peer!.median, hover.row.indicator.FormatDisplayName)}
+            {hoverPercentile ? ` · ${hoverPercentile}` : ''}
           </p>
           <p className="tabular-nums text-gray-700">
             Latest change {hover.row.trend.change !== null ? formatDiff(hover.row.trend.change, hover.row.indicator.FormatDisplayName) : '—'} · {QUADRANT_LABEL[quadrantOf(hover.row)].toLowerCase()}
@@ -228,10 +230,11 @@ export function PositionLens({ rows, areaName, systemLevelName, hasPeers }: Posi
     let peerTone = 'text-gray-400';
     if (peer) {
       const gapText = formatAbsDiff(peer.gap, fmt);
+      const percentile = formatPeerPercentilePhrase(row.position, systemLevelName);
       if (peer.status === 'recording') { peerLabel = `${gapText} ${peer.gap < 0 ? 'lower' : 'higher'} recording`; peerTone = 'text-gray-500'; }
-      else if (peer.status === 'similar') { peerLabel = `Similar to peers · better than ${row.position}%`; peerTone = 'text-gray-500'; }
-      else if (peer.status === 'favourable') { peerLabel = `${gapText} ahead · better than ${row.position}%`; peerTone = 'text-nhs-green'; }
-      else { peerLabel = `${gapText} behind · better than ${row.position}%`; peerTone = 'text-nhs-red'; }
+      else if (peer.status === 'similar') { peerLabel = percentile ? `Similar to peers · ${percentile}` : 'Similar to peers'; peerTone = 'text-gray-500'; }
+      else if (peer.status === 'favourable') { peerLabel = percentile ? `${gapText} ahead · ${percentile}` : `${gapText} ahead`; peerTone = 'text-nhs-green'; }
+      else { peerLabel = percentile ? `${gapText} behind · ${percentile}` : `${gapText} behind`; peerTone = 'text-nhs-red'; }
     }
     const gapLabel = row.gapDirection === null || row.gapNow === null
       ? null
