@@ -22,7 +22,7 @@ export CVDPREVENT_VERIFY_URL="http://127.0.0.1:${CVDPREVENT_VERIFY_PORT}"
 export CVDPREVENT_VERIFY_RUN="/tmp/cvdprevent-verify-${RUN_ID}"
 mkdir -p "$CVDPREVENT_VERIFY_RUN"
 
-if lsof -iTCP:"$CVDPREVENT_VERIFY_PORT" -sTCP:LISTEN -n -P >/dev/null 2>&1; then
+if curl -s -o /dev/null --connect-timeout 1 "http://127.0.0.1:${CVDPREVENT_VERIFY_PORT}/"; then
   echo "Port $CVDPREVENT_VERIFY_PORT is already in use. Pick another CVDPREVENT_VERIFY_PORT." >&2
   exit 1
 fi
@@ -34,7 +34,7 @@ echo $! > "$CVDPREVENT_VERIFY_RUN/next.pid"
 node .cursor/skills/verify-cvdprevent-app/scripts/control-cvdprevent.mjs wait-ready
 ```
 
-Ready means `GET $CVDPREVENT_VERIFY_URL/` returns 200 with `CVDPREVENT` in the HTML (first compile can take about a minute). Teardown is **Cleanup** below — kill only this PID group.
+Ready means `GET $CVDPREVENT_VERIFY_URL/` returns 200 with `CVDPREVENT` in the HTML (first compile can take about a minute). Teardown is **Cleanup** below — kill only this PID group. `next dev` may write `AGENTS.md` and `CLAUDE.md` at the repo root; leave them untracked.
 
 Two instances can run side by side on different ports, each with its own `CVDPREVENT_VERIFY_RUN` (that directory holds the Chromium profile). Organisation choice is stored in `localStorage` keys `cvdprevent-organisation` and `cvdprevent-baseline`, so never reuse a profile across runs and never drive `:3000` unless this run started it.
 
@@ -117,7 +117,7 @@ If a drive fails, run cleanup before the next attempt so ports and profiles are 
 
 ## Helpers
 
-Executable: `.cursor/skills/verify-cvdprevent-app/scripts/control-cvdprevent.mjs`
+The helper launches Chromium from `PUPPETEER_EXECUTABLE_PATH`, `CHROME_PATH`, or `/opt/google/chrome/chrome` on dedicated CDP port `9333` (`CVDPREVENT_VERIFY_CDP_PORT`). Do not point it at a `PATH` wrapper that reuses a shared profile or debugging port `9222`.
 
 | Command | Purpose |
 | --- | --- |

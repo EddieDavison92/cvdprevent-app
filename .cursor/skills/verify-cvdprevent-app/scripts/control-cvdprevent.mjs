@@ -4,7 +4,7 @@
  * Run from the repo root. Requires CVDPREVENT_VERIFY_RUN and CVDPREVENT_VERIFY_URL.
  */
 
-import { execSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -12,7 +12,7 @@ import puppeteer from 'puppeteer';
 
 const CHROME = process.env.PUPPETEER_EXECUTABLE_PATH
   || process.env.CHROME_PATH
-  || '/usr/local/bin/google-chrome';
+  || '/opt/google/chrome/chrome';
 
 function runDir() {
   const dir = process.env.CVDPREVENT_VERIFY_RUN;
@@ -84,13 +84,49 @@ function pidOwnsAncestor(listenerPid, rootPid) {
   return current === rootPid;
 }
 
-function listeningPids(port) {
-  try {
-    const output = execSync(`lsof -iTCP:${port} -sTCP:LISTEN -n -P -t`, { encoding: 'utf8' });
-    return [...new Set(output.trim().split('\n').filter(Boolean).map(Number))];
-  } catch {
-    return [];
+function parseHexPort(address) {
+  const portHex = address.split(':')[1];
+  return Number.parseInt(portHex, 16);
+}
+
+function listeningInodes(port) {
+  const inodes = new Set();
+  for (const table of ['/proc/net/tcp', '/proc/net/tcp6']) {
+    if (!fs.existsSync(table)) continue;
+    const text = fs.readFileSync(table, 'utf8');
+    for (const line of text.split('\n').slice(1)) {
+      const cols = line.trim().split(/\s+/);
+      if (cols.length < 10 || cols[3] !== '0A') continue;
+      if (parseHexPort(cols[1]) !== port) continue;
+      inodes.add(cols[9]);
+    }
   }
+  return inodes;
+}
+
+function listeningPids(port) {
+  const inodes = listeningInodes(port);
+  if (inodes.size === 0) return [];
+  const pids = new Set();
+  for (const pidName of fs.readdirSync('/proc')) {
+    if (!/^\d+$/.test(pidName)) continue;
+    let fds;
+    try {
+      fds = fs.readdirSync(`/proc/${pidName}/fd`);
+    } catch {
+      continue;
+    }
+    for (const fd of fds) {
+      try {
+        const target = fs.readlinkSync(`/proc/${pidName}/fd/${fd}`);
+        const match = target.match(/^socket:\[(\d+)\]$/);
+        if (match && inodes.has(match[1])) pids.add(Number(pidName));
+      } catch {
+        // skip unreadable descriptors
+      }
+    }
+  }
+  return [...pids];
 }
 
 function portFromUrl(url) {
@@ -106,7 +142,6 @@ function paths(dir) {
   return {
     nextPid: path.join(dir, 'next.pid'),
     browserPid: path.join(dir, 'browser.pid'),
-    browserWs: path.join(dir, 'browser.ws'),
     profile: path.join(dir, 'chrome-profile'),
   };
 }
@@ -201,32 +236,62 @@ async function waitReady() {
   throw new Error(`App was not ready at ${url} within ${timeoutMs}ms (${lastError})`);
 }
 
+function cdpPort() {
+  return Number(process.env.CVDPREVENT_VERIFY_CDP_PORT || 9333);
+}
+
+async function waitForCdp(port, timeoutMs = 20_000) {
+  const started = Date.now();
+  let lastError = 'not tried';
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const response = await fetch(`http://127.0.0.1:${port}/json/version`, { signal: AbortSignal.timeout(500) });
+      if (response.ok) return;
+      lastError = `status=${response.status}`;
+    } catch (error) {
+      lastError = error.message;
+    }
+    await delay(200);
+  }
+  throw new Error(`Chromium CDP did not start on ${port} (${lastError})`);
+}
+
 async function ensureBrowser() {
   const files = paths(runDir());
   fs.mkdirSync(files.profile, { recursive: true });
+  const port = cdpPort();
+  const existingPid = readPid(files.browserPid);
+  const already = Boolean(existingPid && pidAlive(existingPid));
 
-  if (fs.existsSync(files.browserWs)) {
-    const endpoint = fs.readFileSync(files.browserWs, 'utf8').trim();
-    try {
-      const browser = await puppeteer.connect({ browserWSEndpoint: endpoint });
-      return { browser, reconnect: true };
-    } catch {
-      for (const leftover of [files.browserWs, files.browserPid]) {
-        try { fs.unlinkSync(leftover); } catch { /* ignore */ }
-      }
+  if (!already) {
+    if (!fs.existsSync(CHROME)) {
+      throw new Error(`Chrome binary not found at ${CHROME}. Set PUPPETEER_EXECUTABLE_PATH.`);
     }
+    const child = spawn(CHROME, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-extensions',
+      '--no-first-run',
+      '--no-default-browser-check',
+      `--user-data-dir=${files.profile}`,
+      `--remote-debugging-port=${port}`,
+      '--remote-debugging-address=127.0.0.1',
+      '--window-size=1280,800',
+      'about:blank',
+    ], { detached: true, stdio: 'ignore' });
+    child.unref();
+    if (!child.pid) throw new Error('Failed to spawn Chromium');
+    fs.writeFileSync(files.browserPid, String(child.pid));
+    await waitForCdp(port);
   }
 
-  const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: fs.existsSync(CHROME) ? CHROME : undefined,
-    userDataDir: files.profile,
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--window-size=1280,800'],
+  const browser = await puppeteer.connect({
+    browserURL: `http://127.0.0.1:${port}`,
+    defaultViewport: { width: 1280, height: 800 },
   });
-  fs.writeFileSync(files.browserWs, browser.wsEndpoint());
-  const proc = browser.process();
-  if (proc?.pid) fs.writeFileSync(files.browserPid, String(proc.pid));
-  return { browser, reconnect: false };
+  return { browser, reconnect: already };
 }
 
 async function withPage(fn) {
@@ -337,20 +402,11 @@ function killTree(pid) {
 async function browserCommand(subcommand, flags, positional) {
   if (subcommand === 'close') {
     const files = paths(runDir());
-    if (fs.existsSync(files.browserWs)) {
-      try {
-        const browser = await puppeteer.connect({
-          browserWSEndpoint: fs.readFileSync(files.browserWs, 'utf8').trim(),
-        });
-        await browser.close();
-      } catch {
-        const pid = readPid(files.browserPid);
-        if (pid && pidAlive(pid)) process.kill(pid, 'SIGTERM');
-      }
+    const pid = readPid(files.browserPid);
+    if (pid && pidAlive(pid)) {
+      try { process.kill(pid, 'SIGTERM'); } catch { /* ignore */ }
     }
-    for (const leftover of [files.browserWs, files.browserPid]) {
-      try { fs.unlinkSync(leftover); } catch { /* ignore */ }
-    }
+    try { fs.unlinkSync(files.browserPid); } catch { /* ignore */ }
     console.log('ok browser closed');
     return;
   }
@@ -395,7 +451,11 @@ async function browserCommand(subcommand, flags, positional) {
         return;
       }
       if (flags.text) {
-        await page.waitForFunction((needle) => document.body.innerText.includes(needle), { timeout }, flags.text);
+        await page.waitForFunction(
+          (needle) => document.body.innerText.toLowerCase().includes(needle.toLowerCase()),
+          { timeout },
+          flags.text,
+        );
         console.log(`ok text=${JSON.stringify(flags.text)}`);
         return;
       }
