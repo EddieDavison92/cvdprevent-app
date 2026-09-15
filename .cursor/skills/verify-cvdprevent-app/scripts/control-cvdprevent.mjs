@@ -86,8 +86,8 @@ function pidOwnsAncestor(listenerPid, rootPid) {
 
 function listeningPids(port) {
   try {
-    const output = execSync(`ss -ltnp sport = :${port}`, { encoding: 'utf8' });
-    return [...new Set([...output.matchAll(/pid=(\d+)/g)].map((match) => Number(match[1])))];
+    const output = execSync(`lsof -iTCP:${port} -sTCP:LISTEN -n -P -t`, { encoding: 'utf8' });
+    return [...new Set(output.trim().split('\n').filter(Boolean).map(Number))];
   } catch {
     return [];
   }

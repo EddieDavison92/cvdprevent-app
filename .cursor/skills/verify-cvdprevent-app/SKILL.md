@@ -22,7 +22,7 @@ export CVDPREVENT_VERIFY_URL="http://127.0.0.1:${CVDPREVENT_VERIFY_PORT}"
 export CVDPREVENT_VERIFY_RUN="/tmp/cvdprevent-verify-${RUN_ID}"
 mkdir -p "$CVDPREVENT_VERIFY_RUN"
 
-if ss -ltn "sport = :$CVDPREVENT_VERIFY_PORT" | grep -q ":$CVDPREVENT_VERIFY_PORT"; then
+if lsof -iTCP:"$CVDPREVENT_VERIFY_PORT" -sTCP:LISTEN -n -P >/dev/null 2>&1; then
   echo "Port $CVDPREVENT_VERIFY_PORT is already in use. Pick another CVDPREVENT_VERIFY_PORT." >&2
   exit 1
 fi
