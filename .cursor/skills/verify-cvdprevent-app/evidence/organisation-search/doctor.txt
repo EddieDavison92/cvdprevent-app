@@ -1,0 +1,5 @@
+ok pid=2219 alive
+ok port=3100 owned_by=2260
+ok url=http://127.0.0.1:3100 identity=CVDPREVENT
+ok relay=/api/cvdprevent
+ok upstream=timePeriod count=33
