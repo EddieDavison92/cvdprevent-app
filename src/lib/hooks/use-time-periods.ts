@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { getTimePeriods, getLatestPeriod, sortPeriodsByDate } from '@/lib/api';
+import { getTimePeriods, sortPeriodsByDate, type ResolvedLatestPeriods, type TimePeriod } from '@/lib/api';
 
 export function useTimePeriods() {
   return useQuery({
@@ -11,13 +11,34 @@ export function useTimePeriods() {
   });
 }
 
-export function useLatestTimePeriod(type: 'standard' | 'outcome') {
-  const { data: periods, ...rest } = useTimePeriods();
+async function fetchResolvedPeriods(): Promise<ResolvedLatestPeriods> {
+  // The England completeness check stays on the server. A relative URL is only usable in the browser.
+  if (typeof window === 'undefined') {
+    const { getResolvedLatestPeriods } = await import('@/lib/api/time-periods');
+    return getResolvedLatestPeriods();
+  }
 
-  const latestPeriod = periods ? getLatestPeriod(periods, type) : undefined;
+  const response = await fetch('/api/cvdprevent/latest-periods', {
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok) throw new Error('Latest periods are unavailable');
+
+  const body = await response.json() as { standard: TimePeriod | null; outcome: TimePeriod | null };
+  return {
+    standard: body.standard ?? undefined,
+    outcome: body.outcome ?? undefined,
+  };
+}
+
+export function useLatestTimePeriod(type: 'standard' | 'outcome') {
+  const { data, ...rest } = useQuery({
+    queryKey: ['latestTimePeriods'],
+    queryFn: fetchResolvedPeriods,
+    staleTime: Infinity,
+  });
 
   return {
-    data: latestPeriod,
+    data: data?.[type],
     ...rest,
   };
 }
