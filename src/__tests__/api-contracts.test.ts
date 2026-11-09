@@ -24,6 +24,23 @@ function expectKeys(obj: Record<string, unknown>, keys: string[]) {
   }
 }
 
+type MetricCategory = {
+  MetricID: number;
+  MetricCategoryTypeName: string;
+  MetricCategoryName: string;
+};
+
+/** Latest publications do not put a Sex/Persons split on every indicator. */
+function findPersonsMetric(indicators: { Categories: MetricCategory[] }[]) {
+  for (const indicator of indicators) {
+    const metric = indicator.Categories.find(
+      (category) => category.MetricCategoryTypeName === 'Sex' && category.MetricCategoryName === 'Persons',
+    );
+    if (metric) return metric;
+  }
+  return undefined;
+}
+
 // Shared state — initialised once before all tests
 let timePeriodId: number;
 
@@ -129,8 +146,14 @@ describe('GET /indicator/list', () => {
 
 describe('GET /indicator/:id/rawDataJSON', () => {
   it('returns indicatorRawData array with expected fields', async () => {
+    const list = await fetchJSON<{ indicatorList: { IndicatorID: number }[] }>(
+      `/indicator/list?timePeriodID=${timePeriodId}&systemLevelID=1`,
+    );
+    const indicatorId = list.indicatorList[0]?.IndicatorID;
+    expect(indicatorId).toBeTypeOf('number');
+
     const data = await fetchJSON<Record<string, unknown>>(
-      `/indicator/1/rawDataJSON?timePeriodID=${timePeriodId}&systemLevelID=1`
+      `/indicator/${indicatorId}/rawDataJSON?timePeriodID=${timePeriodId}&systemLevelID=1`
     );
 
     expect(data).toHaveProperty('indicatorRawData');
@@ -205,9 +228,7 @@ describe('GET /indicator/siblingData', () => {
     const allData = await fetchJSON<{ indicatorList: { Categories: { MetricID: number; MetricCategoryTypeName: string; MetricCategoryName: string }[] }[] }>(
       `/indicator?timePeriodID=${timePeriodId}&areaID=${icbAreaId}`
     );
-    const personsMetric = allData.indicatorList[0].Categories.find(
-      c => c.MetricCategoryTypeName === 'Sex' && c.MetricCategoryName === 'Persons'
-    );
+    const personsMetric = findPersonsMetric(allData.indicatorList);
     expect(personsMetric).toBeDefined();
 
     const data = await fetchJSON<Record<string, unknown>>(
@@ -251,9 +272,7 @@ describe('GET /indicator/timeSeriesByMetric', () => {
     const allData = await fetchJSON<{ indicatorList: { Categories: { MetricID: number; MetricCategoryTypeName: string; MetricCategoryName: string }[] }[] }>(
       `/indicator?timePeriodID=${timePeriodId}&areaID=${icbAreaId}`
     );
-    const personsMetric = allData.indicatorList[0].Categories.find(
-      c => c.MetricCategoryTypeName === 'Sex' && c.MetricCategoryName === 'Persons'
-    );
+    const personsMetric = findPersonsMetric(allData.indicatorList);
     expect(personsMetric).toBeDefined();
 
     const data = await fetchJSON<Record<string, unknown>>(
