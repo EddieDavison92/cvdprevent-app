@@ -73,7 +73,7 @@ export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recorded
                   : 'text-nhs-red'
           )}>
             {trendDirection === null
-              ? 'Not enough history'
+              ? value == null && chartData.some((v) => v != null) ? 'No current value' : 'Not enough history'
               : trendDirection === 'flat'
                 ? 'Stable'
                 : recordedPrevalence

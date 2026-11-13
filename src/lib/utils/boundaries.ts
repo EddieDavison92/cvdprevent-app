@@ -14,8 +14,8 @@ interface NamedArea {
 }
 
 /** Case- and space-insensitive key; API and ONS names differ in capitalisation. */
-export function normaliseAreaName(name: string): string {
-  return name.trim().replace(/\s+/g, ' ').toLowerCase();
+export function normaliseAreaName(name: string | null | undefined): string {
+  return (name ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 /**
@@ -27,7 +27,7 @@ export function createAreaMatcher<T extends NamedArea>(areas: T[]) {
   const byCode = new Map(areas.map((a) => [a.code, a]));
   const byName = new Map(areas.map((a) => [normaliseAreaName(a.name), a]));
   return (code: string, name: string): T | undefined =>
-    byCode.get(code) ?? byName.get(normaliseAreaName(name ?? ''));
+    byCode.get(code) ?? byName.get(normaliseAreaName(name));
 }
 
 /**

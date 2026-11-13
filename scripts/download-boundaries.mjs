@@ -121,6 +121,14 @@ async function download(b) {
     throw new Error(`No features returned for ${b.name}`);
   }
 
+  // index.json name matching needs a code and name on every feature
+  const incomplete = geojson.features.filter(
+    (f) => typeof f.properties?.[b.codeField] !== 'string' || typeof f.properties?.[b.nameField] !== 'string',
+  );
+  if (incomplete.length) {
+    throw new Error(`${incomplete.length} features in ${b.name} lack a ${b.codeField} or ${b.nameField}`);
+  }
+
   // Normalise field names
   normaliseFeatures(geojson, b);
   return geojson;

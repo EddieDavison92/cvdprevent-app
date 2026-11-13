@@ -163,7 +163,11 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
     return ENGLAND_AREA;
   });
 
-  const { data: latestPeriod, errorUpdateCount: periodErrorCount } = useLatestTimePeriod('standard');
+  const {
+    data: latestPeriod,
+    errorUpdateCount: periodErrorCount,
+    isFetching: isFetchingPeriod,
+  } = useLatestTimePeriod('standard');
   // Sticky across refetches: isError clears while a retry is in flight
   const hasPeriodFailed = periodErrorCount > 0;
   const latestTimePeriodId = latestPeriod?.TimePeriodID;
@@ -208,8 +212,11 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     } else if (hasUrlArea && !isLoadingUrlArea && !urlArea && !!latestTimePeriodId) {
       setIsLoading(false);
+    } else if (hasUrlArea && !latestTimePeriodId && hasPeriodFailed && !isFetchingPeriod) {
+      // Periods failed and no retry is running: the area can't be resolved, so let pages show their error state
+      setIsLoading(false);
     }
-  }, [urlArea, hasUrlArea, hasCheckedUrl, isLoadingUrlArea, latestTimePeriodId]);
+  }, [urlArea, hasUrlArea, hasCheckedUrl, isLoadingUrlArea, latestTimePeriodId, hasPeriodFailed, isFetchingPeriod]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const updateUrlWithArea = useCallback((areaId: number) => {

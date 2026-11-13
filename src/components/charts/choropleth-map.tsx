@@ -318,7 +318,8 @@ export function ChoroplethMap({
     };
     legend.addTo(map);
     legendRef.current = legend;
-  }, [mapReady, baselineValue, baselineName, formatValue, hasNoData]);
+  // geojson: a new boundary file rebuilds the map, and batching can leave mapReady unchanged
+  }, [mapReady, geojson, baselineValue, baselineName, formatValue, hasNoData]);
 
   if (isUnavailable) {
     return (
