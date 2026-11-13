@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Calendar, ChartNoAxesColumnIncreasing } from 'lucide-react';
@@ -134,6 +134,7 @@ function convertToRawData(
     TimePeriodName: '',
     MetricCategoryTypeName: category.MetricCategoryTypeName,
     MetricCategoryName: category.MetricCategoryName,
+    CategoryAttribute: category.CategoryAttribute,
     Numerator: category.Data.Numerator,
     Denominator: category.Data.Denominator,
     Value: category.Data.Value,
@@ -163,6 +164,20 @@ export default function IndicatorExplorePage() {
   const [selectedAreaCode, setSelectedAreaCode] = useState<string | undefined>(
     initialArea ?? undefined,
   );
+
+  // Mirror the controls in the URL so reloads and shared links keep the selection
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('level', String(levelId));
+    if (scopeParentId != null) params.set('parent', String(scopeParentId));
+    else params.delete('parent');
+    if (selectedAreaCode) params.set('area', selectedAreaCode);
+    else params.delete('area');
+    const search = `?${params.toString()}`;
+    if (search !== window.location.search) {
+      window.history.replaceState(window.history.state, '', `${window.location.pathname}${search}${window.location.hash}`);
+    }
+  }, [levelId, scopeParentId, selectedAreaCode]);
 
   // --- Time periods ---
   const { data: stdPeriod, isPending: isPendingStdPeriod } = useLatestTimePeriod('standard');

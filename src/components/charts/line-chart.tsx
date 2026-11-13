@@ -2,24 +2,9 @@
 
 import { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
-import { nhsEChartsTheme, defaultChartOptions } from './chart-theme';
+import { nhsEChartsTheme, defaultChartOptions, chartGrid, AXIS_NAME_GAP } from './chart-theme';
 import { NHS_COLORS, CHART_COLORS } from '@/lib/constants/colors';
-
-// Parse "Mon YY" format to Date for sorting (e.g., "Jun 22" -> Date)
-function parsePeriodDate(period: string): Date {
-  const months: Record<string, number> = {
-    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
-  };
-  const match = period.match(/^([A-Za-z]{3})\s*(\d{2})$/);
-  if (match) {
-    const [, mon, yr] = match;
-    const year = 2000 + parseInt(yr, 10);
-    return new Date(year, months[mon] ?? 0, 1);
-  }
-  // Fallback: try parsing as-is
-  return new Date(period);
-}
+import { parsePeriodDate, stripTrailingZeros } from '@/lib/utils/format';
 
 interface LineChartDataPoint {
   x: string;
@@ -136,13 +121,12 @@ export function LineChart({
         bottom: 0,
         textStyle: nhsEChartsTheme.legend.textStyle,
       },
-      grid: {
+      grid: chartGrid({
         left: '3%',
         right: '4%',
         bottom: series.length > 1 ? '15%' : '10%',
         top: title ? '15%' : '10%',
-        containLabel: true,
-      },
+      }),
       xAxis: {
         type: 'category',
         data: xValues,
@@ -154,13 +138,15 @@ export function LineChart({
         },
         name: xAxisLabel,
         nameLocation: 'middle',
-        nameGap: 35,
+        nameGap: AXIS_NAME_GAP,
+        nameMoveOverlap: true,
       },
       yAxis: {
         type: 'value',
         name: yAxisLabel,
         nameLocation: 'middle',
-        nameGap: 50,
+        nameGap: AXIS_NAME_GAP,
+        nameMoveOverlap: true,
         min: yMin,
         max: yMax,
         axisLine: nhsEChartsTheme.yAxis.axisLine,
@@ -168,7 +154,7 @@ export function LineChart({
         splitLine: nhsEChartsTheme.yAxis.splitLine,
         axisLabel: {
           ...nhsEChartsTheme.yAxis.axisLabel,
-          formatter: (value: number) => formatValue(value).replace(/\.0(%?)$/, '$1'),
+          formatter: (value: number) => stripTrailingZeros(formatValue(value)),
         },
       },
       series: series.map((s, i) => ({

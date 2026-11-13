@@ -197,7 +197,8 @@ export default function DashboardPage() {
 
       const currentData = convertToRawDataFormat(personsCategory, indicator);
       dataMap.set(indicator.IndicatorID, currentData);
-      const orgValue = currentData.Value;
+      // Retired areas return empty Data objects, so Value can be undefined
+      const orgValue = currentData.Value ?? null;
 
       const timeSeries = personsCategory.TimeSeries;
       if (timeSeries && timeSeries.length >= 2) {
@@ -237,7 +238,7 @@ export default function DashboardPage() {
           const baselinePersons = getPersonsData(baselineIndicator);
           if (baselinePersons) {
             baselineMap.set(indicator.IndicatorID, convertToRawDataFormat(baselinePersons, baselineIndicator));
-            baselineValue = baselinePersons.Data.Value;
+            baselineValue = baselinePersons.Data.Value ?? null;
           }
         }
       }

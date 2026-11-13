@@ -12,7 +12,7 @@ export function PolarityBadge({ lowerIsBetter, recordedPrevalence = false }: Pol
     ? 'Higher recording may indicate better detection'
     : lowerIsBetter ? 'Lower is better' : 'Higher is better';
   return (
-    <Badge variant="outline" className="gap-1">
+    <Badge variant="outline" className="max-w-full shrink gap-1 whitespace-normal">
       <Icon className="h-3 w-3" />
       {label}
     </Badge>

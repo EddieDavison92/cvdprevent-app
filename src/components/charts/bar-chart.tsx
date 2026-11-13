@@ -1,24 +1,12 @@
 'use client';
 
-import { memo, forwardRef, useSyncExternalStore } from 'react';
+import { memo, forwardRef } from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
-import { nhsEChartsTheme, defaultChartOptions } from './chart-theme';
+import { nhsEChartsTheme, defaultChartOptions, chartGrid, AXIS_NAME_GAP } from './chart-theme';
+import { stripTrailingZeros } from '@/lib/utils/format';
 import { NHS_COLORS } from '@/lib/constants/colors';
-
-function subscribeNarrow(onChange: () => void) {
-  const media = window.matchMedia('(max-width: 639px)');
-  media.addEventListener('change', onChange);
-  return () => media.removeEventListener('change', onChange);
-}
-
-function useIsNarrow() {
-  return useSyncExternalStore(
-    subscribeNarrow,
-    () => window.matchMedia('(max-width: 639px)').matches,
-    () => false,
-  );
-}
+import { useIsNarrow } from './use-is-narrow';
 
 interface BarChartData {
   name: string;
@@ -90,8 +78,8 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
   const yMax = maxValue <= 100 ? Math.min(100, yMaxRaw) : yMaxRaw;
   const yMin = 0; // Always start at 0 for bar charts
 
-  // Use horizontal bars when there are more than 5 items
-  const useHorizontal = validData.length > 5;
+  // Horizontal bars for longer lists, and on phones where vertical labels collide
+  const useHorizontal = validData.length > (isNarrow ? 2 : 5);
 
   // Fill fullscreen panels when the full ranking remains legible. Longer lists
   // keep their natural height and use the dialog's scrollbar.
@@ -109,13 +97,12 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
 
   const option: EChartsOption = {
     ...defaultChartOptions,
-    grid: {
+    grid: chartGrid({
       left: useHorizontal ? (isNarrow ? 4 : 10) : '3%',
       right: isNarrow ? 8 : '4%',
       bottom: allBenchmarks.length > 0 ? (useHorizontal ? (isNarrow ? 72 : 60) : 72) : (useHorizontal ? 40 : 55),
       top: useHorizontal ? 10 : (title ? '15%' : '5%'),
-      containLabel: true,
-    },
+    }),
     title: title
       ? {
           text: title,
@@ -153,7 +140,9 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
         // Add benchmark comparisons
         for (const b of allBenchmarks) {
           const diff = p.value - b.value;
-          const diffStr = diff >= 0 ? `+${formatValue(diff)}` : formatValue(diff);
+          // Differences between percentages are percentage points
+          const absStr = formatValue(Math.abs(diff)).replace(/%$/, 'pp');
+          const diffStr = `${diff >= 0 ? '+' : '-'}${absStr}`;
           const color = b.color ?? NHS_COLORS.darkGrey;
           html += `<br/><span style="display:inline-block;width:10px;border-top:2px dashed ${color};margin-right:6px;vertical-align:middle"></span>`;
           html += `<span style="color:${NHS_COLORS.darkGrey}">${b.label.split(':')[0]}: ${diffStr}</span>`;
@@ -167,7 +156,8 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
           type: 'value',
           name: isNarrow ? undefined : yAxisLabel,
           nameLocation: 'middle',
-          nameGap: 25,
+          nameGap: AXIS_NAME_GAP,
+          nameMoveOverlap: true,
           min: yMin,
           max: yMax,
           axisLine: nhsEChartsTheme.xAxis.axisLine,
@@ -176,7 +166,7 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
           axisLabel: {
             ...nhsEChartsTheme.xAxis.axisLabel,
             ...(isNarrow ? { fontSize: 10 } : {}),
-            formatter: (value: number) => formatValue(value).replace(/\.0(%?)$/, '$1'),
+            formatter: (value: number) => stripTrailingZeros(formatValue(value)),
           },
         }
       : {
@@ -193,7 +183,8 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
           },
           name: xAxisLabel,
           nameLocation: 'middle',
-          nameGap: 40,
+          nameGap: AXIS_NAME_GAP,
+          nameMoveOverlap: true,
         },
     yAxis: useHorizontal
       ? {
@@ -212,7 +203,8 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
           type: 'value',
           name: yAxisLabel,
           nameLocation: 'middle',
-          nameGap: 50,
+          nameGap: AXIS_NAME_GAP,
+          nameMoveOverlap: true,
           min: yMin,
           max: yMax,
           axisLine: nhsEChartsTheme.yAxis.axisLine,
@@ -220,7 +212,7 @@ export const BarChart = memo(forwardRef<ReactECharts, BarChartProps>(function Ba
           splitLine: nhsEChartsTheme.yAxis.splitLine,
           axisLabel: {
             ...nhsEChartsTheme.yAxis.axisLabel,
-            formatter: (value: number) => formatValue(value).replace(/\.0(%?)$/, '$1'),
+            formatter: (value: number) => stripTrailingZeros(formatValue(value)),
           },
         },
     series: [

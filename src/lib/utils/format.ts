@@ -59,10 +59,28 @@ export function formatTimePeriod(name: string): string {
     .replace(/(\d{4})/g, (_, year) => year.slice(2));
 }
 
-// Format axis tick labels - strip unnecessary trailing decimals (e.g. "60.0%" -> "60%")
+const MONTHS: Record<string, number> = {
+  Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+  Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+};
+
+/** Period end date from a formatTimePeriod label: "Jun 22" or "Jul 24 - Jun 25" (uses the end). */
+export function parsePeriodDate(period: string): Date {
+  const match = period.match(/([A-Za-z]{3})\s*(\d{2})\s*$/);
+  if (match && match[1] in MONTHS) {
+    return new Date(2000 + parseInt(match[2], 10), MONTHS[match[1]], 1);
+  }
+  return new Date(period);
+}
+
+/** Drops trailing decimal zeros from a formatted label: "0.50%" -> "0.5%", "0.00%" -> "0%". */
+export function stripTrailingZeros(label: string): string {
+  return label.replace(/(\.\d*?)0+(\D*)$/, '$1$2').replace(/\.(\D*)$/, '$1');
+}
+
+// Format axis tick labels without trailing decimal zeros (e.g. "60.0%" -> "60%")
 export function formatTick(value: number, format: string): string {
-  const formatted = formatValue(value, format);
-  return formatted.replace(/\.0(%?)$/, '$1');
+  return stripTrailingZeros(formatValue(value, format));
 }
 
 /**

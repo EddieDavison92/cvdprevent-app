@@ -36,9 +36,10 @@ export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recorded
     const chartData = ts.map((p) => p.Value);
     const medianData = ts.map((p) => p.Median ?? null);
 
-    const value = persons.Data.Value;
+    const value = persons.Data.Value ?? null;
 
-    const trend = summariseTrend(ts.map((p) => p.Value));
+    // No trend without a current value (e.g. a retired area's history)
+    const trend = summariseTrend(value == null ? [] : ts.map((p) => p.Value));
     const dir = trend.latest?.direction ?? null;
     const good = lowerIsBetter ? dir === 'down' : dir === 'up';
 
@@ -72,7 +73,7 @@ export function SparklineCard({ indicator, sectionColor, lowerIsBetter, recorded
                   : 'text-nhs-red'
           )}>
             {trendDirection === null
-              ? 'Not enough history'
+              ? value == null && chartData.some((v) => v != null) ? 'No current value' : 'Not enough history'
               : trendDirection === 'flat'
                 ? 'Stable'
                 : recordedPrevalence

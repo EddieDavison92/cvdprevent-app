@@ -87,7 +87,7 @@ function ExplorerSkeleton() {
   return (
     <div className="space-y-4">
       <Skeleton className="h-20 w-full rounded-lg" />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {Array.from({ length: 6 }).map((_, index) => (
           <Skeleton key={index} className="h-72 w-full rounded-lg" />
         ))}

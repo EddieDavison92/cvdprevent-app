@@ -38,12 +38,13 @@ export function HeroSection({
 }: HeroSectionProps) {
   const fmt = (v: number) => formatValue(v, indicator.FormatDisplayName);
 
+  const hasValue = areaData?.Value !== null && areaData?.Value !== undefined;
+
+  // No trend without a current value; history alone would describe an earlier period
   const trendSummary = summariseTrend(
-    trendValues.length >= 2 ? trendValues : [previousData?.Value, areaData?.Value],
+    !hasValue ? [] : trendValues.length >= 2 ? trendValues : [previousData?.Value, areaData?.Value],
   );
   const trend = trendSummary.latest?.change ?? null;
-
-  const hasValue = areaData?.Value !== null && areaData?.Value !== undefined;
   const gap = areaData?.Value != null && baselineData?.Value != null
     ? areaData.Value - baselineData.Value
     : null;

@@ -1,7 +1,9 @@
 'use client';
 
 import ReactECharts from 'echarts-for-react';
-import { nhsEChartsTheme, defaultChartOptions } from './chart-theme';
+import { nhsEChartsTheme, defaultChartOptions, chartGrid, narrowCategoryLabel, AXIS_NAME_GAP } from './chart-theme';
+import { useIsNarrow } from './use-is-narrow';
+import { stripTrailingZeros } from '@/lib/utils/format';
 import { NHS_COLORS } from '@/lib/constants/colors';
 import { DEPRIVATION_LABELS } from '@/lib/api/indicators';
 
@@ -36,6 +38,7 @@ export function DemographicChart({
   height = 200,
   barMaxWidth = 30,
 }: DemographicChartProps) {
+  const isNarrow = useIsNarrow();
   const hasSuppressedData = data.some((d) => d.orgSuppressed || d.baselineSuppressed);
 
   // Shorten long category names for better display
@@ -113,13 +116,12 @@ export function DemographicChart({
       bottom: 0,
       textStyle: { fontSize: 11 },
     },
-    grid: {
+    grid: chartGrid({
       left: '3%',
       right: '4%',
       bottom: hasSuppressedData ? 50 : 35,
       top: 15,
-      containLabel: true,
-    },
+    }),
     xAxis: {
       type: 'category',
       data: categories,
@@ -129,13 +131,15 @@ export function DemographicChart({
         ...nhsEChartsTheme.xAxis.axisLabel,
         rotate: 0,
         interval: 0,
+        ...(isNarrow ? narrowCategoryLabel(categories.length) : {}),
       },
     },
     yAxis: {
       type: 'value',
       name: yAxisLabel,
       nameLocation: 'middle',
-      nameGap: 48,
+      nameGap: AXIS_NAME_GAP,
+      nameMoveOverlap: true,
       min: yMin,
       max: yMax,
       interval: yInterval,
@@ -144,7 +148,7 @@ export function DemographicChart({
       splitLine: nhsEChartsTheme.yAxis.splitLine,
       axisLabel: {
         ...nhsEChartsTheme.yAxis.axisLabel,
-        formatter: (value: number) => formatValue(value).replace(/\.0(%?)$/, '$1'),
+        formatter: (value: number) => stripTrailingZeros(formatValue(value)),
       },
     },
     series: [

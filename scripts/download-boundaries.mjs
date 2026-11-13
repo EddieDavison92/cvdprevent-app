@@ -6,7 +6,8 @@
  *
  * Usage: node scripts/download-boundaries.mjs
  *
- * Output: public/geo/{regions,icbs,sub-icbs,england}.geojson
+ * Output: public/geo/*.geojson, plus index.json listing each file's area codes and names so the
+ * map can pick the vintage that matches the period's data (e.g. 42 vs 36 ICBs).
  */
 
 import { writeFileSync, mkdirSync } from 'fs';
@@ -18,7 +19,8 @@ const OUT_DIR = join(__dirname, '..', 'public', 'geo');
 
 const BASE = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services';
 
-// Each entry: service name, fields to keep, output filename, optional where clause
+// Each entry: service name, fields to keep, output filename, optional where clause.
+// levelId is the CVDPREVENT system level; list newer vintages first (ties pick the first).
 const BOUNDARIES = [
   {
     name: 'NHS Regions',
@@ -28,23 +30,45 @@ const BOUNDARIES = [
     codeField: 'NHSER24CD',
     nameField: 'NHSER24NM',
     outFile: 'regions.geojson',
+    levelId: 6,
+  },
+  // April 2026 ICB mergers (42 -> 36 ICBs). Periods before the merger use the 2023 files.
+  {
+    name: 'ICBs (April 2026)',
+    service: 'Integrated_Care_Boards_April_2026_Boundaries_EN_BGC',
+    fields: 'ICB26CD,ICB26NM',
+    codeField: 'ICB26CD',
+    nameField: 'ICB26NM',
+    outFile: 'icbs-2026.geojson',
+    levelId: 7,
   },
   {
-    name: 'ICBs',
+    name: 'Sub-ICBs (April 2026)',
+    service: 'Sub_Integrated_Care_Board_Locations_April_2026_Boundaries_EN_BSC',
+    fields: 'SICBL26CD,SICBL26NM',
+    codeField: 'SICBL26CD',
+    nameField: 'SICBL26NM',
+    outFile: 'sub-icbs-2026.geojson',
+    levelId: 8,
+  },
+  {
+    name: 'ICBs (April 2023)',
     service: 'Integrated_Care_Boards_April_2023_EN_BGC',
     fields: 'ICB23CD,ICB23NM',
     codeField: 'ICB23CD',
     nameField: 'ICB23NM',
-    outFile: 'icbs.geojson',
+    outFile: 'icbs-2023.geojson',
+    levelId: 7,
   },
   {
-    name: 'Sub-ICBs',
+    name: 'Sub-ICBs (April 2023)',
     // BSC (200m) for Sub-ICBs - good balance of detail vs size for 106 features
     service: 'Sub_Integrated_Care_Board_Locations_April_2023_EN_BSC',
     fields: 'SICBL23CD,SICBL23NM',
     codeField: 'SICBL23CD',
     nameField: 'SICBL23NM',
-    outFile: 'sub-icbs.geojson',
+    outFile: 'sub-icbs-2023.geojson',
+    levelId: 8,
   },
   {
     name: 'England',
@@ -97,14 +121,17 @@ async function download(b) {
     throw new Error(`No features returned for ${b.name}`);
   }
 
+  // index.json name matching needs a code and name on every feature
+  const incomplete = geojson.features.filter(
+    (f) => typeof f.properties?.[b.codeField] !== 'string' || typeof f.properties?.[b.nameField] !== 'string',
+  );
+  if (incomplete.length) {
+    throw new Error(`${incomplete.length} features in ${b.name} lack a ${b.codeField} or ${b.nameField}`);
+  }
+
   // Normalise field names
   normaliseFeatures(geojson, b);
-
-  const outPath = join(OUT_DIR, b.outFile);
-  writeFileSync(outPath, JSON.stringify(geojson));
-
-  const sizeKB = (Buffer.byteLength(JSON.stringify(geojson)) / 1024).toFixed(0);
-  console.log(`  -> ${b.outFile}: ${geojson.features.length} features, ${sizeKB} KB`);
+  return geojson;
 }
 
 async function main() {
@@ -112,15 +139,41 @@ async function main() {
 
   mkdirSync(OUT_DIR, { recursive: true });
 
+  // Download everything before writing, so a failure never leaves files out of step with index.json
+  const results = [];
   for (const b of BOUNDARIES) {
     try {
-      await download(b);
+      results.push({ b, geojson: await download(b) });
     } catch (err) {
       console.error(`  ERROR: ${err.message}`);
       process.exitCode = 1;
     }
   }
+  if (process.exitCode) {
+    console.error('\nNo files written.');
+    return;
+  }
 
+  // { [levelId]: [{ file, codes, names }] }, newest vintage first
+  const index = {};
+  for (const { b, geojson } of results) {
+    const json = JSON.stringify(geojson);
+    writeFileSync(join(OUT_DIR, b.outFile), json);
+    const sizeKB = (Buffer.byteLength(json) / 1024).toFixed(0);
+    console.log(`  -> ${b.outFile}: ${geojson.features.length} features, ${sizeKB} KB`);
+
+    if (b.levelId != null) {
+      const areas = geojson.features.map((f) => f.properties);
+      (index[b.levelId] ??= []).push({
+        file: `/geo/${b.outFile}`,
+        codes: areas.map((a) => a.code),
+        names: areas.map((a) => a.name),
+      });
+    }
+  }
+
+  writeFileSync(join(OUT_DIR, 'index.json'), JSON.stringify(index));
+  console.log('  -> index.json');
   console.log('\nDone. Files saved to public/geo/');
 }
 

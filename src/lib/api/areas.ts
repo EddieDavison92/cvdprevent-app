@@ -1,5 +1,5 @@
 import { fetchApi, fetchApiWithBrowserCache } from './client';
-import type { Area, AreaResponse, SystemLevel, SystemLevelResponse } from './types';
+import { SYSTEM_LEVELS, type Area, type AreaResponse, type SystemLevel, type SystemLevelResponse } from './types';
 import { findKnownParentArea } from '@/lib/utils/geography';
 
 const AREA_LIST_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
@@ -18,6 +18,11 @@ export async function getAreas(timePeriodId: number, systemLevelId: number): Pro
       ttlMs: AREA_LIST_CACHE_TTL_MS,
     }
   );
+  // Since April 2026 the API also lists parentless sub-ICBs (e.g. E38000266) that share a
+  // name with a real sub-ICB but sit outside the hierarchy; leave them out.
+  if (systemLevelId === SYSTEM_LEVELS.SUB_ICB || systemLevelId === SYSTEM_LEVELS.PCN) {
+    return response.areaList.filter((area) => area.Parents.length > 0);
+  }
   return response.areaList;
 }
 
