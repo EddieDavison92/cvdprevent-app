@@ -411,6 +411,12 @@ export default function IndicatorDetailPage() {
     return { nationalAreas, nationalData: personsData };
   }, [nationalRawData, nationalLevelId]);
 
+  // Stable reference so the map doesn't restyle every feature on each render
+  const mapData = useMemo(
+    () => nationalData.map((d) => ({ code: d.AreaCode, name: d.AreaName, value: d.Value })),
+    [nationalData],
+  );
+
   // Find organisation in areasByLevel (has correct Parents array from API)
   const orgFromAreas = useMemo(() => {
     if (!organisation) return null;
@@ -601,8 +607,8 @@ export default function IndicatorDetailPage() {
         <Header />
         <main className="flex-1 bg-nhs-pale-grey/30 p-4 sm:p-6">
           <div className="mx-auto max-w-6xl space-y-4">
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-4 w-96" />
+            <Skeleton className="h-8 w-64 max-w-full" />
+            <Skeleton className="h-4 w-96 max-w-full" />
             <Skeleton className="h-[400px]" />
           </div>
         </main>
@@ -632,7 +638,7 @@ export default function IndicatorDetailPage() {
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   <h1 className="text-pretty text-xl font-bold text-nhs-dark-blue sm:text-2xl">{cleanIndicatorTitle(indicator.IndicatorShortName)}</h1>
                   <span className="font-mono text-xs text-gray-400">{indicator.IndicatorCode}</span>
-                  <span className="flex items-center gap-1.5">
+                  <span className="flex min-w-0 flex-wrap items-center gap-1.5">
                     <Badge variant={indicator.IndicatorTypeName === 'Outcome' ? 'secondary' : 'default'}>
                       {indicator.IndicatorTypeName}
                     </Badge>
@@ -773,11 +779,7 @@ export default function IndicatorDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <ChoroplethMap
-                    data={nationalData.map((d) => ({
-                      code: d.AreaCode,
-                      name: d.AreaName,
-                      value: d.Value,
-                    }))}
+                    data={mapData}
                     levelId={nationalLevelId ?? SYSTEM_LEVELS.ICB}
                     selectedAreaCode={organisation?.AreaCode}
                     baselineValue={baselineData?.Value ?? null}

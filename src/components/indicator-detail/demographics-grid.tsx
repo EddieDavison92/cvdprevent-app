@@ -11,6 +11,7 @@ import { formatValue, formatAbsDiff } from '@/lib/utils/format';
 import {
   findDemographicItem,
   formatDemographicCategoryLabel,
+  formatGroupLabel,
   getAvailableDemographics,
   getDemographicCategoryNames,
   isSuppressedDemographicValue,
@@ -22,9 +23,8 @@ function cleanIndicatorName(name: string): string {
 }
 
 function resultChartTitle(label: string): string {
-  const groupLabel = label.replace(/^By /, '');
-  const isAgeStandardised = /\s*\(Age-standardised\)$/i.test(groupLabel);
-  const groupName = groupLabel.replace(/\s*\(Age-standardised\)$/i, '').toLowerCase();
+  const isAgeStandardised = /\s*\(Age-standardised\)$/i.test(label);
+  const groupName = formatGroupLabel(label.replace(/\s*\(Age-standardised\)$/i, ''));
   return `${isAgeStandardised ? 'Age-standardised result' : 'Result'} by ${groupName}`;
 }
 interface DemographicsGridProps {
@@ -158,7 +158,7 @@ export function DemographicsGrid({ indicator, areaData, baselineData, baselineNa
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {demographics.slice(0, 4).map((demo) => (
           <Card key={demo.type} className="gap-2 py-4">
             <CardHeader className="gap-1">
@@ -198,7 +198,7 @@ export function DemographicsGrid({ indicator, areaData, baselineData, baselineNa
         </p>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {visibleDemographics.map(({ demo, chartData }) => (
           <DemographicCard
             key={demo.type}
@@ -322,8 +322,8 @@ function DemographicCard({
   return (
     <Card className="gap-2 py-4">
       <CardHeader className="gap-1">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">{cardTitle}</CardTitle>
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+          <CardTitle className="min-w-0 text-base">{cardTitle}</CardTitle>
           {chartData.length > 0 && actions}
         </div>
         <CardDescription className="text-xs">

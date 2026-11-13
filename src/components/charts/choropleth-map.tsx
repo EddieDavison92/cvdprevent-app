@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { SYSTEM_LEVELS } from '@/lib/api/types';
 import { NHS_COLORS } from '@/lib/constants/colors';
+import { createAreaMatcher, pickBoundaryFile, type BoundaryIndex } from '@/lib/utils/boundaries';
 
 interface AreaValue {
   code: string;
@@ -23,12 +23,25 @@ interface ChoroplethMapProps {
   height?: number;
 }
 
-// Map system level to boundary file
-const BOUNDARY_FILES: Record<number, string> = {
-  [SYSTEM_LEVELS.REGION]: '/geo/regions.geojson',
-  [SYSTEM_LEVELS.ICB]: '/geo/icbs.geojson',
-  [SYSTEM_LEVELS.SUB_ICB]: '/geo/sub-icbs.geojson',
-};
+// Boundary files per level and vintage, shared across map instances
+let boundaryIndexPromise: Promise<BoundaryIndex> | null = null;
+function loadBoundaryIndex(): Promise<BoundaryIndex> {
+  if (!boundaryIndexPromise) {
+    boundaryIndexPromise = fetch('/geo/index.json').then((res) => {
+      if (!res.ok) throw new Error('Failed to load boundary index');
+      return res.json();
+    });
+    // Allow a retry on the next mount
+    boundaryIndexPromise.catch(() => {
+      boundaryIndexPromise = null;
+    });
+  }
+  return boundaryIndexPromise;
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
 
 // England bounding box — tighter to fill the map container
 const ENGLAND_BOUNDS = L.latLngBounds(
@@ -87,19 +100,25 @@ export function ChoroplethMap({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const geojsonLayerRef = useRef<L.GeoJSON | null>(null);
   const legendRef = useRef<L.Control | null>(null);
+  const [boundaryIndex, setBoundaryIndex] = useState<BoundaryIndex | null>(null);
   const [geojson, setGeojson] = useState<GeoJSON.FeatureCollection | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const boundaryFile = BOUNDARY_FILES[levelId];
+  // Finds a feature's data by code, or by name where the API kept an old code
+  const matchArea = useMemo(() => createAreaMatcher(data), [data]);
 
-  // Build lookup map from area code to value
-  const valueMap = useMemo(() => {
-    const map = new Map<string, AreaValue>();
-    data.forEach((d) => map.set(d.code, d));
-    return map;
-  }, [data]);
+  // Pick the boundary vintage that matches this period's areas
+  const vintages = boundaryIndex?.[levelId];
+  const boundaryFile = useMemo(() => pickBoundaryFile(vintages, data), [vintages, data]);
+  const isUnavailable = boundaryIndex !== null && !boundaryFile;
+
+  // Layer handlers are bound once per boundary file; read current props via a ref
+  const latestRef = useRef({ matchArea, formatValue, selectedAreaCode });
+  useEffect(() => {
+    latestRef.current = { matchArea, formatValue, selectedAreaCode };
+  }, [matchArea, formatValue, selectedAreaCode]);
 
   // Compute min/max for colour scale
   const { min, max, hasNoData } = useMemo(() => {
@@ -111,9 +130,27 @@ export function ChoroplethMap({
     };
   }, [data]);
 
+  useEffect(() => {
+    let cancelled = false;
+    loadBoundaryIndex()
+      .then((index) => {
+        if (!cancelled) setBoundaryIndex(index);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err.message);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Fetch boundary GeoJSON. Missing files are handled in render, not here.
   useEffect(() => {
     if (!boundaryFile) return;
+
+    let cancelled = false;
 
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset fetch status when the file changes
     setLoading(true);
@@ -125,22 +162,26 @@ export function ChoroplethMap({
         return res.json();
       })
       .then((data) => {
+        if (cancelled) return;
         setGeojson(data);
         setLoading(false);
       })
       .catch((err) => {
+        if (cancelled) return;
         setError(err.message);
         setLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [boundaryFile]);
 
   // Style callback for GeoJSON features
   const getStyle = useCallback(
     (feature: GeoJSON.Feature | undefined) => {
       if (!feature) return {};
-      const code = feature.properties?.code;
-      const areaData = valueMap.get(code);
-      const isSelected = code === selectedAreaCode;
+      const areaData = matchArea(feature.properties?.code, feature.properties?.name);
+      const isSelected = areaData != null && areaData.code === selectedAreaCode;
 
       return {
         fillColor: getColor(areaData?.value ?? null, min, max, baselineValue ?? null, lowerIsBetter),
@@ -150,7 +191,7 @@ export function ChoroplethMap({
         fillOpacity: 0.8,
       };
     },
-    [valueMap, min, max, baselineValue, selectedAreaCode, lowerIsBetter]
+    [matchArea, min, max, baselineValue, selectedAreaCode, lowerIsBetter]
   );
 
   // Initialize map
@@ -178,13 +219,15 @@ export function ChoroplethMap({
         onEachFeature: (feature, layer) => {
           const code = feature.properties?.code;
           const areaName = feature.properties?.name;
-          const areaData = valueMap.get(code);
 
-          const tooltipContent = areaData?.value != null
-            ? `<strong>${areaName}</strong><br/>${formatValue(areaData.value)}`
-            : `<strong>${areaName}</strong><br/>No data`;
-
-          layer.bindTooltip(tooltipContent, {
+          layer.bindTooltip(() => {
+            const { matchArea, formatValue } = latestRef.current;
+            const areaData = matchArea(code, areaName);
+            const value = areaData?.value;
+            // Prefer the API name: boundary names can predate a rename
+            const name = escapeHtml(areaData?.name ?? areaName ?? '');
+            return `<strong>${name}</strong><br/>${value != null ? formatValue(value) : 'No data'}`;
+          }, {
             sticky: true,
             className: 'choropleth-tooltip',
           });
@@ -196,7 +239,8 @@ export function ChoroplethMap({
           });
           layer.on('mouseout', (e) => {
             const target = e.target as L.Path;
-            const isSelected = code === selectedAreaCode;
+            const { matchArea, selectedAreaCode } = latestRef.current;
+            const isSelected = matchArea(code, areaName)?.code === selectedAreaCode;
             target.setStyle({
               weight: isSelected ? 3 : 1,
               color: isSelected ? NHS_COLORS.darkBlue : NHS_COLORS.white,
@@ -276,7 +320,7 @@ export function ChoroplethMap({
     legendRef.current = legend;
   }, [mapReady, baselineValue, baselineName, formatValue, hasNoData]);
 
-  if (!boundaryFile) {
+  if (isUnavailable) {
     return (
       <div className="flex items-center justify-center text-sm text-gray-500" style={{ height }}>
         Map view not available for this geography level

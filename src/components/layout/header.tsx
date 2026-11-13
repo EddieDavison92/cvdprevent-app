@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Heart, LayoutDashboard, BarChart3, Bot, List, Search } from 'lucide-react';
+import { Heart, LayoutDashboard, BarChart3, Bot, List, Search, Info, X } from 'lucide-react';
 import { CommandSearch } from './command-search';
 import { useOrganisation } from '@/providers/organisation-context';
+import { getAreaDisplayName } from '@/lib/api/areas';
 
 export function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
-  const { clearOrganisation } = useOrganisation();
+  const { clearOrganisation, retiredArea, dismissRetiredArea } = useOrganisation();
 
   // Global Cmd+K / Ctrl+K shortcut
   useEffect(() => {
@@ -99,6 +100,27 @@ export function Header() {
           </nav>
         </div>
       </header>
+
+      {retiredArea && (
+        <div role="status" className="flex items-start gap-3 border-b border-blue-200 bg-blue-50 px-4 py-2.5 text-sm text-nhs-dark-blue md:px-6">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <p className="flex-1">
+            {getAreaDisplayName(retiredArea.previous)} is not in the latest data, usually because of an NHS
+            reorganisation.{' '}
+            {retiredArea.replacement
+              ? `Showing ${getAreaDisplayName(retiredArea.replacement)}, which now covers it.`
+              : 'Choose another area to continue.'}
+          </p>
+          <button
+            type="button"
+            onClick={dismissRetiredArea}
+            aria-label="Dismiss"
+            className="rounded p-0.5 text-nhs-dark-blue/70 hover:bg-blue-100 hover:text-nhs-dark-blue"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <CommandSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </>

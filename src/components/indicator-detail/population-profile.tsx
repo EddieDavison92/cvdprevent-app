@@ -4,7 +4,8 @@ import { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ChartTableToggle, useChartTableActions, type TableColumn } from '@/components/charts';
-import { nhsEChartsTheme, defaultChartOptions } from '@/components/charts/chart-theme';
+import { nhsEChartsTheme, defaultChartOptions, chartGrid, narrowCategoryLabel } from '@/components/charts/chart-theme';
+import { useIsNarrow } from '@/components/charts/use-is-narrow';
 import { NHS_COLORS } from '@/lib/constants/colors';
 import { DEPRIVATION_LABELS } from '@/lib/api/indicators';
 import type { IndicatorRawData } from '@/lib/api/types';
@@ -14,12 +15,11 @@ import {
 } from '@/lib/utils/population-profile';
 import {
   formatDemographicCategoryLabel,
+  formatGroupLabel,
   getAvailableDemographics,
   getDemographicCategoryNames,
   type DemographicDefinition,
 } from '@/lib/utils/demographics';
-
-const PROFILE_AXIS_LABEL = 'Share of eligible population (%)';
 
 function cleanIndicatorName(name: string): string {
   return name.replace(/\s*\(CVDP?\d+[A-Z]*\)\s*$/i, '').trim();
@@ -53,6 +53,7 @@ function ProfileChart({
   height?: number | string;
   barMaxWidth?: number;
 }) {
+  const isNarrow = useIsNarrow();
   const categories = data.map((d) => DEPRIVATION_LABELS[d.name]?.short ?? formatDemographicCategoryLabel(d.name));
   const hasAreaSuppression = data.some((d) => d.areaSuppressed);
   const hasBaselineSuppression = data.some((d) => d.baselineSuppressed);
@@ -94,13 +95,12 @@ function ProfileChart({
       bottom: 0,
       textStyle: { fontSize: 11 },
     },
-    grid: {
+    grid: chartGrid({
       left: '3%',
       right: '4%',
       bottom: isEngland ? 15 : 35,
       top: 10,
-      containLabel: true,
-    },
+    }),
     xAxis: {
       type: 'category',
       data: categories,
@@ -110,14 +110,11 @@ function ProfileChart({
         ...nhsEChartsTheme.xAxis.axisLabel,
         interval: 0,
         rotate: 0,
+        ...(isNarrow ? narrowCategoryLabel(categories.length) : {}),
       },
     },
     yAxis: {
       type: 'value',
-      name: PROFILE_AXIS_LABEL,
-      nameLocation: 'middle',
-      nameGap: 48,
-      max: (value: { max: number }) => Math.ceil(value.max / 5) * 5,
       axisLine: nhsEChartsTheme.yAxis.axisLine,
       axisTick: nhsEChartsTheme.yAxis.axisTick,
       splitLine: nhsEChartsTheme.yAxis.splitLine,
@@ -172,7 +169,7 @@ function ProfileChart({
       }] : []),
     ],
     animationDuration: 300,
-  }), [data, categories, areaName, baselineName, isEngland, hasAreaSuppression, hasBaselineSuppression, barMaxWidth]);
+  }), [data, categories, areaName, baselineName, isEngland, hasAreaSuppression, hasBaselineSuppression, barMaxWidth, isNarrow]);
 
   return (
     <ReactECharts
@@ -207,7 +204,7 @@ function ProfileCard({
   areaCode?: string;
   timePeriod?: string;
 }) {
-  const groupLabel = demo.label.replace(/^By /, '').toLowerCase();
+  const groupLabel = formatGroupLabel(demo.label);
   const cardTitle = `Eligible population by ${groupLabel}`;
   const indicatorLabel = indicatorName && indicatorCode
     ? `${cleanIndicatorName(indicatorName)} · ${indicatorCode}`
@@ -273,8 +270,8 @@ function ProfileCard({
   return (
     <Card className="gap-2 py-4">
       <CardHeader className="gap-1">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">{cardTitle}</CardTitle>
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+          <CardTitle className="min-w-0 text-base">{cardTitle}</CardTitle>
           {shares.length > 0 && actions}
         </div>
         <CardDescription className="text-xs">
@@ -340,12 +337,12 @@ export function PopulationProfile({
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {demographics.slice(0, 4).map((demo) => (
           <Card key={demo.type} className="gap-2 py-4">
             <CardHeader className="gap-1">
               <CardTitle className="text-base">
-                Eligible population {demo.label.toLowerCase()}
+                Eligible population by {formatGroupLabel(demo.label)}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -372,7 +369,7 @@ export function PopulationProfile({
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {profiles.map(({ demo, shares }) => (
         <ProfileCard
           key={demo.type}

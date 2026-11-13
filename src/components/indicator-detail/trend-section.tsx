@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { LineChart } from '@/components/charts/line-chart';
 import { ChartTableToggle, useChartTableActions, type TableColumn } from '@/components/charts';
 import type { Indicator } from '@/lib/api/types';
-import { formatValue, formatDiff } from '@/lib/utils/format';
+import { formatValue, formatDiff, parsePeriodDate } from '@/lib/utils/format';
 import { NHS_COLORS } from '@/lib/constants/colors';
 
 interface TrendDataPoint {
@@ -73,7 +73,8 @@ export function TrendSection({
       ...baselineTrendData.map((d) => d.period),
     ]);
 
-    const sorted = Array.from(periods).sort();
+    const sorted = Array.from(periods)
+      .sort((a, b) => parsePeriodDate(a).getTime() - parsePeriodDate(b).getTime());
 
     return sorted.map((period, idx) => {
       const areaPoint = areaTrendData.find((d) => d.period === period);

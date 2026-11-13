@@ -2,10 +2,13 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Area } from '@/lib/api/types';
 import { fetchApi } from '@/lib/api/client';
+import { getChildLevel } from '@/lib/constants/geography';
+import { findSuccessorArea } from '@/lib/utils/geography';
 import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
+import { areasQueryOptions } from '@/lib/hooks/use-areas';
 
 const STORAGE_KEY = 'cvdprevent-organisation';
 const BASELINE_STORAGE_KEY = 'cvdprevent-baseline';
@@ -29,6 +32,13 @@ interface AreaDetailsResponse {
   areaDetails: Area & { ChildAreaList?: Area[]; ParentAreaList?: Area[] };
 }
 
+/** A saved area that no longer exists in the latest period, e.g. an ICB merged in April 2026. */
+export interface RetiredAreaNotice {
+  previous: Area;
+  /** Area now covering it, or null if it could not be resolved. */
+  replacement: Area | null;
+}
+
 interface OrganisationContextValue {
   organisation: Area | null;
   levelId: number | null;
@@ -41,6 +51,8 @@ interface OrganisationContextValue {
   setBaseline: (area: Area) => void;
   resetBaseline: () => void;
   isBaselineEngland: boolean;
+  retiredArea: RetiredAreaNotice | null;
+  dismissRetiredArea: () => void;
 }
 
 const OrganisationContext = createContext<OrganisationContextValue | null>(null);
@@ -81,13 +93,17 @@ function readStoredOrganisation(): StoredOrganisation | null {
   }
 }
 
+async function fetchAreaDetails(areaId: number, timePeriodId: number) {
+  const response = await fetchApi<AreaDetailsResponse>(
+    `/area/${areaId}/details?timePeriodID=${timePeriodId}`
+  );
+  return response.areaDetails;
+}
+
 // Fetch area details by ID
 async function fetchAreaById(areaId: number, timePeriodId: number): Promise<Area | null> {
   try {
-    const response = await fetchApi<AreaDetailsResponse>(
-      `/area/${areaId}/details?timePeriodID=${timePeriodId}`
-    );
-    const details = response.areaDetails;
+    const details = await fetchAreaDetails(areaId, timePeriodId);
     return {
       AreaCode: details.AreaCode,
       AreaID: details.AreaID,
@@ -101,8 +117,13 @@ async function fetchAreaById(areaId: number, timePeriodId: number): Promise<Area
   }
 }
 
+/** Routes where `?area=` is an AreaID. Explorer and benchmarks use it for an area code. */
+function ownsAreaParam(path: string): boolean {
+  return path === '/' || path.startsWith('/dashboard');
+}
+
 function readAreaIdFromLocation(): number | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined' || !ownsAreaParam(window.location.pathname)) return null;
   const area = new URLSearchParams(window.location.search).get('area');
   const parsed = area ? parseInt(area, 10) : NaN;
   return Number.isFinite(parsed) ? parsed : null;
@@ -111,6 +132,11 @@ function readAreaIdFromLocation(): number | null {
 export function OrganisationProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const queryClient = useQueryClient();
+  const [retiredArea, setRetiredArea] = useState<RetiredAreaNotice | null>(null);
+  // Area confirmed to exist in the latest period; saved areas are hidden until checked
+  const [validatedAreaId, setValidatedAreaId] = useState<number | null>(null);
+  const [validatedBaselineId, setValidatedBaselineId] = useState<number | null>(null);
 
   const [organisation, setOrganisationState] = useState<Area | null>(null);
   const [levelId, setLevelId] = useState<number | null>(null);
@@ -137,7 +163,9 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
     return ENGLAND_AREA;
   });
 
-  const { data: latestPeriod } = useLatestTimePeriod('standard');
+  const { data: latestPeriod, errorUpdateCount: periodErrorCount } = useLatestTimePeriod('standard');
+  // Sticky across refetches: isError clears while a retry is in flight
+  const hasPeriodFailed = periodErrorCount > 0;
   const latestTimePeriodId = latestPeriod?.TimePeriodID;
   const hasUrlArea = urlAreaId !== null;
 
@@ -185,12 +213,16 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const updateUrlWithArea = useCallback((areaId: number) => {
+    if (!ownsAreaParam(pathname)) return;
     const params = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search);
     params.set('area', areaId.toString());
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [router, pathname]);
 
   const setOrganisation = useCallback((area: Area) => {
+    // Pickers list latest-period areas, so a chosen area needs no retirement check
+    setValidatedAreaId(area.AreaID);
+    setRetiredArea(null);
     setOrganisationState(area);
     setLevelId(area.SystemLevelID);
 
@@ -217,11 +249,14 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
   const clearOrganisation = useCallback(() => {
     setOrganisationState(null);
     setLevelId(null);
+    setRetiredArea(null);
 
-    const params = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search);
-    params.delete('area');
-    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-    router.replace(newUrl, { scroll: false });
+    if (ownsAreaParam(pathname)) {
+      const params = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search);
+      params.delete('area');
+      const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+      router.replace(newUrl, { scroll: false });
+    }
 
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -231,6 +266,7 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
   }, [router, pathname]);
 
   const setBaseline = useCallback((area: Area) => {
+    setValidatedBaselineId(area.AreaID);
     setBaselineState(area);
     try {
       localStorage.setItem(BASELINE_STORAGE_KEY, JSON.stringify(area));
@@ -248,22 +284,108 @@ export function OrganisationProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const isEngland = organisation?.SystemLevelID === 1;
+  // Areas list for a level in the latest period, shared with useAreas' cache
+  const fetchLatestAreas = useCallback(
+    (levelId: number) => queryClient.fetchQuery(areasQueryOptions(latestTimePeriodId, levelId)),
+    [queryClient, latestTimePeriodId],
+  );
+
+  // Replace a saved organisation that was retired (e.g. merged ICB) with its successor.
+  useEffect(() => {
+    if (!organisation || organisation.SystemLevelID === 1 || !latestTimePeriodId) return;
+    if (validatedAreaId === organisation.AreaID) return;
+    const retired = organisation;
+    let cancelled = false;
+    let isConfirmedRetired = false;
+
+    // Clear the notice before replacing: setOrganisation/clearOrganisation reset it
+    const retire = (replacement: Area | null) => {
+      if (replacement) setOrganisation(replacement);
+      else clearOrganisation();
+      setRetiredArea({ previous: retired, replacement });
+    };
+
+    (async () => {
+      const current = await fetchLatestAreas(retired.SystemLevelID);
+      if (current.some((a) => a.AreaID === retired.AreaID)) {
+        if (!cancelled) setValidatedAreaId(retired.AreaID);
+        return;
+      }
+      isConfirmedRetired = true;
+
+      let replacement: Area | null = null;
+      const childLevelId = getChildLevel(retired.SystemLevelID);
+      if (childLevelId) {
+        const [details, children] = await Promise.all([
+          fetchAreaDetails(retired.AreaID, latestTimePeriodId),
+          fetchLatestAreas(childLevelId),
+        ]);
+        const childIds = details.ChildAreaList?.map((c) => c.AreaID) ?? [];
+        replacement = findSuccessorArea(childIds, children, current);
+      }
+      if (!cancelled) retire(replacement);
+    })().catch(() => {
+      if (cancelled) return;
+      // A confirmed-retired area has no current data, so drop it even if the successor lookup failed.
+      // Otherwise keep it: data views show their own errors.
+      if (isConfirmedRetired) retire(null);
+      else setValidatedAreaId(retired.AreaID);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [organisation, validatedAreaId, latestTimePeriodId, fetchLatestAreas, setOrganisation, clearOrganisation]);
+
+  // A retired baseline has no data in the latest period; fall back to England
+  useEffect(() => {
+    if (baseline.SystemLevelID === 1 || !latestTimePeriodId) return;
+    let cancelled = false;
+    fetchLatestAreas(baseline.SystemLevelID)
+      .then((current) => {
+        if (cancelled) return;
+        if (current.some((a) => a.AreaID === baseline.AreaID)) setValidatedBaselineId(baseline.AreaID);
+        else resetBaseline();
+      })
+      .catch(() => {
+        if (!cancelled) setValidatedBaselineId(baseline.AreaID);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [baseline, latestTimePeriodId, fetchLatestAreas, resetBaseline]);
+
+  const dismissRetiredArea = useCallback(() => setRetiredArea(null), []);
+
+  // Hide a saved area until it is confirmed current, so a merged ICB's empty data never shows.
+  // If periods have failed to load, release it so pages can show their API error state.
+  const isValidating = !hasPeriodFailed
+    && organisation !== null
+    && organisation.SystemLevelID !== 1
+    && validatedAreaId !== organisation.AreaID;
+  const exposedOrganisation = isValidating ? null : organisation;
+  const isValidatingBaseline = !hasPeriodFailed
+    && baseline.SystemLevelID !== 1
+    && validatedBaselineId !== baseline.AreaID;
+
+  const isEngland = exposedOrganisation?.SystemLevelID === 1;
   const isBaselineEngland = baseline.AreaID === 1;
 
   return (
     <OrganisationContext.Provider
       value={{
-        organisation,
-        levelId,
+        organisation: exposedOrganisation,
+        levelId: isValidating ? null : levelId,
         setOrganisation,
         clearOrganisation,
         isEngland,
-        isLoading,
+        isLoading: isLoading || isValidating || isValidatingBaseline,
         baseline,
         setBaseline,
         resetBaseline,
         isBaselineEngland,
+        retiredArea,
+        dismissRetiredArea,
       }}
     >
       {children}

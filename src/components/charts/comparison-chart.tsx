@@ -1,7 +1,8 @@
 'use client';
 
 import ReactECharts from 'echarts-for-react';
-import { nhsEChartsTheme, defaultChartOptions } from './chart-theme';
+import { nhsEChartsTheme, defaultChartOptions, AXIS_NAME_GAP } from './chart-theme';
+import { stripTrailingZeros } from '@/lib/utils/format';
 import { NHS_COLORS, COMPARISON_COLORS } from '@/lib/constants/colors';
 
 interface ComparisonData {
@@ -88,13 +89,14 @@ export function ComparisonChart({
       type: 'value',
       name: yAxisLabel,
       nameLocation: 'middle',
-      nameGap: 50,
+      nameGap: AXIS_NAME_GAP,
+      nameMoveOverlap: true,
       axisLine: nhsEChartsTheme.yAxis.axisLine,
       axisTick: nhsEChartsTheme.yAxis.axisTick,
       splitLine: nhsEChartsTheme.yAxis.splitLine,
       axisLabel: {
         ...nhsEChartsTheme.yAxis.axisLabel,
-        formatter: (value: number) => formatValue(value).replace(/\.0(%?)$/, '$1'),
+        formatter: (value: number) => stripTrailingZeros(formatValue(value)),
       },
     },
     series: [

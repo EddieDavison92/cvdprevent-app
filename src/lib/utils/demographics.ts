@@ -80,3 +80,12 @@ export function findDemographicItem(
 export function isSuppressedDemographicValue(item: IndicatorRawData | undefined): boolean {
   return item?.Value == null && /suppress/i.test(item?.ValueNote ?? '');
 }
+
+/** "By Severe Mental Illness (SMI)" -> "severe mental illness (SMI)"; keeps acronyms. */
+export function formatGroupLabel(label: string): string {
+  return label
+    .replace(/^By /, '')
+    .split(' ')
+    .map((word) => (/^\(?[A-Z]{2,}\)?$/.test(word) ? word : word.toLowerCase()))
+    .join(' ');
+}

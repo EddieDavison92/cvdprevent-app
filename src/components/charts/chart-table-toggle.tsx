@@ -71,7 +71,7 @@ export function useChartTableActions(opts: {
 
   const actions = useMemo(() => (
     <>
-      <div className="flex flex-wrap items-center gap-1 sm:gap-3">
+      <div className="flex flex-wrap items-center gap-1 sm:shrink-0 sm:gap-3">
         <button
           type="button"
           onClick={handleExportCSV}

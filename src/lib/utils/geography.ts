@@ -91,3 +91,27 @@ export function getSiblings(node: GeographyNode): GeographyNode[] {
   if (!node.parent) return [];
   return node.parent.children.filter((n) => n.code !== node.code);
 }
+
+/**
+ * Finds the current area that replaced a retired one (e.g. an ICB merged in April 2026).
+ * The retired area's children are mapped to their current parents; returns the area only
+ * when all children found in the current period point to the same one, so splits are
+ * left unresolved. Children missing from the current period are ignored.
+ */
+export function findSuccessorArea(
+  childAreaIds: number[],
+  currentChildAreas: Area[],
+  currentAreas: Area[],
+): Area | null {
+  const childById = new Map(currentChildAreas.map((a) => [a.AreaID, a]));
+  const areaById = new Map(currentAreas.map((a) => [a.AreaID, a]));
+  const successors = new Set<Area>();
+
+  for (const childId of childAreaIds) {
+    const child = childById.get(childId);
+    const parent = child ? findKnownParentArea(child, areaById) : undefined;
+    if (parent) successors.add(parent);
+  }
+
+  return successors.size === 1 ? [...successors][0] : null;
+}

@@ -49,7 +49,7 @@ export function IndicatorSummaryGrid({
   // Show skeleton grid only while fetching indicator list
   if (isLoadingIndicators) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {Array.from({ length: 12 }).map((_, i) => (
           <SkeletonCard key={i} />
         ))}
@@ -66,7 +66,7 @@ export function IndicatorSummaryGrid({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {indicators.map((indicator) => (
         <IndicatorSummaryCard
           key={indicator.IndicatorID}

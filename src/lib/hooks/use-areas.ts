@@ -13,12 +13,19 @@ export function useSystemLevels(timePeriodId: number | undefined) {
   });
 }
 
+/** Query options for a period's area list, shared with OrganisationProvider's cache reads. */
+export function areasQueryOptions(timePeriodId: number | undefined, systemLevelId: number | undefined) {
+  return {
+    queryKey: ['areas', timePeriodId, systemLevelId] as const,
+    queryFn: () => getAreas(timePeriodId!, systemLevelId!),
+    staleTime: Infinity,
+  };
+}
+
 export function useAreas(timePeriodId: number | undefined, systemLevelId: number | undefined) {
   return useQuery({
-    queryKey: ['areas', timePeriodId, systemLevelId],
-    queryFn: () => getAreas(timePeriodId!, systemLevelId!),
+    ...areasQueryOptions(timePeriodId, systemLevelId),
     enabled: !!timePeriodId && !!systemLevelId,
-    staleTime: Infinity,
   });
 }
 
