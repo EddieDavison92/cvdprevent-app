@@ -25,7 +25,7 @@ import { useLatestTimePeriod } from '@/lib/hooks/use-time-periods';
 import { useAreaIndicators, getPersonsData } from '@/lib/hooks/use-area-indicators';
 import { extractCondition } from '@/lib/utils/format';
 import { classifyIndicator, getDashboardSections, isLowerBetterIndicator } from '@/lib/constants/indicator-sections';
-import { COMPARISON_TOLERANCE } from '@/lib/constants/comparison';
+import { classifyBaselineGap } from '@/lib/constants/comparison';
 import type { IndicatorCategoryData, IndicatorWithData } from '@/lib/api/types';
 import { ApiUnavailable } from '@/components/api-status-banner';
 import { getTrendDirection } from '@/lib/utils/trend';
@@ -212,22 +212,20 @@ export default function DashboardPage() {
         }
       }
 
-      // Count trends for England mode
-      if (isEngland && orgValue !== null && !isRecordedPrevalence) {
-        const prevData = prevMap.get(indicator.IndicatorID);
-        if (prevData?.Value !== null && prevData?.Value !== undefined) {
-          const change = orgValue - prevData.Value;
-          const direction = getTrendDirection(
-            change,
-            timeSeries.map(point => point.Value),
-          );
-          if (direction === 'flat') stable++;
-          else {
-            const lowerIsBetter = isLowerBetterIndicator(indicator.IndicatorCode, indicator);
-            const isImproving = lowerIsBetter ? direction === 'down' : direction === 'up';
-            if (isImproving) improving++;
-            else declining++;
-          }
+      // Count trends for England mode. Missing values are not finite and are not counted.
+      const previousValue = prevMap.get(indicator.IndicatorID)?.Value;
+      if (isEngland && Number.isFinite(orgValue) && Number.isFinite(previousValue) && !isRecordedPrevalence) {
+        const change = Number(orgValue) - Number(previousValue);
+        const direction = getTrendDirection(
+          change,
+          timeSeries.map(point => point.Value),
+        );
+        if (direction === 'flat') stable++;
+        else {
+          const lowerIsBetter = isLowerBetterIndicator(indicator.IndicatorCode, indicator);
+          const isImproving = lowerIsBetter ? direction === 'down' : direction === 'up';
+          if (isImproving) improving++;
+          else declining++;
         }
       }
 
@@ -243,13 +241,16 @@ export default function DashboardPage() {
         }
       }
 
-      if (orgValue !== null && baselineValue !== null && !isEngland && !isRecordedPrevalence) {
-        const diff = orgValue - baselineValue;
-        const effectiveDiff = isLowerBetterIndicator(indicator.IndicatorCode, indicator) ? -diff : diff;
-        const isSignificant = Math.abs(diff) > COMPARISON_TOLERANCE;
-        if (isSignificant && effectiveDiff > 0) favourable++;
-        else if (isSignificant && effectiveDiff < 0) unfavourable++;
-        else at++;
+      // Empty area data is undefined, not null. Only finite values can be in line.
+      if (Number.isFinite(orgValue) && Number.isFinite(baselineValue) && !isEngland && !isRecordedPrevalence) {
+        const gap = classifyBaselineGap(
+          orgValue,
+          baselineValue,
+          isLowerBetterIndicator(indicator.IndicatorCode, indicator),
+        );
+        if (gap === 'favourable') favourable++;
+        else if (gap === 'unfavourable') unfavourable++;
+        else if (gap === 'inLine') at++;
       }
     });
 

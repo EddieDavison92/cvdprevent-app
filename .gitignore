@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+.cursor/skills/verify-cvdprevent-app/evidence/**
 
 # next.js
 /.next/

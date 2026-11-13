@@ -1,6 +1,6 @@
 import { fetchApiNoCache } from '@/lib/api/client';
-import { getLatestPeriod } from '@/lib/api/time-periods';
-import { SYSTEM_LEVELS, type Indicator, type IndicatorResponse, type TimePeriod, type TimePeriodResponse } from '@/lib/api/types';
+import { getFreshLatestPeriods } from '@/lib/api/time-periods';
+import { SYSTEM_LEVELS, type Indicator, type IndicatorResponse, type TimePeriod } from '@/lib/api/types';
 import { classifyIndicator, DASHBOARD_SECTIONS } from '@/lib/constants/indicator-sections';
 import { CONDITION_PATHWAYS, findPathwayByIndicatorCode, getConditionFromCode } from '@/lib/constants/pathways';
 
@@ -93,9 +93,7 @@ async function fetchIndicators(periodId: number) {
 }
 
 export async function fetchCatalogSnapshot(): Promise<CatalogSnapshot> {
-  const periodResponse = await fetchApiNoCache<TimePeriodResponse>('/timePeriod', 'timePeriodList');
-  const standardPeriod = getLatestPeriod(periodResponse.timePeriodList, 'standard');
-  const outcomePeriod = getLatestPeriod(periodResponse.timePeriodList, 'outcome');
+  const { standard: standardPeriod, outcome: outcomePeriod } = await getFreshLatestPeriods();
   if (!standardPeriod || !outcomePeriod) throw new Error('Latest CVDPREVENT periods were not found');
 
   const [standardIndicators, outcomeIndicators] = await Promise.all([

@@ -6,6 +6,8 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { findSectionForIndicator } from '@/lib/constants/indicator-sections';
+import { coverageFromMetricList, getLatestPeriod, type EnglandIndicatorMetrics } from '@/lib/api/time-periods';
+import type { TimePeriod } from '@/lib/api/types';
 
 const BASE_URL = 'https://api.cvdprevent.nhs.uk';
 
@@ -45,9 +47,19 @@ function findPersonsMetric(indicators: { Categories: MetricCategory[] }[]) {
 let timePeriodId: number;
 
 beforeAll(async () => {
-  const periods = await fetchJSON<{ timePeriodList: { TimePeriodID: number; TimePeriodName: string }[] }>('/timePeriod');
-  const standardPeriods = periods.timePeriodList.filter(p => p.TimePeriodName.startsWith('To '));
-  timePeriodId = standardPeriods.sort((a, b) => b.TimePeriodID - a.TimePeriodID)[0].TimePeriodID;
+  const periods = await fetchJSON<{ timePeriodList: TimePeriod[] }>('/timePeriod');
+  const standardPeriods = [...periods.timePeriodList]
+    .filter((period) => period.TimePeriodName.startsWith('To '))
+    .sort((a, b) => new Date(b.EndDate).getTime() - new Date(a.EndDate).getTime());
+  const coverage = await Promise.all(standardPeriods.slice(0, 2).map(async (period) => {
+    const metrics = await fetchJSON<{ indicatorList: EnglandIndicatorMetrics[] }>(
+      `/indicator/metricList?timePeriodID=${period.TimePeriodID}&systemLevelID=1`,
+    );
+    return coverageFromMetricList(period.TimePeriodID, metrics.indicatorList);
+  }));
+  const selected = getLatestPeriod(periods.timePeriodList, 'standard', coverage);
+  if (!selected) throw new Error('No usable standard period');
+  timePeriodId = selected.TimePeriodID;
 });
 
 // ---------- Time Periods ----------

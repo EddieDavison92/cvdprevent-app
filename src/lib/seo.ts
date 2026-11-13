@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getIndicators } from '@/lib/api/indicators';
-import { getLatestPeriod, getTimePeriods } from '@/lib/api/time-periods';
+import { getResolvedLatestPeriods } from '@/lib/api/time-periods';
 import { SYSTEM_LEVELS, type Indicator } from '@/lib/api/types';
 
 export const SITE_URL = 'https://www.cvdprevent-explorer.app';
@@ -93,9 +93,7 @@ export function cleanIndicatorTitle(name: string) {
 
 export async function listPublicIndicators(): Promise<Indicator[]> {
   try {
-    const periods = await getTimePeriods();
-    const standard = getLatestPeriod(periods, 'standard');
-    const outcome = getLatestPeriod(periods, 'outcome');
+    const { standard, outcome } = await getResolvedLatestPeriods();
     const [standardIndicators, outcomeIndicators] = await Promise.all([
       standard ? getIndicators(standard.TimePeriodID, SYSTEM_LEVELS.ENGLAND) : Promise.resolve([]),
       outcome ? getIndicators(outcome.TimePeriodID, SYSTEM_LEVELS.ENGLAND) : Promise.resolve([]),
